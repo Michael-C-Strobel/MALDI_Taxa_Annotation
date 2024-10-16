@@ -1,0 +1,97 @@
+import argparse
+from pathlib import Path
+from Bio import Entrez, SeqIO
+import polars as pl
+import os
+from utils import init_logging
+import logging
+from tqdm import tqdm
+
+# Function to fetch FASTA files for given taxids
+def fetch_fasta_by_taxids(taxids, output_dir):  # Defunct
+    for taxid in tqdm(taxids):
+        logging.debug("Fetching sequences for TaxID: %s", taxid)
+        
+        # Step 1: Search for sequences by taxid in the nucleotide database
+        search_handle = Entrez.esearch(db="nucleotide", term="txid{}[Organism]".format(taxid), retmax=1000)
+        search_results = Entrez.read(search_handle)
+        search_handle.close()
+        sequence_ids = search_results["IdList"]
+        logging.debug("Found %d sequences for TaxID %s", len(sequence_ids), taxid)
+
+        # Step 2: Fetch the corresponding FASTA sequences
+        if sequence_ids:
+            logging.debug("Fetching FASTA sequences for TaxID %s", taxid)
+            fetch_handle = Entrez.efetch(db="nucleotide", id=sequence_ids, rettype="fasta", retmode="text")
+            fasta_data = fetch_handle.read()
+            fetch_handle.close()
+
+            # Step 3: Save FASTA data to file
+            output_file = os.path.join(output_dir, "{}.fasta".format(taxid))
+            logging.debug("Saving FASTA sequences for TaxID %s to %s", taxid, output_file)
+            with open(output_file, "w") as f:
+                f.write(fasta_data)
+            logging.debug("Saved FASTA sequences for TaxID %s to %s", taxid, output_file)
+        else:
+            logging.debug("No sequences found for TaxID %s", taxid)
+
+# Function to fetch FASTA files for given GenBank accessions
+def fetch_fasta_by_accessions(accessions, output_dir="fasta_files"):
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    for accession in tqdm(accessions):
+        logging.debug("Fetching sequence for accession: %s", accession)
+        
+        # Step 1: Fetch the FASTA sequence using the accession number
+        try:
+            fetch_handle = Entrez.efetch(db="nucleotide", id=accession, rettype="fasta", retmode="text")
+            fasta_data = fetch_handle.read()
+            fetch_handle.close()
+
+            # Step 2: Save FASTA data to file
+            output_file = os.path.join(output_dir, f"{accession}.fasta")
+            with open(output_file, "w") as f:
+                f.write(fasta_data)
+            logging.debug("Saved FASTA sequence for accession %s to %s", accession, output_file)
+
+            # Step 3: Check if the file was empty, if so, delete it
+            with open(output_file, "r") as f:
+                if not f.read().strip():
+                    os.remove(output_file)
+                    logging.debug("Deleted empty FASTA file for accession %s", accession)
+        
+        except Exception as e:
+            logging.error("Error fetching data for accession %s: %s", accession, e)
+
+def main():
+    parser = argparse.ArgumentParser(description='Collect fasta files')
+    parser.add_argument('--input_csv', type=str, help='Input CSV file path', required=True)
+    parser.add_argument('--output_dir', type=str, help='Output directory', required=True)
+    parser.add_argument('--email', type=str, help='Email address for Entrez', required=False)
+    args = parser.parse_args()
+
+    if args.email:
+        Entrez.email = args.email
+
+    init_logging()
+
+    input_csv = Path(args.input_csv)
+    output_dir = Path(args.output_dir)
+
+    if not input_csv.suffix == '.csv':
+        raise ValueError('Input file must be a CSV file')
+    if not input_csv.exists():
+        raise FileNotFoundError('Input file does not exist')
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Read the CSV file
+    df = pl.read_csv(input_csv, infer_schema_length=None)
+    
+    genbank_accessions = df.filter(df['Genbank accession'] != 'NaN')['Genbank accession'].unique()
+    fetch_fasta_by_accessions(list(genbank_accessions), output_dir)
+
+if __name__ == "__main__":
+    main()

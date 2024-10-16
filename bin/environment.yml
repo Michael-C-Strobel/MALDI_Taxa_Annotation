@@ -1,0 +1,20 @@
+name: seq_sim_pred
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.12
+  - polars
+  - requests
+  - ijson
+  - tqdm
+  - biopython
+  - bioconda::psims
+  - r
+  - conda-forge::r-base
+  - conda-forge::r-essentials
+  - conda-forge::r-maldiquant
+  - bioconda::r-maldiquantforeign
+  - pyteomics
+  - bioconda::matchms=0.18.0
+  - pip
