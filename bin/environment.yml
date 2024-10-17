@@ -17,4 +17,5 @@ dependencies:
   - bioconda::r-maldiquantforeign
   - pyteomics
   - bioconda::matchms=0.18.0
+  - ijson
   - pip
