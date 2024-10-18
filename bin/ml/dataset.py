@@ -70,7 +70,10 @@ class MALDI_TOF_DS(Dataset):
         return self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]
     
     def sample_strain_from_accession(self, accession):
-        return self.metadata_table[self.metadata_table['accession'] == accession]['Strain name'].sample(1).values[0]
+        try:
+            return self.metadata_table[self.metadata_table['accession'] == accession]['Strain name'].sample(1).values[0]
+        except ValueError as ve:
+            raise ValueError(f'No strain found for accession {accession}') from ve
 
     def find_match_in_range(self, accession, bin_index):
 
@@ -79,7 +82,11 @@ class MALDI_TOF_DS(Dataset):
         lb = self.sim_bins[bin_index]
         ub = self.sim_bins[bin_index + 1]
 
-        in_range = relevant_df.loc[lb:ub,].sample(1)
+        in_range = relevant_df.loc[lb:ub,]
+        while len(in_range) == 0:
+            lb -= 0.05
+            ub += 0.05
+            in_range = relevant_df.loc[lb:ub,]
 
         result_accession = in_range['subject_genbank'].values[0]
         result_similarity = in_range.index.values[0]
