@@ -26,8 +26,6 @@ class MALDI_TOF_DS(Dataset):
             preprocessing_dir_stat = Path(self.preprocessing_dir).stat()
             most_recent_m_time = self.get_most_recent_modified_time()
 
-            print(most_recent_m_time, preprocessing_dir_stat.st_mtime)
-
             if Path(self.root_dir).exists():
                 root_dir_stat = Path(self.root_dir).stat()
             else:
@@ -56,14 +54,9 @@ class MALDI_TOF_DS(Dataset):
     
     def __getitem__(self, idx):
         accession_a = self.all_accessions[idx % len(self.all_accessions)]
-        print("Accession A: ", accession_a)
         strain_name_a = self.sample_strain_from_accession(accession_a)
-        print("Strain Name A: ", strain_name_a)
 
         strain_name_b, accession_b, similarity = self.find_match_in_range(accession_a, np.random.randint(0, self.sim_bins.shape[0] - 1))
-        print("Strain Name B: ", strain_name_b)
-        print("Accession B: ", accession_b)
-        print("Similarity: ", similarity)
         spectrum_a = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_a}.pt')
         spectrum_b = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_b}.pt')
         
@@ -87,14 +80,12 @@ class MALDI_TOF_DS(Dataset):
         ub = self.sim_bins[bin_index + 1]
 
         in_range = relevant_df.loc[lb:ub,].sample(1)
-        print("In Range: ")
-        print(in_range)
+
         result_accession = in_range['subject_genbank'].values[0]
         result_similarity = in_range.index.values[0]
-        print("Result Accession: ", result_accession)
-        print("Result Similarity: ", result_similarity)
+
         result_strain_name = self.metadata_table[self.metadata_table['accession'] == result_accession]['Strain name'].sample(1).values[0]
-        print("Result Strain Name: ", result_strain_name)
+
         return result_strain_name, result_accession, result_similarity
 
     def _preslice_similarities(self, similarities:str):
