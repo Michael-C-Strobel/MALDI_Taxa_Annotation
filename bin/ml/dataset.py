@@ -14,10 +14,15 @@ class MALDI_TOF_DS(Dataset):
                  root_dir: str, 
                  process:bool=True,
                  transform:callable=None):
-        self.preprocessing_dir = preprocessing_dir
-        self.metadata_table = pd.read_csv(metadata_table)
-        self.metadata_table['accession'] = self.metadata_table['Genbank accession'].str.split('.').str[0]
         self.root_dir = root_dir
+        self.preprocessing_dir = preprocessing_dir
+        self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+        all_spectra_names = [x.stem for x in self.all_spectra]
+
+        metadata_table = pd.read_csv(metadata_table)
+        metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0]
+        metadata_table = metadata_table[metadata_table['Strain name'].isin(all_spectra_names)]
+        self.metadata_table = metadata_table
         self.transform = transform
 
         self.num_turns = 2
@@ -40,8 +45,9 @@ class MALDI_TOF_DS(Dataset):
 
         similarities = Path(self.root_dir) / 'similarities.feather'
         temp_similarities = pd.read_feather(similarities)
+        post_filtration_accessions = self.metadata_table.accession.unique()
+        temp_similarities = temp_similarities[temp_similarities['query_genbank'].isin(post_filtration_accessions) & temp_similarities['subject_genbank'].isin(post_filtration_accessions)]
 
-        self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
         self.all_accessions = np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values)))
 
         self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 11)
