@@ -54,10 +54,10 @@ class MALDI_TOF_DS(Dataset):
 
         self.all_accessions = np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values)))
 
-        self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 11)
-        del temp_similarities   # TODO: pass to sliced_similarities for speed
 
-        self.sliced_similarities = self._preslice_similarities(similarities)
+        self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 11)
+
+        self.sliced_similarities = self._preslice_similarities(temp_similarities)
 
     def __len__(self):
         return len(self.all_accessions) * self.num_turns
@@ -74,7 +74,7 @@ class MALDI_TOF_DS(Dataset):
             spectrum_a = self.transform(spectrum_a)
             spectrum_b = self.transform(spectrum_b)
 
-        return spectrum_a, spectrum_b, torch.Tensor([similarity]).to(torch.float32)
+        return spectrum_a, spectrum_b, torch.tensor(similarity, dtype=torch.float32)
 
     def strain_to_accession(self, strain_name):
         return self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]
@@ -83,7 +83,7 @@ class MALDI_TOF_DS(Dataset):
         try:
             return self.metadata_table[self.metadata_table['accession'] == accession]['Strain name'].sample(1).values[0]
         except ValueError as ve:
-            raise ValueError(f'No strain found for accession {accession}') from ve
+            raise ValueError(f'No strain found for accession "{accession}"') from ve
 
     def find_match_in_range(self, accession, bin_index):
 
@@ -105,9 +105,7 @@ class MALDI_TOF_DS(Dataset):
 
         return result_strain_name, result_accession, result_similarity
 
-    def _preslice_similarities(self, similarities:str):
-        sims = pd.read_feather(similarities)
-
+    def _preslice_similarities(self, sims:pd.DataFrame):
         out_dict = {}
 
         grouped = sims.groupby('query_genbank')
