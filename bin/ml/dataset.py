@@ -74,7 +74,7 @@ class MALDI_TOF_DS(Dataset):
             spectrum_a = self.transform(spectrum_a)
             spectrum_b = self.transform(spectrum_b)
 
-        return spectrum_a, spectrum_b, similarity
+        return spectrum_a, spectrum_b, torch.Tensor([similarity]).to(torch.float32)
 
     def strain_to_accession(self, strain_name):
         return self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]

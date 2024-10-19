@@ -3,7 +3,7 @@ from torch.utils.data import random_split, DataLoader
 from dataset import MALDI_TOF_DS
 import torch
 from torchvision import transforms
-from custom_transforms import PadSequence
+from custom_transforms import PadSequence, BinSpectrum
 
 from torchvision.transforms import Pad
 
@@ -14,11 +14,11 @@ class Spectrum_DataModule(L.LightningDataModule):
         self.metadata_table = metadata_table
         self.root_dir = root_dir
 
-        padding_transform = PadSequence((200,2))
-        self.transform = transforms.Compose([padding_transform])
+        binning_transform = BinSpectrum(3, 2_000, 20_000)
+        self.transform = transforms.Compose([binning_transform])
 
     def prepare_data(self):
-        raise NotImplementedError()
+       pass
     
     def setup(self, stage:str):
         if stage == 'fit':
