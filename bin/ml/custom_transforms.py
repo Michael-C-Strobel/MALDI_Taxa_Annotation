@@ -11,5 +11,13 @@ class PadSequence(object):
         self.padding_value = padding_value
 
     def __call__(self, vector):
-        padding = tuple((torch.Tensor(list(self.shape)).to(int) - torch.Tensor(list(vector.shape)).to(int)).tolist())
-        return F.pad(vector, padding, mode='constant', value=self.padding_value)
+        # Create an output tensor filled with the padding value, with the target shape
+        output_vector = torch.full(self.shape, self.padding_value)
+        
+        # Create slices for each dimension based on the smaller of the output shape and input vector's shape
+        slices = tuple(slice(0, min(v, o)) for v, o in zip(vector.shape, self.shape))
+        
+        # Assign the input vector into the corresponding slice of the output vector
+        output_vector[slices] = vector
+        
+        return output_vector
