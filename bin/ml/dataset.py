@@ -21,8 +21,9 @@ class MALDI_TOF_DS(Dataset):
         all_spectra_names = [x.stem for x in self.all_spectra]
 
         metadata_table = pd.read_csv(metadata_table)
-        metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0]
-        metadata_table = metadata_table[metadata_table['Strain name'].isin(all_spectra_names)]
+        metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
+        metadata_table = metadata_table.loc[metadata_table['Strain name'].isin(all_spectra_names)]
+        print(metadata_table)
         self.metadata_table = metadata_table
         self.transform = transform
 
@@ -47,7 +48,9 @@ class MALDI_TOF_DS(Dataset):
         similarities = Path(self.root_dir) / 'similarities.feather'
         temp_similarities = pd.read_feather(similarities)
         post_filtration_accessions = self.metadata_table.accession.unique()
-        temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(post_filtration_accessions) & temp_similarities['subject_genbank'].isin(post_filtration_accessions)]
+
+        temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(post_filtration_accessions) & \
+                                                  temp_similarities['subject_genbank'].isin(post_filtration_accessions)]
 
         self.all_accessions = np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values)))
 
@@ -70,8 +73,6 @@ class MALDI_TOF_DS(Dataset):
         if self.transform:
             spectrum_a = self.transform(spectrum_a)
             spectrum_b = self.transform(spectrum_b)
-            print("After padding", spectrum_a.shape, spectrum_b.shape)
-            
 
         return spectrum_a, spectrum_b, similarity
 
