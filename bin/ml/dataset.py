@@ -23,7 +23,7 @@ class MALDI_TOF_DS(Dataset):
         metadata_table = pd.read_csv(metadata_table)
         metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
         metadata_table = metadata_table.loc[metadata_table['Strain name'].isin(all_spectra_names)]
-        print(metadata_table)
+
         self.metadata_table = metadata_table
         self.transform = transform
 
@@ -67,8 +67,8 @@ class MALDI_TOF_DS(Dataset):
         strain_name_a = self.sample_strain_from_accession(accession_a)
 
         strain_name_b, accession_b, similarity = self.find_match_in_range(accession_a, np.random.randint(0, self.sim_bins.shape[0] - 1))
-        spectrum_a = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_a}.pt', weights_only=True)
-        spectrum_b = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_b}.pt', weights_only=True)
+        spectrum_a = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_a}.pt', weights_only=True).to(torch.float32)
+        spectrum_b = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_b}.pt', weights_only=True).to(torch.float32)
 
         if self.transform:
             spectrum_a = self.transform(spectrum_a)
