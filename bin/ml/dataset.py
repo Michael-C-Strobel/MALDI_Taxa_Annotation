@@ -6,6 +6,7 @@ import os
 import sys
 import numpy as np
 import torch
+import torch.nn.functional as F
 import pytest
 
 class MALDI_TOF_DS(Dataset):
@@ -46,7 +47,7 @@ class MALDI_TOF_DS(Dataset):
         similarities = Path(self.root_dir) / 'similarities.feather'
         temp_similarities = pd.read_feather(similarities)
         post_filtration_accessions = self.metadata_table.accession.unique()
-        temp_similarities = temp_similarities[temp_similarities['query_genbank'].isin(post_filtration_accessions) & temp_similarities['subject_genbank'].isin(post_filtration_accessions)]
+        temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(post_filtration_accessions) & temp_similarities['subject_genbank'].isin(post_filtration_accessions)]
 
         self.all_accessions = np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values)))
 
@@ -63,12 +64,14 @@ class MALDI_TOF_DS(Dataset):
         strain_name_a = self.sample_strain_from_accession(accession_a)
 
         strain_name_b, accession_b, similarity = self.find_match_in_range(accession_a, np.random.randint(0, self.sim_bins.shape[0] - 1))
-        spectrum_a = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_a}.pt')
-        spectrum_b = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_b}.pt')
-        
+        spectrum_a = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_a}.pt', weights_only=True)
+        spectrum_b = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_b}.pt', weights_only=True)
+
         if self.transform:
             spectrum_a = self.transform(spectrum_a)
             spectrum_b = self.transform(spectrum_b)
+            print("After padding", spectrum_a.shape, spectrum_b.shape)
+            
 
         return spectrum_a, spectrum_b, similarity
 
@@ -97,7 +100,7 @@ class MALDI_TOF_DS(Dataset):
         result_accession = in_range['subject_genbank'].values[0]
         result_similarity = in_range.index.values[0]
 
-        result_strain_name = self.metadata_table[self.metadata_table['accession'] == result_accession]['Strain name'].sample(1).values[0]
+        result_strain_name = self.sample_strain_from_accession(result_accession)
 
         return result_strain_name, result_accession, result_similarity
 
