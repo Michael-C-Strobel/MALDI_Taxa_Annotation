@@ -66,7 +66,7 @@ class MALDI_TOF_DS(Dataset):
         accession_a = self.all_accessions[idx % len(self.all_accessions)]
         strain_name_a = self.sample_strain_from_accession(accession_a)
 
-        strain_name_b, accession_b, similarity = self.find_match_in_range(accession_a, np.random.randint(0, self.sim_bins.shape[0] - 1))
+        strain_name_b, accession_b, similarity = self.find_match_in_range(accession_a, strain_name_a, np.random.randint(0, self.sim_bins.shape[0] - 1))
         spectrum_a = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_a}.pt', weights_only=True).to(torch.float32)
         spectrum_b = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_b}.pt', weights_only=True).to(torch.float32)
 
@@ -79,29 +79,61 @@ class MALDI_TOF_DS(Dataset):
     def strain_to_accession(self, strain_name):
         return self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]
     
-    def sample_strain_from_accession(self, accession):
+    def sample_strain_from_accession(self, accession, strain_name=None):
         try:
-            return self.metadata_table[self.metadata_table['accession'] == accession]['Strain name'].sample(1).values[0]
+            if strain_name:
+                choices = self.metadata_table[(self.metadata_table['accession'] == accession) & (self.metadata_table['Strain name'] != strain_name)]
+            else:
+                choices = self.metadata_table[self.metadata_table['accession'] == accession]
+            if len(choices) == 0:
+                return None
+            return choices['Strain name'].sample(1).values[0]
         except ValueError as ve:
             raise ValueError(f'No strain found for accession "{accession}"') from ve
 
-    def find_match_in_range(self, accession, bin_index):
+    def find_match_in_range(self, accession, strain_name, bin_index):
+        """ Find a strain name that has a similarity in the specified bin range. Excludes identical strains.
 
+        Args:
+            accession (str): The Genbank accession of the query strain.
+            strain_name (str): The strain name of the query strain.
+            bin_index (int): The index of the similarity bin.
+
+        Returns:
+            Tuple[str, str, float]: The strain name, accession, and similarity of the matched strain.
+        """
         relevant_df = self.sliced_similarities[accession]
 
         lb = self.sim_bins[bin_index]
         ub = self.sim_bins[bin_index + 1]
 
+        result_strain_name  = None
+        result_accession    = None
+        result_similarity   = None
+        tried_candidates = set()
+
         in_range = relevant_df.loc[lb:ub,]
-        while len(in_range) == 0:
+        while result_strain_name is None:
+            in_range = relevant_df.loc[lb:ub,]
             lb -= 0.05
             ub += 0.05
-            in_range = relevant_df.loc[lb:ub,]
-
-        result_accession = in_range['subject_genbank'].values[0]
-        result_similarity = in_range.index.values[0]
-
-        result_strain_name = self.sample_strain_from_accession(result_accession)
+            # Iterate over the possible accessions, try each until we find a strain name
+            if len(in_range) > 0:
+                in_range = in_range.sample(1)
+                candidates = in_range['subject_genbank'].values
+                candidates = list(set(candidates) - tried_candidates)
+                if len(candidates) == 0:
+                    continue
+                for _result_accession in np.random.choice(candidates, replace=False, size=len(in_range)):
+                    _result_similarity = in_range.index.values[0]
+                    _result_strain_name = self.sample_strain_from_accession(_result_accession, strain_name)
+                    if _result_strain_name is not None:
+                        result_accession = _result_accession
+                        result_strain_name = _result_strain_name
+                        result_similarity = _result_similarity
+                        break
+                    else:
+                        tried_candidates.add(_result_accession)
 
         return result_strain_name, result_accession, result_similarity
 
