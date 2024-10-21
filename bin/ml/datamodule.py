@@ -30,6 +30,9 @@ class Spectrum_DataModule(L.LightningDataModule):
             )
         if stage == 'test':
             raise NotImplementedError()
+        if stage == 'all':
+            full_dataset = MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False, transform=self.transform)
+            self.predict_set = full_dataset
 
     def train_dataloader(self):
         return DataLoader(self.train_set, batch_size=32, shuffle=True, num_workers=self.num_workers)
@@ -37,6 +40,9 @@ class Spectrum_DataModule(L.LightningDataModule):
     def val_dataloader(self):
         return DataLoader(self.val_set, batch_size=32, shuffle=False, num_workers=self.num_workers)
     
+    def predict_dataloader(self):
+        return DataLoader(self.predict_set, batch_size=32, shuffle=False, num_workers=self.num_workers)
+
     def plot(self, index: int, dataset: str = 'train'):
         import matplotlib.pyplot as plt
 
@@ -44,7 +50,6 @@ class Spectrum_DataModule(L.LightningDataModule):
         if len(spectrum_a.shape) > 1:
             raise NotImplementedError("Only 'intensity vectors' are supported for plotting.")
         
-        # Create a larger figure
         fig = plt.figure(figsize=(10, 6))
         
         # Stick plot with spectrum_a on top and spectrum_b on bottom, removing dots at ends

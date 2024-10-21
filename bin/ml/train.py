@@ -12,8 +12,9 @@ def main():
         'hidden_dim': 300,
         'hidden_layers': 3,
     }
+    logger = TensorBoardLogger('lightning_logs', name='MLP_model')
 
-    model = MLP(**hyperparameters)
+    model = MLP(hyperparameters)
     
     torch.set_float32_matmul_precision('medium')    # medium | high
     
@@ -23,9 +24,6 @@ def main():
                                     num_workers=7)
     datamodule.setup('fit')
     datamodule.plot(0)
-
-    logger = TensorBoardLogger('lightning_logs', name='MLP_model')
-
     
     trainer = L.Trainer(max_epochs=50, log_every_n_steps=10, logger=logger)
     tuner = L.pytorch.tuner.Tuner(trainer)
@@ -37,9 +35,6 @@ def main():
                                     early_stop_threshold=None)
     model.lr = lr_find_results.suggestion()
     print("Best learning rate: ", model.lr)
-
-
-    logger.log_hyperparams(hyperparameters)
 
     trainer.fit(model, datamodule)
 

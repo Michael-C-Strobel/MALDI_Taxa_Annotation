@@ -6,9 +6,11 @@ import torchmetrics
 import torch.nn.functional as F
 import torch
 import lightning as L
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 class MLP(L.LightningModule):
-    def __init__(self, input_dim, output_dim, hidden_dim, hidden_layers, **kwargs):
+    def __init__(self, hyperparameters):
         super().__init__()
 
         # Training metrics
@@ -24,26 +26,30 @@ class MLP(L.LightningModule):
             },
             prefix='val_'
         )
+        self.r2_score = torchmetrics.R2Score()
+
+        for key in hyperparameters.keys():
+            self.hparams.update({key: hyperparameters[key]})
+        self.save_hyperparameters()
 
         # Optimizer
-        self.lr = kwargs.get('lr', 1e-5)
-        if 'lr' in kwargs:
+        self.lr = self.hparams.get('lr', 1e-5)
+        if 'lr' in self.hparams:
             print(f"Using learning rate: {self.lr}")
 
         # Model
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.hidden_dim = hidden_dim
-        self.hidden_layers = hidden_layers
+        self.input_dim = self.hparams['input_dim']
+        self.output_dim = self.hparams['output_dim']
+        self.hidden_dim = self.hparams['hidden_dim']
+        self.hidden_layers = self.hparams['hidden_layers']
         self.layers = nn.ModuleList()
-        self.layers.append(nn.Linear(input_dim, hidden_dim))
+        self.layers.append(nn.Linear(self.input_dim, self.hidden_dim))
         self.layers.append(nn.ReLU())
-        for _ in range(hidden_layers):
-            self.layers.append(nn.Linear(hidden_dim, hidden_dim))
+        for _ in range(self.hidden_layers):
+            self.layers.append(nn.Linear(self.hidden_dim, self.hidden_dim))
             self.layers.append(nn.ReLU())
 
-        self.layers.append(nn.Linear(hidden_dim, output_dim))
-        self.layers
+        self.layers.append(nn.Linear(self.hidden_dim, self.output_dim))
 
     def forward(self, x):
         for layer in self.layers:
@@ -54,21 +60,17 @@ class MLP(L.LightningModule):
         spectrum_a, spectrum_b, similarity = batch
         embed_1 = self(spectrum_a)
         embed_2 = self(spectrum_b)
-        print(embed_1.shape)
         pred_sim = F.cosine_similarity(embed_1, embed_2)
-        # print(embed_1)
-        # print(embed_2)
-        print(pred_sim.shape)
         
         loss = nn.functional.mse_loss(pred_sim, similarity)
         batch_value = self.train_metrics(pred_sim, similarity)
         self.log_dict(batch_value, on_epoch=True)
 
-        avg_pred_mag = torch.mean(torch.abs(pred_sim))
-        avg_real_mag = torch.mean(torch.abs(similarity))
-        self.log('train_avg_pred_magnitude', avg_pred_mag, on_step=True, on_epoch=True)
-        self.log('train_avg_real_magnitude', avg_real_mag, on_step=True, on_epoch=True)
-
+        if False:   # Handy for debugging
+            avg_pred_mag = torch.mean(torch.abs(pred_sim))
+            avg_real_mag = torch.mean(torch.abs(similarity))
+            self.log('train_avg_pred_magnitude', avg_pred_mag, on_step=True, on_epoch=True)
+            self.log('train_avg_real_magnitude', avg_real_mag, on_step=True, on_epoch=True)
 
         return loss
     
@@ -85,9 +87,47 @@ class MLP(L.LightningModule):
         batch_value = self.val_metrics(pred_sim, similarity)
         self.log_dict(batch_value, on_epoch=True)
         return loss
+    
+    def test_step(self, batch, batch_idx):
+        spectrum_a, spectrum_b, similarity = batch
+        embed_1 = self(spectrum_a)
+        embed_2 = self(spectrum_b)
+        preds = F.cosine_similarity(embed_1, embed_2)
+        loss = nn.functional.mse_loss(preds, similarity)
+        return {'predictions': preds, 'similarity': similarity, 'loss': loss}
+
+    def predict_step(self, batch, batch_idx, dataloader_idx=None):
+        spectrum_a, spectrum_b, similarity = batch
+        embed_1 = self(spectrum_a)
+        embed_2 = self(spectrum_b)
+        preds = F.cosine_similarity(embed_1, embed_2)
+        if similarity is not None:
+            loss = nn.functional.mse_loss(preds, similarity)
+        else:
+            loss = None
+        return {'predictions': preds, 'similarity': similarity, 'loss': loss}
 
     def on_validation_epoch_end(self):
         self.val_metrics.reset()
-    
+
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.lr)
+    
+class RawCosine(L.LightningModule):
+    def __init__(self,):
+        super().__init__()
+
+    def forward(self, x):
+        if x[0].shape != x[1].shape:
+            raise ValueError("Input tensors must have the same shape")
+        return F.cosine_similarity(x[0], x[1])
+    
+    def predict_step(self, batch, batch_idx, dataloader_idx=None):
+        spectrum_a, spectrum_b, similarity = batch
+        preds = self((spectrum_a, spectrum_b))
+        if similarity is not None:
+            loss = nn.functional.mse_loss(preds, similarity)
+        else:
+            loss = None
+
+        return {'predictions': preds, 'similarity': similarity, 'loss': loss}
