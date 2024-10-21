@@ -3,7 +3,7 @@ from torch.utils.data import random_split, DataLoader
 from dataset import MALDI_TOF_DS
 import torch
 from torchvision import transforms
-from custom_transforms import PadSequence, BinSpectrum
+from custom_transforms import PadSequence, BinSpectrum, NormalizeIntensity
 
 from torchvision.transforms import Pad
 
@@ -15,8 +15,9 @@ class Spectrum_DataModule(L.LightningDataModule):
         self.root_dir = root_dir
         self.num_workers = num_workers
 
-        binning_transform = BinSpectrum(3, 2_000, 20_000)
-        self.transform = transforms.Compose([binning_transform])
+        binning_transform = BinSpectrum(10, 2_000, 20_000)
+        eucliden_norm     = NormalizeIntensity()
+        self.transform = transforms.Compose([binning_transform, eucliden_norm])
 
     def prepare_data(self):
        pass
@@ -36,6 +37,24 @@ class Spectrum_DataModule(L.LightningDataModule):
     def val_dataloader(self):
         return DataLoader(self.val_set, batch_size=32, shuffle=False, num_workers=self.num_workers)
     
+    def plot(self, index: int, dataset: str = 'train'):
+        import matplotlib.pyplot as plt
+
+        spectrum_a, spectrum_b, similarity = self.train_set[index]
+        if len(spectrum_a.shape) > 1:
+            raise NotImplementedError("Only 'intensity vectors' are supported for plotting.")
+        
+        # Create a larger figure
+        fig = plt.figure(figsize=(10, 6))
+        
+        # Stick plot with spectrum_a on top and spectrum_b on bottom, removing dots at ends
+        plt.stem(spectrum_a, linefmt='b-', markerfmt=' ', basefmt=' ')  # No markers
+        plt.stem(spectrum_b * -1, linefmt='r-', markerfmt=' ', basefmt=' ')  # No markers
+        
+        # Add title with similarity score
+        plt.title(f'Sequence Similarity: {similarity:.4f}')
+        
+        plt.savefig(f'{dataset}_{index}.png')
 
 def test_dataloader():
     dm = Spectrum_DataModule('../../data/idbac_db/preprocessing',
