@@ -7,10 +7,10 @@ import torch
 def main():
 
     hyperparameters = {
-        'input_dim': 6000,
-        'output_dim': 3,
+        'input_dim': 1800,
+        'output_dim': 250,
         'hidden_dim': 300,
-        'hidden_layers': 250
+        'hidden_layers': 3,
     }
 
     model = MLP(**hyperparameters)
@@ -21,11 +21,13 @@ def main():
                                     '../../data/idbac_db/raw/db.csv',
                                     '../../data/idbac_db/preprocessed',
                                     num_workers=7)
+    datamodule.setup('fit')
+    datamodule.plot(0)
 
     logger = TensorBoardLogger('lightning_logs', name='MLP_model')
 
     
-    trainer = L.Trainer(max_epochs=20, log_every_n_steps=10, logger=logger)
+    trainer = L.Trainer(max_epochs=50, log_every_n_steps=10, logger=logger)
     tuner = L.pytorch.tuner.Tuner(trainer)
     
     lr_find_results = tuner.lr_find(model,

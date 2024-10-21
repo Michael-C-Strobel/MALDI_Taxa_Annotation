@@ -63,10 +63,24 @@ class BinSpectrum(object):
         # Bin the spectrum
         binned_spectrum = np.histogram(spectrum[:, 0], bins=bins, weights=spectrum[:, 1])[0]
         return binned_spectrum
+    
+class NormalizeIntensity(object):
+    """ Divides a one-dimensional (binned) spectrum by its Euclidean norm.
 
-# class ToIntensityVector(object):
-#     #TODO
-#     raise NotImplementedError
+    Args:
+        None
+
+    Returns:
+        np.ndarray: The normalized spectrum.
+    """
+    def __init__(self):
+        pass
+
+    def __call__(self, spectrum):
+        # Eucliden norm of the intensity values
+        norm = np.linalg.norm(spectrum)
+        spectrum = spectrum / norm
+        return spectrum
 
 
 @pytest.fixture

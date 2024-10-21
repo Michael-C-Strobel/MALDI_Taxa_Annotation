@@ -54,8 +54,12 @@ class MLP(L.LightningModule):
         spectrum_a, spectrum_b, similarity = batch
         embed_1 = self(spectrum_a)
         embed_2 = self(spectrum_b)
+        print(embed_1.shape)
         pred_sim = F.cosine_similarity(embed_1, embed_2)
-
+        # print(embed_1)
+        # print(embed_2)
+        print(pred_sim.shape)
+        
         loss = nn.functional.mse_loss(pred_sim, similarity)
         batch_value = self.train_metrics(pred_sim, similarity)
         self.log_dict(batch_value, on_epoch=True)
