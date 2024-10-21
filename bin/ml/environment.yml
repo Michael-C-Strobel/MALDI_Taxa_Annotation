@@ -15,4 +15,8 @@ dependencies:
   - pytorch-cuda=12.4
   - conda-forge::lightning
   - pytest
+  - pip
+  - pip:
+    - lightning[extra]
+    - tensorboard
   

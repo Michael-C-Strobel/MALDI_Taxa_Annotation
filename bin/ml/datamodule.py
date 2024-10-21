@@ -8,11 +8,12 @@ from custom_transforms import PadSequence, BinSpectrum
 from torchvision.transforms import Pad
 
 class Spectrum_DataModule(L.LightningDataModule):
-    def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str):
+    def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str, num_workers:int=4):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
         self.root_dir = root_dir
+        self.num_workers = num_workers
 
         binning_transform = BinSpectrum(3, 2_000, 20_000)
         self.transform = transforms.Compose([binning_transform])
@@ -30,10 +31,10 @@ class Spectrum_DataModule(L.LightningDataModule):
             raise NotImplementedError()
 
     def train_dataloader(self):
-        return DataLoader(self.train_set, batch_size=32, shuffle=True)
+        return DataLoader(self.train_set, batch_size=32, shuffle=True, num_workers=self.num_workers)
     
     def val_dataloader(self):
-        return DataLoader(self.val_set, batch_size=32)
+        return DataLoader(self.val_set, batch_size=32, shuffle=False, num_workers=self.num_workers)
     
 
 def test_dataloader():

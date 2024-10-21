@@ -1,23 +1,44 @@
 from models import MLP
-# from dataset import MALDI_TOF_DS
 from datamodule import Spectrum_DataModule
+from lightning.pytorch.loggers import TensorBoardLogger
 import lightning as L
 import torch
 
 def main():
-    model = MLP(6000, 300, 250, 3)  # input_dim, output_dim, hidden_dim, hidden_layers
+
+    hyperparameters = {
+        'input_dim': 6000,
+        'output_dim': 3,
+        'hidden_dim': 300,
+        'hidden_layers': 250
+    }
+
+    model = MLP(**hyperparameters)
     
     torch.set_float32_matmul_precision('medium')    # medium | high
-
-    # dataset = MALDI_TOF_DS('../../data/idbac_db/preprocessing',
-    #                         '../../data/idbac_db/raw/db.csv',
-    #                         '../../data/idbac_db/preprocessed',)
     
     datamodule = Spectrum_DataModule('../../data/idbac_db/preprocessing',
                                     '../../data/idbac_db/raw/db.csv',
-                                    '../../data/idbac_db/preprocessed')
+                                    '../../data/idbac_db/preprocessed',
+                                    num_workers=7)
 
-    trainer = L.Trainer(max_epochs=10, log_every_n_steps=10)
+    logger = TensorBoardLogger('lightning_logs', name='MLP_model')
+
+    
+    trainer = L.Trainer(max_epochs=20, log_every_n_steps=10, logger=logger)
+    tuner = L.pytorch.tuner.Tuner(trainer)
+    
+    lr_find_results = tuner.lr_find(model,
+                                    datamodule,
+                                    min_lr=0.001,
+                                    max_lr=1.0,
+                                    early_stop_threshold=None)
+    model.lr = lr_find_results.suggestion()
+    print("Best learning rate: ", model.lr)
+
+
+    logger.log_hyperparams(hyperparameters)
+
     trainer.fit(model, datamodule)
 
     
