@@ -3,9 +3,7 @@ from torch.utils.data import random_split, DataLoader
 from dataset import MALDI_TOF_DS
 import torch
 from torchvision import transforms
-from custom_transforms import PadSequence, BinSpectrum, NormalizeIntensity
-
-from torchvision.transforms import Pad
+from custom_transforms import *
 
 class Spectrum_DataModule(L.LightningDataModule):
     def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str, num_workers:int=4):

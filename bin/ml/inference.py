@@ -73,10 +73,14 @@ def main():
 
     # Correlation of predictions with true values
     correlation = np.corrcoef(predictions, true_similarity)[0, 1]
+    mae = np.mean(np.abs(predictions - true_similarity))
+    rmse = np.sqrt(np.mean((predictions - true_similarity) ** 2))
     print("Correlation of predictions with true values:", correlation)
     # Save to txt
     with open(metric_path / "metrics.txt", 'w') as f:
-        f.write(str(correlation))
+        f.write(f"Correlation of predictions with true values: R2={correlation:.2f} \n")
+        f.write(f"Mean Absolute Error: {mae:.2f} \n")
+        f.write(f"Root Mean Squared Error: {rmse:.2f} \n")
     # Plot
     fig = plt.figure()
     sns.scatterplot(x=true_similarity, y=predictions, alpha=0.5)
