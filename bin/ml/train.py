@@ -12,7 +12,7 @@ def main():
         'hidden_dim': 300,
         'hidden_layers': 3,
         'weight_decay': 1e-5,
-        'dropout': 1.0,
+        'dropout': 2,
     }
     logger = TensorBoardLogger('lightning_logs', name='MLP_model')
 
