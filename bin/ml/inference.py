@@ -13,6 +13,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default=None)
     parser.add_argument("--metric_path", type=str, default="metrics")
+    parser.add_argument("--inference_set", type=str, default="test")
     args = parser.parse_args()
 
     datamodule = Spectrum_DataModule('../../data/idbac_db/preprocessing',
@@ -20,7 +21,7 @@ def main():
                                     '../../data/idbac_db/preprocessed',
                                     num_workers=7, 
                                     wipe_test_sets=False,
-                                    inference_set_to_use='test')
+                                    inference_set_to_use=args.inference_set)
 
     # Perform inference on all data
     datamodule.setup('test')

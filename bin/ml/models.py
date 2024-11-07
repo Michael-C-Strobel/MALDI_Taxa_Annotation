@@ -34,21 +34,36 @@ class MLP(L.LightningModule):
 
         # Optimizer
         self.lr = self.hparams.get('lr', 1e-5)
+        self.weight_decay = self.hparams.get('weight_decay', 0.0)
         if 'lr' in self.hparams:
             print(f"Using learning rate: {self.lr}")
+        if 'weight_decay' in self.hparams:
+            print(f"Using weight decay: {self.weight_decay}")
 
         # Model
         self.input_dim = self.hparams['input_dim']
         self.output_dim = self.hparams['output_dim']
         self.hidden_dim = self.hparams['hidden_dim']
         self.hidden_layers = self.hparams['hidden_layers']
+        self.dropout_rate = self.hparams.get('dropout', 0.0)  # Default dropout rate is 0.0
+        
+        if self.dropout_rate > 1.0 or self.dropout_rate < 0.0:
+            raise ValueError("Dropout rate must be between 0.0 and 1.0")
+
         self.layers = nn.ModuleList()
+        
+        # Input layer
         self.layers.append(nn.Linear(self.input_dim, self.hidden_dim))
         self.layers.append(nn.ReLU())
+        # self.layers.append(nn.Dropout(self.dropout_rate))  # Dropout after input layer
+
+        # Hidden layers with dropout
         for _ in range(self.hidden_layers):
             self.layers.append(nn.Linear(self.hidden_dim, self.hidden_dim))
             self.layers.append(nn.ReLU())
+            # self.layers.append(nn.Dropout(self.dropout_rate))  # Dropout after each hidden layer
 
+        # Output layer
         self.layers.append(nn.Linear(self.hidden_dim, self.output_dim))
 
     def forward(self, x):
@@ -111,7 +126,7 @@ class MLP(L.LightningModule):
         self.val_metrics.reset()
 
     def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=self.lr)
+        return optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
     
 class RawCosine(L.LightningModule):
     def __init__(self,):

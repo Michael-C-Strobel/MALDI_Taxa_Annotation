@@ -72,21 +72,24 @@ class MALDI_TOF_DS(Dataset):
         square_similarities = temp_similarities.pivot_table(index='query_genbank', columns='subject_genbank', values='pident')
         # This implicitly assumes, you have more good than bad results, which is risky
         is_na = square_similarities.isna().sum(axis=1)
-        na_mode = is_na.mode().item()
+        # na_mode = is_na.mode().item()
+        na_mode = is_na.median().item()
         not_na_accessions   = np.unique(is_na.loc[is_na <= na_mode].index.values)
         na_accessions       = np.unique(is_na.loc[is_na > na_mode].index.values)
         print(f"Found {len(na_accessions)} accessions with limited number of BLASTN results. Removing them.")
         print(f"Found {len(not_na_accessions)} accessions with sufficient BLASTN results.")
-        temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(not_na_accessions) & \
-                                                    temp_similarities['subject_genbank'].isin(not_na_accessions)]
+        # DEBUG
+        # temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(not_na_accessions) & \
+                                                    # temp_similarities['subject_genbank'].isin(not_na_accessions)]
         print(f"Left with {len(temp_similarities)} pairs.")
         # Recalculate the square similarities
-        square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
+        # DEBUG
+        # square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
 
-        self.all_accessions = np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values)))
+        self.all_accessions = np.sort(np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values))))
         self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
 
-        self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 11)   # Data leakage in the _absoluate_ strictest sense
+        self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 21)   # Data leakage in the _absolute_ strictest sense
         self.similarities = square_similarities
         self.sliced_similarities = self._preslice_similarities(temp_similarities)
 
@@ -233,7 +236,9 @@ class MALDI_TOF_DS(Dataset):
         # Force symmetric matrix
         distance_matrix.iloc[:,:] = (distance_matrix.values + distance_matrix.values.T) / 2
 
-        print(distance_matrix)
+        # Fill nans with zeros (no ideal, but we're working with what we've got here)
+        # DEBUG
+        distance_matrix.fillna(1.0, inplace=True)
 
         # Convert to condensed distance matrix
         condensed = scipy.spatial.distance.squareform(distance_matrix.to_numpy(), force='tovector', checks=True)
@@ -297,7 +302,6 @@ class MALDI_TOF_DS(Dataset):
         # Need to repeat train_indices num_turns times
         train_indices = np.repeat(train_indices, self.num_turns)
         val_indices = np.repeat(val_indices, self.num_turns)
-        test_indices = np.repeat(test_indices, self.num_turns)
 
         return (Subset(self, train_indices), Subset(self, val_indices), Subset(self, test_indices)), \
                 (train_indices, val_indices, test_indices)
@@ -337,13 +341,13 @@ class MALDI_TOF_DS(Dataset):
 class ExhaustiveMALDI_TOF_DS(IterableDataset):
     def __init__(self, ds, indices):
         self.sampler = ExhaustiveSampler(ds, indices)
-        self.len = len(self.sampler)
+        # self.len = len(self.sampler)
     
     def __iter__(self):
         return iter(self.sampler)
 
-    def __len__(self):
-        return self.len
+    # def __len__(self):
+    #     return self.len
 
     def __getitem__(self, idx):
         spectrum_a, spectrum_b, similarity = next(self.sampler)
@@ -354,27 +358,36 @@ class ExhaustiveSampler():
     def __init__(self, data: MALDI_TOF_DS, indices: torch.Tensor):
         self.data = data
         
+        # Get unique
+        indices = np.unique(indices)
+
         self.accessions = self.data.all_accessions[indices]
         self.metadata = self.data.metadata_table.loc[self.data.metadata_table['accession'].isin(self.accessions)]
+        print("Found a total of", len(self.metadata), "strains.")
+        print("Found a total of", len(self.accessions), "accessions.")
         self.all_strains = self.metadata['Strain name'].values
         self.num_strains = len(self.all_strains)
-
         self._iterator = None
 
+    def _iter_strains(self):
+        for i in range(self.num_strains):
+            for j in range(i, self.num_strains):
+                strain_i, accession_i = self.data.get_by_strain_name(self.all_strains[i])
+                strain_j, accession_j = self.data.get_by_strain_name(self.all_strains[j])
+
+                sim = self.data.similarities.loc[accession_i, accession_j]
+                if np.isnan(sim):
+                    continue
+
+                yield strain_i, strain_j, sim/100
+                      
     def __iter__(self):
         """Iterates overall all unique combinations of spectra.
         
         Returns:
             Iterable: An iterator over all possible combinations of spectra.
         """
-        self._iterator = (
-            (self.data.get_by_strain_name(self.all_strains[i])[0],
-             self.data.get_by_strain_name(self.all_strains[j])[0],
-             self.data.similarities.loc[self.data.get_by_strain_name(self.all_strains[i])[1],
-                                        self.data.get_by_strain_name(self.all_strains[j])[1]]/100)
-            for i in range(self.num_strains)
-            for j in range(i, self.num_strains)
-        )
+        self._iterator = self._iter_strains()
         return self
 
     def __next__(self):
@@ -383,9 +396,9 @@ class ExhaustiveSampler():
         n = next(self._iterator)
         return next(self._iterator)
     
-    def __len__(self):
-        x =  self.num_strains
-        return x * (x + 1) // 2
+    # def __len__(self):
+    #     x =  self.num_strains
+    #     return x * (x + 1) // 2
         
     
 

@@ -46,32 +46,32 @@ class Spectrum_DataModule(L.LightningDataModule):
        pass
     
     def setup(self, stage:str):
-        full_dataset = MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False, transform=self.transform)
+        self.full_dataset = MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False, transform=self.transform)
         if stage == 'fit':
             # self.train_set, self.val_set = random_split(
             #     full_dataset, [int(len(full_dataset) * 0.8), len(full_dataset) - int(len(full_dataset) * 0.8)], generator=torch.Generator().manual_seed(42)
             # )
             if self.train_indices is None or self.val_indices is None:
-                (self.train_set, self.val_set, _), (train_indices, val_indices, test_indices) = full_dataset.split_train_val_test()
+                (self.train_set, self.val_set, _), (train_indices, val_indices, test_indices) = self.full_dataset.split_train_val_test()
                 torch.save(train_indices, Path(self.root_dir)/'train_indices.pt')
                 torch.save(val_indices, Path(self.root_dir)/'val_indices.pt')
                 torch.save(test_indices, Path(self.root_dir)/'test_indices.pt')
             else:
-                self.train_set = Subset(full_dataset, self.train_indices)
-                self.val_set = Subset(full_dataset, self.val_indices)
-            print(f"Training Set Size {len(self.train_set)/full_dataset.num_turns}")
-            print(f"Validation Set Size {len(self.val_set)/full_dataset.num_turns}")
+                self.train_set = Subset(self.full_dataset, self.train_indices)
+                self.val_set = Subset(self.full_dataset, self.val_indices)
+            print(f"Training Set Size {len(self.train_set)/self.full_dataset.num_turns}")
+            print(f"Validation Set Size {len(self.val_set)/self.full_dataset.num_turns}")
         if stage == 'test':
             if self.inference_set_to_use == 'test':
-                self.predict_set = ExhaustiveMALDI_TOF_DS(full_dataset, self.test_indices)
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.test_indices)
             elif self.inference_set_to_use == 'val':
-                self.predict_set = ExhaustiveMALDI_TOF_DS(full_dataset, self.val_indices)
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.val_indices)
             elif self.inference_set_to_use == 'train':
-                self.predict_set = ExhaustiveMALDI_TOF_DS(full_dataset, self.train_indices)
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.train_indices)
             else:
                 raise ValueError(f"Unknown inference set to use: {self.inference_set_to_use}")
         if stage == 'all':
-            self.predict_set = full_dataset
+            self.predict_set = self.full_dataset
 
     def train_dataloader(self):
         return DataLoader(self.train_set, batch_size=32, shuffle=True, num_workers=self.num_workers)
