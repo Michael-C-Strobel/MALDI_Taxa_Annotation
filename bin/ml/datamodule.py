@@ -1,14 +1,15 @@
 import lightning as L
 from torch.utils.data import random_split, DataLoader
-from dataset import MALDI_TOF_DS
+from torch.utils.data import Subset
+from dataset import MALDI_TOF_DS, ExhaustiveMALDI_TOF_DS
 from pathlib import Path
 import torch
 from torchvision import transforms
 from custom_transforms import *
-from torch.utils.data import Subset
 
 class Spectrum_DataModule(L.LightningDataModule):
-    def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str, num_workers:int=4, wipe_test_sets:bool=True):
+    def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str, num_workers:int=4, wipe_test_sets:bool=True,
+                 inference_set_to_use:str='test'):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
@@ -18,22 +19,23 @@ class Spectrum_DataModule(L.LightningDataModule):
         self.train_indices = None
         self.val_indices = None
         self.test_indices = None
+        self.inference_set_to_use=inference_set_to_use
 
         if Path(self.root_dir)/'train_indices.pt':
             if wipe_test_sets:
                 (Path(self.root_dir)/'train_indices.pt').unlink(missing_ok=True)
             else:
-                self.train_indices = torch.load(Path(self.root_dir)/'train_indices.pt')
+                self.train_indices = torch.load(Path(self.root_dir)/'train_indices.pt', weights_only=False)
         if Path(self.root_dir)/'val_indices.pt':
             if wipe_test_sets:
                 (Path(self.root_dir)/'val_indices.pt').unlink(missing_ok=True)
             else:
-                self.val_indices = torch.load(Path(self.root_dir)/'val_indices.pt')
+                self.val_indices = torch.load(Path(self.root_dir)/'val_indices.pt', weights_only=False)
         if Path(self.root_dir)/'test_indices.pt':
             if wipe_test_sets:
                 (Path(self.root_dir)/'test_indices.pt').unlink(missing_ok=True)
             else:
-                self.test_indices = torch.load(Path(self.root_dir)/'test_indices.pt')
+                self.test_indices = torch.load(Path(self.root_dir)/'test_indices.pt', weights_only=False)
 
         binning_transform = BinSpectrum(10, 2_000, 20_000)
         eucliden_norm     = NormalizeIntensity()
@@ -60,7 +62,14 @@ class Spectrum_DataModule(L.LightningDataModule):
             print(f"Training Set Size {len(self.train_set)/full_dataset.num_turns}")
             print(f"Validation Set Size {len(self.val_set)/full_dataset.num_turns}")
         if stage == 'test':
-            self.predict_set = Subset(full_dataset, self.test_indices)
+            if self.inference_set_to_use == 'test':
+                self.predict_set = ExhaustiveMALDI_TOF_DS(full_dataset, self.test_indices)
+            elif self.inference_set_to_use == 'val':
+                self.predict_set = ExhaustiveMALDI_TOF_DS(full_dataset, self.val_indices)
+            elif self.inference_set_to_use == 'train':
+                self.predict_set = ExhaustiveMALDI_TOF_DS(full_dataset, self.train_indices)
+            else:
+                raise ValueError(f"Unknown inference set to use: {self.inference_set_to_use}")
         if stage == 'all':
             self.predict_set = full_dataset
 

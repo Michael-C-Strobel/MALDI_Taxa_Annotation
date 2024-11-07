@@ -26,7 +26,7 @@ def main():
     datamodule.setup('fit')
     datamodule.plot(0)
     
-    trainer = L.Trainer(max_epochs=50, log_every_n_steps=10, logger=logger)
+    trainer = L.Trainer(max_epochs=150, log_every_n_steps=10, logger=logger)
     tuner = L.pytorch.tuner.Tuner(trainer)
     
     lr_find_results = tuner.lr_find(model,

@@ -19,7 +19,8 @@ def main():
                                     '../../data/idbac_db/raw/db.csv',
                                     '../../data/idbac_db/preprocessed',
                                     num_workers=7, 
-                                    wipe_test_sets=False)
+                                    wipe_test_sets=False,
+                                    inference_set_to_use='test')
 
     # Perform inference on all data
     datamodule.setup('test')
@@ -85,10 +86,27 @@ def main():
     # Plot
     fig = plt.figure()
     sns.scatterplot(x=true_similarity, y=predictions, alpha=0.5)
+    x_min = min(min(true_similarity), min(predictions))
+    x_max = max(max(true_similarity), max(predictions))
+    y_min = min(min(true_similarity), min(predictions))
+    y_max = max(max(true_similarity), max(predictions))
+    plt.xlim(x_min, x_max)
+    plt.ylim(y_min, y_max)
     plt.xlabel("True Sequence Similarity Similarity")
     plt.ylabel("Predicted Sequence Similarity")
     plt.title(f"Predicted vs True similarity (R2={correlation:.2f})")
     plt.savefig(metric_path / "scatter.png")
+
+    # Hex Density Plot
+    hexplot = sns.jointplot(x=true_similarity, y=predictions, kind='hex', xlim=(x_min, x_max), ylim=(y_min, y_max))
+    plt.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+    cbar_ax = hexplot.figure.add_axes([.85, .25, .05, .4])  # x, y, width, height
+    hexplot.set_axis_labels("True Sequence Similarity Similarity", "Predicted Sequence Similarity")
+    plt.colorbar(cax=cbar_ax)
+    plt.suptitle(f"Predicted vs True similarity (R2={correlation:.2f})")
+    # plt.tight_layout()
+    plt.savefig(metric_path / "hex.png")
+
 
 if __name__ == "__main__":
     main()

@@ -7,7 +7,7 @@ import sys
 import numpy as np
 import torch
 from torch import default_generator
-from torch.utils.data import Subset
+from torch.utils.data import Subset, Sampler, IterableDataset
 import scipy
 import pytest
 
@@ -84,9 +84,9 @@ class MALDI_TOF_DS(Dataset):
         square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
 
         self.all_accessions = np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values)))
+        self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
 
-
-        self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 11)
+        self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 11)   # Data leakage in the _absoluate_ strictest sense
         self.similarities = square_similarities
         self.sliced_similarities = self._preslice_similarities(temp_similarities)
 
@@ -111,6 +111,15 @@ class MALDI_TOF_DS(Dataset):
             spectrum_b = self.transform(spectrum_b)
 
         return spectrum_a, spectrum_b, torch.tensor(similarity/100, dtype=torch.float32)
+    
+    def get_by_strain_name(self, strain_name):
+        accession = self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]
+        spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
+        
+        if self.transform:
+            spectrum = self.transform(spectrum)
+
+        return spectrum, accession
 
     def strain_to_accession(self, strain_name):
         return self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]
@@ -239,7 +248,7 @@ class MALDI_TOF_DS(Dataset):
             cluster_sizes = clustered_accessions.cluster.value_counts()
             smallest_cluster_size = cluster_sizes.nsmallest(1).item()
             largest_cluster_size  = cluster_sizes.nlargest(1).item()
-            if smallest_cluster_size > 0.3 * largest_cluster_size:
+            if smallest_cluster_size > 0.15 * largest_cluster_size:
                 # Add to largest cluster
                 smallest_cluster = cluster_sizes.nsmallest(1).index
                 smallest_cluster_accessions = clustered_accessions.loc[clustered_accessions.cluster.isin(smallest_cluster)]
@@ -325,6 +334,60 @@ class MALDI_TOF_DS(Dataset):
         plt.savefig(Path(output_path) / 'dendrogram.svg')
         plt.savefig(Path(output_path) / 'dendrogram.png', dpi=300)
 
+class ExhaustiveMALDI_TOF_DS(IterableDataset):
+    def __init__(self, ds, indices):
+        self.sampler = ExhaustiveSampler(ds, indices)
+        self.len = len(self.sampler)
+    
+    def __iter__(self):
+        return iter(self.sampler)
+
+    def __len__(self):
+        return self.len
+
+    def __getitem__(self, idx):
+        spectrum_a, spectrum_b, similarity = next(self.sampler)
+        assert 0.0 <= similarity <= 1.0
+        return spectrum_a, spectrum_b, similarity/100
+
+class ExhaustiveSampler():
+    def __init__(self, data: MALDI_TOF_DS, indices: torch.Tensor):
+        self.data = data
+        
+        self.accessions = self.data.all_accessions[indices]
+        self.metadata = self.data.metadata_table.loc[self.data.metadata_table['accession'].isin(self.accessions)]
+        self.all_strains = self.metadata['Strain name'].values
+        self.num_strains = len(self.all_strains)
+
+        self._iterator = None
+
+    def __iter__(self):
+        """Iterates overall all unique combinations of spectra.
+        
+        Returns:
+            Iterable: An iterator over all possible combinations of spectra.
+        """
+        self._iterator = (
+            (self.data.get_by_strain_name(self.all_strains[i])[0],
+             self.data.get_by_strain_name(self.all_strains[j])[0],
+             self.data.similarities.loc[self.data.get_by_strain_name(self.all_strains[i])[1],
+                                        self.data.get_by_strain_name(self.all_strains[j])[1]]/100)
+            for i in range(self.num_strains)
+            for j in range(i, self.num_strains)
+        )
+        return self
+
+    def __next__(self):
+        if self._iterator is None:
+            self.__iter__()
+        n = next(self._iterator)
+        return next(self._iterator)
+    
+    def __len__(self):
+        x =  self.num_strains
+        return x * (x + 1) // 2
+        
+    
 
 @pytest.fixture
 def ds():
