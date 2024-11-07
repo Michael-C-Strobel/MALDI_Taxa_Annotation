@@ -1,35 +1,67 @@
 import lightning as L
 from torch.utils.data import random_split, DataLoader
 from dataset import MALDI_TOF_DS
+from pathlib import Path
 import torch
 from torchvision import transforms
 from custom_transforms import *
+from torch.utils.data import Subset
 
 class Spectrum_DataModule(L.LightningDataModule):
-    def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str, num_workers:int=4):
+    def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str, num_workers:int=4, wipe_test_sets:bool=True):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
         self.root_dir = root_dir
         self.num_workers = num_workers
 
+        self.train_indices = None
+        self.val_indices = None
+        self.test_indices = None
+
+        if Path(self.root_dir)/'train_indices.pt':
+            if wipe_test_sets:
+                (Path(self.root_dir)/'train_indices.pt').unlink(missing_ok=True)
+            else:
+                self.train_indices = torch.load(Path(self.root_dir)/'train_indices.pt')
+        if Path(self.root_dir)/'val_indices.pt':
+            if wipe_test_sets:
+                (Path(self.root_dir)/'val_indices.pt').unlink(missing_ok=True)
+            else:
+                self.val_indices = torch.load(Path(self.root_dir)/'val_indices.pt')
+        if Path(self.root_dir)/'test_indices.pt':
+            if wipe_test_sets:
+                (Path(self.root_dir)/'test_indices.pt').unlink(missing_ok=True)
+            else:
+                self.test_indices = torch.load(Path(self.root_dir)/'test_indices.pt')
+
         binning_transform = BinSpectrum(10, 2_000, 20_000)
         eucliden_norm     = NormalizeIntensity()
-        self.transform = transforms.Compose([binning_transform, eucliden_norm])
+        # Note transforms here need to be per-data point. Transforms using dataset-level statistics will cause leakage
+        self.transform = transforms.Compose([binning_transform, eucliden_norm]) 
 
     def prepare_data(self):
        pass
     
     def setup(self, stage:str):
+        full_dataset = MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False, transform=self.transform)
         if stage == 'fit':
-            full_dataset = MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False, transform=self.transform)
-            self.train_set, self.val_set = random_split(
-                full_dataset, [int(len(full_dataset) * 0.8), len(full_dataset) - int(len(full_dataset) * 0.8)], generator=torch.Generator().manual_seed(42)
-            )
+            # self.train_set, self.val_set = random_split(
+            #     full_dataset, [int(len(full_dataset) * 0.8), len(full_dataset) - int(len(full_dataset) * 0.8)], generator=torch.Generator().manual_seed(42)
+            # )
+            if self.train_indices is None or self.val_indices is None:
+                (self.train_set, self.val_set, _), (train_indices, val_indices, test_indices) = full_dataset.split_train_val_test()
+                torch.save(train_indices, Path(self.root_dir)/'train_indices.pt')
+                torch.save(val_indices, Path(self.root_dir)/'val_indices.pt')
+                torch.save(test_indices, Path(self.root_dir)/'test_indices.pt')
+            else:
+                self.train_set = Subset(full_dataset, self.train_indices)
+                self.val_set = Subset(full_dataset, self.val_indices)
+            print(f"Training Set Size {len(self.train_set)/full_dataset.num_turns}")
+            print(f"Validation Set Size {len(self.val_set)/full_dataset.num_turns}")
         if stage == 'test':
-            raise NotImplementedError()
+            self.predict_set = Subset(full_dataset, self.test_indices)
         if stage == 'all':
-            full_dataset = MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False, transform=self.transform)
             self.predict_set = full_dataset
 
     def train_dataloader(self):

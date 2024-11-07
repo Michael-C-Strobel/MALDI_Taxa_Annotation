@@ -237,10 +237,24 @@ class MALDI_TOF_DS(Dataset):
 
         def _merge_smallest_clusters(clustered_accessions):
             cluster_sizes = clustered_accessions.cluster.value_counts()
-            smallest_clusters = cluster_sizes.nsmallest(2).index
-            smallest_cluster_accessions = clustered_accessions.loc[clustered_accessions.cluster.isin(smallest_clusters)]
-            new_cluster = smallest_cluster_accessions.cluster.min()
-            clustered_accessions.loc[clustered_accessions.cluster.isin(smallest_clusters), 'cluster'] = new_cluster
+            smallest_cluster_size = cluster_sizes.nsmallest(1).item()
+            largest_cluster_size  = cluster_sizes.nlargest(1).item()
+            if smallest_cluster_size > 0.3 * largest_cluster_size:
+                # Add to largest cluster
+                smallest_cluster = cluster_sizes.nsmallest(1).index
+                smallest_cluster_accessions = clustered_accessions.loc[clustered_accessions.cluster.isin(smallest_cluster)]
+                new_cluster = smallest_cluster_accessions.cluster.min()
+                largest_cluster  = cluster_sizes.nlargest(1).index
+                # largest_cluster_accessions = clustered_accessions.loc[clustered_accessions.cluster.isin(largest_cluster)]
+                to_merge = smallest_cluster.append(largest_cluster)
+                clustered_accessions.loc[clustered_accessions.cluster.isin(to_merge), 'cluster'] = new_cluster
+
+            else:
+                # Merge two smallest clusters
+                smallest_clusters = cluster_sizes.nsmallest(2).index
+                smallest_cluster_accessions = clustered_accessions.loc[clustered_accessions.cluster.isin(smallest_clusters)]
+                new_cluster = smallest_cluster_accessions.cluster.min()
+                clustered_accessions.loc[clustered_accessions.cluster.isin(smallest_clusters), 'cluster'] = new_cluster
             return clustered_accessions
 
         while len(clustered_accessions.cluster.unique()) > 3:
@@ -271,7 +285,14 @@ class MALDI_TOF_DS(Dataset):
         if return_indices:
             return train_indices, val_indices, test_indices
         
-        return Subset(self, train_indices), Subset(self, val_indices), Subset(self, test_indices)
+        # Need to repeat train_indices num_turns times
+        train_indices = np.repeat(train_indices, self.num_turns)
+        val_indices = np.repeat(val_indices, self.num_turns)
+        test_indices = np.repeat(test_indices, self.num_turns)
+
+        return (Subset(self, train_indices), Subset(self, val_indices), Subset(self, test_indices)), \
+                (train_indices, val_indices, test_indices)
+
 
     def plot_split(self,output_path:str=None):
         if self.linkage is None or self.clustered_accessions is None:

@@ -21,7 +21,8 @@ def main():
     datamodule = Spectrum_DataModule('../../data/idbac_db/preprocessing',
                                     '../../data/idbac_db/raw/db.csv',
                                     '../../data/idbac_db/preprocessed',
-                                    num_workers=7)
+                                    num_workers=7, 
+                                    wipe_test_sets=True)
     datamodule.setup('fit')
     datamodule.plot(0)
     

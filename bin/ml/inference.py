@@ -18,10 +18,11 @@ def main():
     datamodule = Spectrum_DataModule('../../data/idbac_db/preprocessing',
                                     '../../data/idbac_db/raw/db.csv',
                                     '../../data/idbac_db/preprocessed',
-                                    num_workers=7)
+                                    num_workers=7, 
+                                    wipe_test_sets=False)
 
     # Perform inference on all data
-    datamodule.setup('all')
+    datamodule.setup('test')
 
     if str(args.model_name).lower() == 'cosine':
         model = RawCosine()
