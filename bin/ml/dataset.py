@@ -6,8 +6,23 @@ import os
 import sys
 import numpy as np
 import torch
-import torch.nn.functional as F
+from torch import default_generator
+from torch.utils.data import Subset
+import scipy
 import pytest
+
+from typing import (
+    cast,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 class MALDI_TOF_DS(Dataset):
     def __init__(self, preprocessing_dir:str, 
@@ -49,15 +64,36 @@ class MALDI_TOF_DS(Dataset):
         temp_similarities = pd.read_feather(similarities)
         post_filtration_accessions = self.metadata_table.accession.unique()
 
+        # Remove any accessiosn whose spectra were removed
         temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(post_filtration_accessions) & \
                                                   temp_similarities['subject_genbank'].isin(post_filtration_accessions)]
+
+        # Remove all accessions with poor BLASTN results
+        square_similarities = temp_similarities.pivot_table(index='query_genbank', columns='subject_genbank', values='pident')
+        # This implicitly assumes, you have more good than bad results, which is risky
+        is_na = square_similarities.isna().sum(axis=1)
+        na_mode = is_na.mode().item()
+        not_na_accessions   = np.unique(is_na.loc[is_na <= na_mode].index.values)
+        na_accessions       = np.unique(is_na.loc[is_na > na_mode].index.values)
+        print(f"Found {len(na_accessions)} accessions with limited number of BLASTN results. Removing them.")
+        print(f"Found {len(not_na_accessions)} accessions with sufficient BLASTN results.")
+        temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(not_na_accessions) & \
+                                                    temp_similarities['subject_genbank'].isin(not_na_accessions)]
+        print(f"Left with {len(temp_similarities)} pairs.")
+        # Recalculate the square similarities
+        square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
 
         self.all_accessions = np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values)))
 
 
         self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 11)
-
+        self.similarities = square_similarities
         self.sliced_similarities = self._preslice_similarities(temp_similarities)
+
+        # Initialize the linkage and clustered accessions
+        self.linkage = None
+        self.train_test_sim = None
+        self.clustered_accessions = None
 
     def __len__(self):
         return len(self.all_accessions) * self.num_turns
@@ -153,7 +189,7 @@ class MALDI_TOF_DS(Dataset):
 
     
     @staticmethod
-    def get_most_recent_modified_time():
+    def get_most_recent_modified_time()->float:
         most_recent_time = None
         
         # Iterate over all imported modules
@@ -174,6 +210,101 @@ class MALDI_TOF_DS(Dataset):
         
         return most_recent_time
 
+    def split_train_val_test(self,
+                             return_indices: bool = False,
+                             ) -> List:
+
+        # Split based on the ground-truth dendrogram
+        sims = self.similarities
+        # Covnert to distance matrix
+        if sims.max().max() < 99.9:
+            raise ValueError('Similarity matrix is not in percentage format. Also, ensure diagonal is 100%')
+        distance_matrix = 100 - sims
+        np.fill_diagonal(distance_matrix.values, 0)
+        # Force symmetric matrix
+        distance_matrix.iloc[:,:] = (distance_matrix.values + distance_matrix.values.T) / 2
+
+        print(distance_matrix)
+
+        # Convert to condensed distance matrix
+        condensed = scipy.spatial.distance.squareform(distance_matrix.to_numpy(), force='tovector', checks=True)
+        # Perform hierarchical clustering
+        linkage = scipy.cluster.hierarchy.linkage(condensed, method='complete')
+        # Cut the dendrogram
+        clusters = scipy.cluster.hierarchy.cut_tree(linkage, n_clusters=9.0).flatten() # Start with 9 clusters, merge into 3 to try to get even sets# Start with 9 clusters, merge into 3 to try to get even sets
+        clustered_accessions = pd.DataFrame({'accession': distance_matrix.index, 'cluster': clusters})
+        clustered_accessions.groupby('cluster').apply(lambda x: distance_matrix.loc[x.accession, x.accession].mean().mean(), include_groups=False)
+
+        def _merge_smallest_clusters(clustered_accessions):
+            cluster_sizes = clustered_accessions.cluster.value_counts()
+            smallest_clusters = cluster_sizes.nsmallest(2).index
+            smallest_cluster_accessions = clustered_accessions.loc[clustered_accessions.cluster.isin(smallest_clusters)]
+            new_cluster = smallest_cluster_accessions.cluster.min()
+            clustered_accessions.loc[clustered_accessions.cluster.isin(smallest_clusters), 'cluster'] = new_cluster
+            return clustered_accessions
+
+        while len(clustered_accessions.cluster.unique()) > 3:
+            clustered_accessions = _merge_smallest_clusters(clustered_accessions)
+
+        cluster_counts = clustered_accessions.cluster.value_counts()
+
+        train_cluster_id = cluster_counts.idxmax().item()
+        val_cluster_id = cluster_counts.idxmin().item()
+        test_cluster_id = cluster_counts[cluster_counts.index != train_cluster_id].idxmax().item()
+
+        train_accessions = clustered_accessions.loc[clustered_accessions.cluster == train_cluster_id, 'accession'].values
+        val_accessions = clustered_accessions.loc[clustered_accessions.cluster == val_cluster_id, 'accession'].values
+        test_accessions = clustered_accessions.loc[clustered_accessions.cluster == test_cluster_id, 'accession'].values
+
+        # Convert accessions to indices
+        train_indices = [np.where(self.all_accessions == x)[0][0] for x in train_accessions]
+        val_indices = [np.where(self.all_accessions == x)[0][0] for x in val_accessions]
+        test_indices = [np.where(self.all_accessions == x)[0][0] for x in test_accessions]
+        
+        self.clustered_accessions = (train_accessions, val_accessions, test_accessions)
+        self.linkage = linkage
+
+        # Calculate minimum train+val/test dendrogram distance
+        train_val_accessions = np.concatenate((train_accessions, val_accessions))
+        self.train_test_sim = distance_matrix.loc[train_val_accessions, test_accessions].mean().mean()
+
+        if return_indices:
+            return train_indices, val_indices, test_indices
+        
+        return Subset(self, train_indices), Subset(self, val_indices), Subset(self, test_indices)
+
+    def plot_split(self,output_path:str=None):
+        if self.linkage is None or self.clustered_accessions is None:
+            raise ValueError('Split the dataset first')
+        import matplotlib.pyplot as plt
+        
+
+        # Add train/test/val labels
+        stock_labels = self.all_accessions
+        new_labels = []
+        for label in stock_labels:
+            if label in self.clustered_accessions[0]:
+                new_labels.append(f'(train) {label}')
+            elif label in self.clustered_accessions[1]:
+                new_labels.append(f'(val) {label}')
+            elif label in self.clustered_accessions[2]:
+                new_labels.append(f'(test) {label}')
+            else:
+                new_labels.append(f'(unused) {label}')
+
+        Path(output_path).mkdir(parents=True, exist_ok=True)
+        plt.figure(figsize=(10, 0.09 * len(new_labels)))
+        plt.title("Train/Val/Test Split")
+        scipy.cluster.hierarchy.dendrogram(self.linkage, labels=new_labels, orientation='right', color_threshold=self.train_test_sim)
+        
+        # Dashed vertical line 
+        plt.axvline(x=self.train_test_sim, color='black', linestyle='--')
+        
+        plt.show()
+        plt.savefig(Path(output_path) / 'dendrogram.svg')
+        plt.savefig(Path(output_path) / 'dendrogram.png', dpi=300)
+
+
 @pytest.fixture
 def ds():
     # Setup code: create the MALDI_TOF_DS instance
@@ -190,7 +321,18 @@ def test_dataset_initialization(ds):
 
 def test_dataset_find_match_in_range(ds):
     accession = pd.read_csv('../../data/idbac_db/raw/db.csv', nrows=5)['Genbank accession'].str.split('.').str[0].values[0]
-    print(ds.find_match_in_range(accession, 2))
+    strain_name = ''
+    print(ds.find_match_in_range(accession, strain_name, 2))
 
 def test_getitem(ds):
     print(ds[0])
+
+def test_train_test_split(ds):
+    train, val, test = ds.split_train_val_test()
+    print(len(train), len(val), len(test))
+
+def test_plot_split(ds):
+    train, val, test = ds.split_train_val_test()
+    ds.plot_split('./')
+
+    
