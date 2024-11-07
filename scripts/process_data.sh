@@ -23,6 +23,9 @@ email=$(git config user.email) # Will use your email for the API key
 #                                 --output_dir "../data/idbac_db/raw/fasta_files/"  \
 #                                 --email $email
 
-python3 pairwise_blast.py --input_dir "../data/idbac_db/raw/fasta_files/" \
-                          --output_dir "../data/idbac_db/raw/blast_results/" \
-                          --email $email
+# TOOD LOOP IN BLAST SCRIPT HERE
+
+# Convert to ML pipeline-ready format
+python3 preprocess.py  --input_dir "../data/idbac_db/preprocessing_data/" \
+                        --output_dir "../data/idbac_db/processed_data/" \
+                        --metadata_file "../data/idbac_db/raw/db.csv"

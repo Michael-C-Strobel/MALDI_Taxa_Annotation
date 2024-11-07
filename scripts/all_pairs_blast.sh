@@ -32,7 +32,7 @@ counter=0
 for query in "$FASTA_DIR"/*.fasta; do
     # Run blastn comparison for each FASTA file against the combined database
                 $BLASTN -query "$query" -db "$combined_db" \
-                    -out "$OUTPUT_DIR/$(basename "$query" .fasta)_vs_$(basename "$subject" .fasta).txt" \
+                    -out "$OUTPUT_DIR/$(basename "$query" .fasta).txt" \
                     -outfmt 6 \
                     -max_target_seqs $total_files \
                     -num_threads 4

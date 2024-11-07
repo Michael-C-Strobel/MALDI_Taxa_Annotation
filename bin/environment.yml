@@ -18,4 +18,6 @@ dependencies:
   - pyteomics
   - bioconda::matchms=0.18.0
   - ijson
+  - ete3
+  - pytest
   - pip

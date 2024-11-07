@@ -166,6 +166,10 @@ def convert_to_csv(json_path:str, csv_path:str):
     if 'spectrum' in df.columns:
         df = df.drop('spectrum')
     # Write the DataFrame to a CSV file
+
+    ### TEMPOORARY: Replace DSM 40841 in the Genbank accession column
+    df = df.with_column(pl.col('Genbank accession').replace('DSM 40841', 'DQ026642.1'))
+
     df.write_csv(csv_path)
 
 def main():
