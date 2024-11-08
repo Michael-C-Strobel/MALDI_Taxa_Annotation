@@ -6,6 +6,8 @@ cd ..
 source $(conda info --base)/etc/profile.d/conda.sh
 conda activate ./conda_env
 
+current_dir=$(pwd)
+
 cd bin
 
 # python3 process_data.py --json_input "../data/idbac_db/raw/spectra.json" \
@@ -19,13 +21,20 @@ sleep 1
 
 email=$(git config user.email) # Will use your email for the API key
 
-# python3 collect_fasta_files.py --input_csv "../data/idbac_db/raw/db.csv" \
-#                                 --output_dir "../data/idbac_db/raw/fasta_files/"  \
-#                                 --email $email
+python3 collect_fasta_files.py --input_csv "../data/idbac_db/raw/db.csv" \
+                                --output_dir "../data/idbac_db/raw/fasta_files/"  \
+                                --email $email
 
-# TOOD LOOP IN BLAST SCRIPT HERE
+# Blast
+echo "Running BLAST"
+cd $current_dir/scripts/
+pwd
+bash all_pairs_blast.sh
 
 # Convert to ML pipeline-ready format
-python3 preprocess.py  --input_dir "../data/idbac_db/preprocessing_data/" \
+conda activate ../ml_conda_env
+cd $current_dir
+cd bin
+python3 ml/preprocess.py  --input_dir "../data/idbac_db/preprocessing/" \
                         --output_dir "../data/idbac_db/processed_data/" \
                         --metadata_file "../data/idbac_db/raw/db.csv"

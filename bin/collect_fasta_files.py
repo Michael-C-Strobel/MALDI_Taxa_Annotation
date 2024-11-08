@@ -65,6 +65,25 @@ def fetch_fasta_by_accessions(accessions, output_dir="fasta_files"):
         except Exception as e:
             logging.error("Error fetching data for accession %s: %s", accession, e)
 
+def create_fasta_from_df(df, output_dir="fasta_files"):
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    assert '16S Sequence' in df.columns, "16S Sequence column not found in DataFrame"
+
+    for row in tqdm(df.iter_rows(named=True)):
+        strain_name = row['Strain name'].replace(' ', '_')
+
+        accession_standin = f"strain_{strain_name}"
+
+        sequence = row['16S Sequence']
+       
+        output_file = os.path.join(output_dir, f"{accession_standin}.fasta")
+        with open(output_file, "w", encoding='utf-8') as f:
+            f.write(f">{accession_standin}\n{sequence}\n")
+        logging.debug("Saved FASTA sequence for accession %s to %s", accession_standin, output_file)
+
 def main():
     parser = argparse.ArgumentParser(description='Collect fasta files')
     parser.add_argument('--input_csv', type=str, help='Input CSV file path', required=True)
@@ -91,7 +110,11 @@ def main():
     df = pl.read_csv(input_csv, infer_schema_length=None)
     
     genbank_accessions = df.filter(df['Genbank accession'] != 'NaN')['Genbank accession'].unique()
-    fetch_fasta_by_accessions(list(genbank_accessions), output_dir)
+    # fetch_fasta_by_accessions(list(genbank_accessions), output_dir)
+
+    missing_accessions = df.filter(df['Genbank accession'] == 'NaN')
+    missing_accessions = df.filter(df['16S Sequence']      != 'NaN')
+    create_fasta_from_df(missing_accessions, output_dir)
 
 if __name__ == "__main__":
     main()
