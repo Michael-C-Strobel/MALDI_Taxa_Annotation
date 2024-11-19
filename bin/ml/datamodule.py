@@ -1,7 +1,7 @@
 import lightning as L
 from torch.utils.data import random_split, DataLoader
 from torch.utils.data import Subset
-from dataset import MALDI_TOF_DS, ExhaustiveMALDI_TOF_DS
+from dataset import Paired_MALDI_TOF_DS, ExhaustiveMALDI_TOF_DS
 from pathlib import Path
 import torch
 from torchvision import transforms
@@ -46,7 +46,7 @@ class Spectrum_DataModule(L.LightningDataModule):
        pass
     
     def setup(self, stage:str):
-        self.full_dataset = MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False, transform=self.transform)
+        self.full_dataset = Paired_MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False, transform=self.transform)
         if stage == 'fit':
             # self.train_set, self.val_set = random_split(
             #     full_dataset, [int(len(full_dataset) * 0.8), len(full_dataset) - int(len(full_dataset) * 0.8)], generator=torch.Generator().manual_seed(42)

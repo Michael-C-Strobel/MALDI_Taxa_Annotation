@@ -17,8 +17,8 @@ def main():
     args = parser.parse_args()
 
     datamodule = Spectrum_DataModule('../../data/idbac_db/preprocessing',
-                                    '../../data/idbac_db/raw/db.csv',
-                                    '../../data/idbac_db/preprocessed',
+                                    '../../data/idbac_db/raw/ammended_db.csv',
+                                    '../../data/idbac_db/processed_data',
                                     num_workers=7, 
                                     wipe_test_sets=False,
                                     inference_set_to_use=args.inference_set)

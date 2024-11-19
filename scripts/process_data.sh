@@ -10,7 +10,7 @@ current_dir=$(pwd)
 
 cd bin
 
-# python3 process_data.py --json_input "../data/idbac_db/raw/spectra.json" \
+# python3 process_data.py --input_file "../data/idbac_db/raw/spectra.json" \
 #                         --output_mzML_dir "../data/idbac_db/raw/converted_to_mzml/" \
 #                         --output_dir "../data/idbac_db/preprocessing/baseline_corrected/"
 
@@ -22,6 +22,7 @@ sleep 1
 email=$(git config user.email) # Will use your email for the API key
 
 python3 collect_fasta_files.py --input_csv "../data/idbac_db/raw/db.csv" \
+                                --output_csv "../data/idbac_db/raw/ammended_db.csv" \
                                 --output_dir "../data/idbac_db/raw/fasta_files/"  \
                                 --email $email
 
@@ -37,4 +38,4 @@ cd $current_dir
 cd bin
 python3 ml/preprocess.py  --input_dir "../data/idbac_db/preprocessing/" \
                         --output_dir "../data/idbac_db/processed_data/" \
-                        --metadata_file "../data/idbac_db/raw/db.csv"
+                        --metadata_file "../data/idbac_db/raw/ammended_db.csv"

@@ -4,12 +4,17 @@ import json
 from pathlib import Path
 import subprocess
 import ijson
+from glob import glob
 from psims.mzml.writer import MzMLWriter
 from pyteomics import mzml
 from utils import init_logging, convert_to_serializable
 from tqdm import tqdm
+import pandas as pd
+import warnings
+from psims.utils import StateTransitionWarning
+from psims.document import ReferentialIntegrityWarning
 
-def write_mzML_files(json_input, output_mzML_dir):
+def write_mzML_files_from_json(json_input:Path, output_mzML_dir:Path)->None:
     with open(json_input, 'r') as input_file:
         parser = ijson.items(input_file, 'item')
         for obj in tqdm(parser):
@@ -36,6 +41,70 @@ def write_mzML_files(json_input, output_mzML_dir):
                                     {"total ion current": sum(intensity_array)}
                                 ]
                             )
+
+def parse_driams_txt_to_dict(txt_file:Path, species_dict:dict)->dict:
+    data = pd.read_csv( txt_file,
+                        sep=r"\s+", 
+                        skiprows=3,
+                        names=["m/z array", "intensity array"])
+    
+    sample_hash = txt_file.stem
+
+    species = species_dict.get(sample_hash, None)
+    if species is None:
+        return None
+
+    species = str(species).strip()
+
+    if species.lower().strip() == "no peaks":
+        return None
+
+    output_dict = {
+        'sample hash': sample_hash,
+        'species': species,
+        'm/z array': data['m/z array'].values,
+        'intensity array': data['intensity array'].values
+    }
+    
+    return output_dict
+
+
+def write_mzML_files_from_txt(txt_glob:Path, driams_csv: Path, output_mzML_dir:Path)->None:
+    # Glob back from path
+    txt_glob = str(txt_glob)
+    all_txt_files = [Path(x) for x in glob(txt_glob)]
+    
+    metadata_csv = pd.read_csv(driams_csv)
+    species_dict = dict(zip(metadata_csv['code'], metadata_csv['species']))
+
+    for txt_file in tqdm(all_txt_files):
+        data = parse_driams_txt_to_dict(txt_file, species_dict)
+        if data is None:
+            continue
+
+        sample_hash = data['sample hash']
+        species     = data['species']
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=StateTransitionWarning)
+            warnings.filterwarnings("ignore", category=ReferentialIntegrityWarning)
+            warnings.filterwarnings("ignore", category=UserWarning, message="No Data Processing method found. mzML file may not be fully standard-compliant")
+
+            with MzMLWriter(open(output_mzML_dir / f'{sample_hash}.mzML', 'wb'), close=True) as writer:
+                writer.file_description()
+                writer.controlled_vocabularies()
+                with writer.run(id='my_analysis'):
+                    with writer.spectrum_list(count=1):
+                        writer.write_spectrum(
+                            data['m/z array'],
+                            data['intensity array'],
+                            id=f'{sample_hash}',
+                            params=[
+                                "MS1 Spectrum",
+                                {"ms level": 1},
+                                {"species": species}
+                            ]
+                        )
+
 
 def process_with_maldi_quant(input_path: Path, output_path: Path):
     # Performs peak picking, baseline correction, binning, and merging
@@ -85,25 +154,36 @@ def convert_to_json(path: Path):
 
 def main():
     parser = argparse.ArgumentParser(description='Process Spectra')
-    parser.add_argument('--json_input', type=str, help='Input file path', required=True)
+    parser.add_argument('--input_file', type=str, help='Input file path', required=True)
+    parser.add_argument('--driams_csv', type=str, help='DRIAMS CSV file path', required=False, default=None)
     parser.add_argument('--output_mzML_dir', type=str, default='mzML_dir', help='Output directory for mzML files')
     parser.add_argument('--output_dir', type=str, help='Output file path', required=True)
     args = parser.parse_args()
 
     init_logging()
 
+    print("args.csv", args.driams_csv)
+    print("args.input_file", args.input_file)
+    print("input_file suffix", Path(args.input_file).suffix)
+
     # Write mzML files for each object.
     # Each scan in spectrum becomes a scan in the output
     output_mzML_dir = Path(args.output_mzML_dir)
-    json_input = Path(args.json_input)
-    if not json_input.suffix == '.json':
-        raise ValueError('Input file must be a JSON file')
-    if not json_input.exists():
-        raise FileNotFoundError('Input file does not exist')
+    input_file = Path(args.input_file)
+    if not input_file.suffix == '.json' and \
+        not (args.driams_csv and input_file.suffix == '.txt'):
+        raise ValueError('Input file must be a JSON file or a DRIAMS txt glob with associated csv')
     if not output_mzML_dir.exists():
         output_mzML_dir.mkdir(parents=True, exist_ok=True)
 
-    # write_mzML_files(json_input, output_mzML_dir)
+    if input_file.suffix == '.json':
+        write_mzML_files_from_json(input_file, output_mzML_dir)
+    elif input_file.suffix == '.txt' and args.driams_csv:
+        if "*" not in str(input_file):
+            raise ValueError("Expected a glob pattern in the input file")
+        write_mzML_files_from_txt(input_file, Path(args.driams_csv), output_mzML_dir)
+    else:
+        raise ValueError('Input file must be a JSON or DRIAMS txt file')
 
     # Process the mzML files with MALDIquant
     output_path = Path(args.output_dir)

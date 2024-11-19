@@ -12,7 +12,7 @@ def main():
         'hidden_dim': 300,
         'hidden_layers': 3,
         'weight_decay': 1e-5,
-        'dropout': 2,
+        'dropout': 0.2,
     }
     logger = TensorBoardLogger('lightning_logs', name='MLP_model')
 
@@ -21,16 +21,16 @@ def main():
     torch.set_float32_matmul_precision('medium')    # medium | high
     
     datamodule = Spectrum_DataModule('../../data/idbac_db/preprocessing',
-                                    '../../data/idbac_db/raw/db.csv',
-                                    '../../data/idbac_db/preprocessed',
+                                    '../../data/idbac_db/raw/ammended_db.csv',
+                                    '../../data/idbac_db/processed_data',
                                     num_workers=7, 
-                                    wipe_test_sets=False,)
+                                    wipe_test_sets=True,)
                                     # wipe_test_sets=True)  #DEBUG
     datamodule.setup('fit')
     datamodule.plot(0)
 
     # Plot the train/test split
-    # datamodule.full_dataset.plot_split('./train_test_split.png')
+    datamodule.full_dataset.plot_split('./train_test_split.png')
     
     trainer = L.Trainer(max_epochs=50, log_every_n_steps=10, logger=logger)
     tuner = L.pytorch.tuner.Tuner(trainer)

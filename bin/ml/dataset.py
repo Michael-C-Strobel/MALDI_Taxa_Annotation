@@ -24,7 +24,91 @@ from typing import (
     Union,
 )
 
-class MALDI_TOF_DS(Dataset):
+def get_most_recent_modified_time()->float:
+    most_recent_time = None
+    
+    # Iterate over all imported modules
+    for module_name, module in sys.modules.items():
+        # Check if the module has a file associated with it
+        if hasattr(module, '__file__') and module.__file__:
+            file_path = module.__file__
+            try:
+                # Get the last modified time
+                mod_time = os.path.getmtime(file_path)
+                
+                # Update the most recent time if applicable
+                if most_recent_time is None or mod_time > most_recent_time:
+                    most_recent_time = mod_time
+            except FileNotFoundError:
+                # Ignore if the module file is not found
+                pass
+    
+    return most_recent_time
+
+class single_MALDI_TOF_DS(Dataset):
+    def __init__(self, preprocessing_dir:str,
+                metadata_table:str,
+                root_dir:str,
+                process:bool=True,
+                transform:callable=None):
+        self.root_dir = root_dir
+        self.preprocessing_dir = preprocessing_dir
+        self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+        all_spectra_names = [x.stem for x in self.all_spectra]
+
+        metadata_table = pd.read_csv(metadata_table)
+        metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
+        metadata_table = metadata_table.loc[metadata_table['Strain name'].isin(all_spectra_names)]
+
+        self.metadata_table = metadata_table
+        self.transform = transform
+
+        self.num_turns = 2
+        
+        if not process:
+            preprocessing_dir_stat = Path(self.preprocessing_dir).stat()
+            most_recent_m_time = get_most_recent_modified_time()
+
+            if Path(self.root_dir).exists():
+                root_dir_stat = Path(self.root_dir).stat()
+            else:
+                root_dir_stat = None
+
+            if preprocessing_dir_stat.st_mtime > root_dir_stat.st_mtime or \
+                most_recent_m_time > root_dir_stat.st_mtime or \
+                not Path(self.root_dir).exists():
+                    self.preprocess()
+        else:
+            self.preprocess()
+
+        self.all_accessions = self.metadata_table['accession'].unique()
+
+    def sample_strain_from_accession(self, accession):
+        choices = self.metadata_table[self.metadata_table['accession'] == accession]
+        if len(choices) == 0:
+            raise ValueError(f"No strain found for accession '{accession}'")
+        return choices['Strain name'].sample(1).values[0]
+
+    def __getitem__(self, idx):
+        # For DRIAMS, use the species name as the accession
+        # strain_name will be the hash
+        accession = self.all_accessions[idx % len(self.all_accessions)]
+        strain_name = self.sample_strain_from_accession(accession)
+        
+        spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
+
+        if self.transform:
+            spectrum = self.transform(spectrum)
+
+        return spectrum, strain_name
+    
+    def preprocess(self,):
+        if not Path(self.root_dir).exists():
+            Path(self.root_dir).mkdir(parents=True, exist_ok=True)
+        print("Preprocessing files...")
+        postprocess_files(Path(self.preprocessing_dir), Path(self.root_dir))
+
+class Paired_MALDI_TOF_DS(Dataset):
     def __init__(self, preprocessing_dir:str, 
                  metadata_table:str, 
                  root_dir: str, 
@@ -46,7 +130,7 @@ class MALDI_TOF_DS(Dataset):
         
         if not process:
             preprocessing_dir_stat = Path(self.preprocessing_dir).stat()
-            most_recent_m_time = self.get_most_recent_modified_time()
+            most_recent_m_time = get_most_recent_modified_time()
 
             if Path(self.root_dir).exists():
                 root_dir_stat = Path(self.root_dir).stat()
@@ -64,9 +148,14 @@ class MALDI_TOF_DS(Dataset):
         temp_similarities = pd.read_feather(similarities)
         post_filtration_accessions = self.metadata_table.accession.unique()
 
+        assert 'strain_B016' in temp_similarities['query_genbank'].values
+
+
         # Remove any accessiosn whose spectra were removed
         temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(post_filtration_accessions) & \
                                                   temp_similarities['subject_genbank'].isin(post_filtration_accessions)]
+
+        # assert 'strain_B016' in temp_similarities['query_genbank'].values
 
         # Remove all accessions with poor BLASTN results
         square_similarities = temp_similarities.pivot_table(index='query_genbank', columns='subject_genbank', values='pident')
@@ -87,6 +176,9 @@ class MALDI_TOF_DS(Dataset):
         # square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
 
         self.all_accessions = np.sort(np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values))))
+
+        # assert 'strain_B016' in self.all_accessions
+
         self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
 
         self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 21)   # Data leakage in the _absolute_ strictest sense
@@ -197,30 +289,8 @@ class MALDI_TOF_DS(Dataset):
     def preprocess(self,):
         if not Path(self.root_dir).exists():
             Path(self.root_dir).mkdir(parents=True, exist_ok=True)
+        print("Preprocessing files...")
         postprocess_files(Path(self.preprocessing_dir), Path(self.root_dir))
-
-    
-    @staticmethod
-    def get_most_recent_modified_time()->float:
-        most_recent_time = None
-        
-        # Iterate over all imported modules
-        for module_name, module in sys.modules.items():
-            # Check if the module has a file associated with it
-            if hasattr(module, '__file__') and module.__file__:
-                file_path = module.__file__
-                try:
-                    # Get the last modified time
-                    mod_time = os.path.getmtime(file_path)
-                    
-                    # Update the most recent time if applicable
-                    if most_recent_time is None or mod_time > most_recent_time:
-                        most_recent_time = mod_time
-                except FileNotFoundError:
-                    # Ignore if the module file is not found
-                    pass
-        
-        return most_recent_time
 
     def split_train_val_test(self,
                              return_indices: bool = False,
@@ -238,7 +308,7 @@ class MALDI_TOF_DS(Dataset):
 
         # Fill nans with zeros (no ideal, but we're working with what we've got here)
         # DEBUG
-        distance_matrix.fillna(1.0, inplace=True)
+        distance_matrix.fillna(100.0, inplace=True)
 
         # Convert to condensed distance matrix
         condensed = scipy.spatial.distance.squareform(distance_matrix.to_numpy(), force='tovector', checks=True)
@@ -355,7 +425,7 @@ class ExhaustiveMALDI_TOF_DS(IterableDataset):
         return spectrum_a, spectrum_b, similarity/100
 
 class ExhaustiveSampler():
-    def __init__(self, data: MALDI_TOF_DS, indices: torch.Tensor):
+    def __init__(self, data: Paired_MALDI_TOF_DS, indices: torch.Tensor):
         self.data = data
         
         # Get unique
@@ -405,7 +475,7 @@ class ExhaustiveSampler():
 @pytest.fixture
 def ds():
     # Setup code: create the MALDI_TOF_DS instance
-    dataset = MALDI_TOF_DS('../../data/idbac_db/preprocessing', 
+    dataset = Paired_MALDI_TOF_DS('../../data/idbac_db/preprocessing', 
                             '../../data/idbac_db/raw/db.csv', 
                             '../../data/idbac_db/preprocessed',
                             process=True)
@@ -425,11 +495,41 @@ def test_getitem(ds):
     print(ds[0])
 
 def test_train_test_split(ds):
-    train, val, test = ds.split_train_val_test()
+    (train, val, test), (_, _, _) = ds.split_train_val_test()
     print(len(train), len(val), len(test))
 
 def test_plot_split(ds):
-    train, val, test = ds.split_train_val_test()
+    (train, val, test), (_, _, _) = ds.split_train_val_test()
     ds.plot_split('./')
 
     
+@pytest.fixture
+def single_ds():
+    dataset = single_MALDI_TOF_DS('../../data/idbac_db/preprocessing',
+                            '../../data/idbac_db/raw/db.csv',
+                            '../../data/idbac_db/preprocessed',
+                            process=True)
+    yield dataset
+    del dataset
+
+def test_single_ds_initialization(single_ds):
+    print(single_ds)
+
+def test_single_ds_getitem(single_ds):
+    print(single_ds[0])
+
+def test_single_ds_sample_strain_from_accession(single_ds):
+    accession = pd.read_csv('../../data/idbac_db/raw/db.csv', nrows=5)['Genbank accession'].str.split('.').str[0].values[0]
+    print(single_ds.sample_strain_from_accession(accession))
+
+def test_single_ds_preprocess(single_ds):
+    single_ds.preprocess()
+
+@pytest.fixture
+def driams_ds():
+    # TODO
+
+    return None
+
+def test_driams_ds_initialization(driams_ds):
+    pass
