@@ -1,7 +1,7 @@
 from torch.utils.data import Dataset
 from pathlib import Path
 import pandas as pd
-from preprocess import postprocess_files
+from preprocess import postprocess_files, convert_spectra_to_tensor
 import os 
 import sys
 import numpy as np
@@ -57,7 +57,10 @@ class single_MALDI_TOF_DS(Dataset):
         all_spectra_names = [x.stem for x in self.all_spectra]
 
         metadata_table = pd.read_csv(metadata_table)
-        metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
+        if 'accession' not in metadata_table.columns:
+            metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
+        else:
+            metadata_table['accession'] = metadata_table['accession'].str.strip()
         metadata_table = metadata_table.loc[metadata_table['Strain name'].isin(all_spectra_names)]
 
         self.metadata_table = metadata_table
@@ -106,7 +109,8 @@ class single_MALDI_TOF_DS(Dataset):
         if not Path(self.root_dir).exists():
             Path(self.root_dir).mkdir(parents=True, exist_ok=True)
         print("Preprocessing files...")
-        postprocess_files(Path(self.preprocessing_dir), Path(self.root_dir))
+        for strain_name, spectrum_as_tensor in convert_spectra_to_tensor(Path(self.preprocessing_dir) / 'baseline_corrected.json'):
+            torch.save(spectrum_as_tensor, Path(self.root_dir) / f'{strain_name}.pt')
 
 class Paired_MALDI_TOF_DS(Dataset):
     def __init__(self, preprocessing_dir:str, 
@@ -527,9 +531,12 @@ def test_single_ds_preprocess(single_ds):
 
 @pytest.fixture
 def driams_ds():
-    # TODO
-
-    return None
+    dataset = single_MALDI_TOF_DS('../../data/driams/preprocessing/',
+                                  '../../data/driams/preprocessing/merged_metadata.csv',
+                                  '../../data/driams/preprocessed',
+                                  process=True)
+    yield dataset
+    del dataset
 
 def test_driams_ds_initialization(driams_ds):
-    pass
+    print(driams_ds)

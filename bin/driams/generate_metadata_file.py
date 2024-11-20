@@ -24,9 +24,9 @@ def generate_metadata_file(input_paths:List[Path], output_file:Path)->None:
 
     # Create required columns
     metadata['accession'] = metadata['species'] # species name
-    metadata['strain name'] = metadata['code']  # strain name
+    metadata['Strain name'] = metadata['code']  # strain name
 
-    metadata = metadata.loc[metadata['strain name'].str.lower() != 'no peaks found']
+    metadata = metadata.loc[metadata['Strain name'].str.lower() != 'no peaks found']
 
     metadata.to_csv(output_file, index=False)
 
