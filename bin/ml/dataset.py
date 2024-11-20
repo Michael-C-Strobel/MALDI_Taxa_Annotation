@@ -91,6 +91,9 @@ class single_MALDI_TOF_DS(Dataset):
         if len(choices) == 0:
             raise ValueError(f"No strain found for accession '{accession}'")
         return choices['Strain name'].sample(1).values[0]
+    
+    def __len__(self):
+        return len(self.all_accessions) * self.num_turns
 
     def __getitem__(self, idx):
         # For DRIAMS, use the species name as the accession

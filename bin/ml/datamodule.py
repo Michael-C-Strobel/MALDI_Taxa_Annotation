@@ -1,7 +1,7 @@
 import lightning as L
 from torch.utils.data import random_split, DataLoader
 from torch.utils.data import Subset
-from dataset import Paired_MALDI_TOF_DS, ExhaustiveMALDI_TOF_DS
+from dataset import Paired_MALDI_TOF_DS, ExhaustiveMALDI_TOF_DS, single_MALDI_TOF_DS
 from pathlib import Path
 import torch
 from torchvision import transforms
@@ -100,10 +100,34 @@ class Spectrum_DataModule(L.LightningDataModule):
         
         plt.savefig(f'{dataset}_{index}.png')
 
+class SingleSpectrum_DataModule(L.LightningDataModule):
+    def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str, num_workers:int=4):
+        super().__init__()
+        self.preprocessing_dir = preprocessing_dir
+        self.metadata_table = metadata_table
+        self.root_dir = root_dir
+        self.num_workers = num_workers
+
+        self.transform = transforms.Compose([BinSpectrum(10, 2_000, 20_000), NormalizeIntensity()])
+
+        self.full_dataset = single_MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False,
+                                                transform=self.transform)
+
+    def prepare_data(self):
+       pass
+
+    def setup(self, stage:str):
+        pass
+
+    def train_dataloader(self):
+        return DataLoader(self.full_dataset, batch_size=32, shuffle=True, num_workers=self.num_workers)
+    
+
 def test_dataloader():
     dm = Spectrum_DataModule('../../data/idbac_db/preprocessing',
                             '../../data/idbac_db/raw/db.csv',
-                            '../../data/idbac_db/preprocessed')
+                            '../../data/idbac_db/preprocessed',
+                            num_workers=1)
     dm.setup('fit')
     train_loader = dm.train_dataloader()
     val_loader = dm.val_dataloader()
@@ -112,3 +136,14 @@ def test_dataloader():
     val_loader_iter = iter(val_loader)
     print(next(train_loader_iter))
     print(next(val_loader_iter))
+
+def test_single_dataloader():
+    dm = SingleSpectrum_DataModule('../../data/idbac_db/preprocessing',
+                            '../../data/idbac_db/raw/db.csv',
+                            '../../data/idbac_db/preprocessed',
+                            num_workers=1)
+    dm.setup('fit')
+    train_loader = dm.train_dataloader()
+    # Get one batch from each
+    train_loader_iter = iter(train_loader)
+    print(next(train_loader_iter))
