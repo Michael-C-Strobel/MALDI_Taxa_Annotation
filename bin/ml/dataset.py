@@ -166,6 +166,10 @@ class Paired_MALDI_TOF_DS(Dataset):
 
         # Remove all accessions with poor BLASTN results
         square_similarities = temp_similarities.pivot_table(index='query_genbank', columns='subject_genbank', values='pident')
+        # Ensure actually square
+        if square_similarities.shape[0] != square_similarities.shape[1]:
+            raise ValueError(f"Similarities matrix is not square: {square_similarities.shape}")
+
         # This implicitly assumes, you have more good than bad results, which is risky
         is_na = square_similarities.isna().sum(axis=1)
         # na_mode = is_na.mode().item()
@@ -429,11 +433,17 @@ class ExhaustiveMALDI_TOF_DS(IterableDataset):
     def __getitem__(self, idx):
         spectrum_a, spectrum_b, similarity = next(self.sampler)
         assert 0.0 <= similarity <= 1.0
-        return spectrum_a, spectrum_b, similarity/100
+        return spectrum_a, spectrum_b, similarity
 
 class ExhaustiveSampler():
     def __init__(self, data: Paired_MALDI_TOF_DS, indices: torch.Tensor):
         self.data = data
+
+        worker_total_num = torch.utils.data.get_worker_info()
+        if worker_total_num is not None:
+            worker_total_num = worker_total_num.num_workers
+            if worker_total_num > 1:
+                raise ValueError("ExhaustiveSampler does not support multi-processing")
         
         # Get unique
         indices = np.unique(indices)
