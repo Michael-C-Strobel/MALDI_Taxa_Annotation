@@ -3,7 +3,7 @@ import torchmetrics
 import torch.nn.functional as F
 import torch
 import lightning as L
-    
+
 class RawCosine(L.LightningModule):
     def __init__(self,):
         super().__init__()

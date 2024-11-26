@@ -1,4 +1,6 @@
-from models import MLP, RawCosine
+from models.mlp import MLP
+from models.autoencoder import Autoencoder
+from models.cosine import RawCosine
 from datamodule import Spectrum_DataModule
 from lightning.pytorch.loggers import TensorBoardLogger
 import lightning as L
@@ -13,7 +15,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default=None)
     parser.add_argument("--metric_path", type=str, default="metrics")
-    parser.add_argument("--inference_set", type=str, default="test")
+    parser.add_argument("--inference_set", type=str, default="test", choices=["test", "val"])
     args = parser.parse_args()
 
     datamodule = Spectrum_DataModule('../../data/idbac_db/preprocessing',
@@ -32,6 +34,8 @@ def main():
     else:
         model_dir = Path('lightning_logs') / str(args.model_name) / 'checkpoints'
         model_path = list(model_dir.glob('*.ckpt'))
+        # hparams = Path('lightning_logs') / str(args.model_name) / 'hparams.yaml'
+        # hparams = torch.load(hparams)
         if len(model_path) == 0:
             raise FileNotFoundError(f"No model found in {model_dir}")
         if len(model_path) > 1:
@@ -40,7 +44,22 @@ def main():
         print(f"Loding model from {model_path}")
 
         # Load the model
-        model = MLP.load_from_checkpoint(model_path)
+        if 'mlp' in args.model_name.lower():
+            model = MLP.load_from_checkpoint(model_path)
+        elif 'autoencoder' in args.model_name.lower():
+            hyperparameters = { # Temporary fix until I figure out how to deal with this
+                    'input_dim': 1800,
+                    'output_dim': 1800,
+                    'hidden_dim': 600,
+                    'bottleneck_dim': 300,
+                    'hidden_layers': 3,
+                    'weight_decay': 1e-5,
+                    'dropout': 0.2,
+                }
+            model = Autoencoder(hyperparameters)
+            model.load_converted_from_checkpoint(model_path)
+        else:
+            raise ValueError(f"Unknown model name {args.model_name}")
 
     model.eval()
     logger = TensorBoardLogger('lightning_logs', name=str(args.model_name)+'/prediction')
