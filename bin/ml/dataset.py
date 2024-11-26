@@ -448,13 +448,13 @@ class ExhaustiveSampler():
 
     def _iter_strains(self):
         for i in range(self.num_strains):
-            for j in range(i, self.num_strains):
+            for j in range(i+1, self.num_strains):
                 strain_i, accession_i = self.data.get_by_strain_name(self.all_strains[i])
                 strain_j, accession_j = self.data.get_by_strain_name(self.all_strains[j])
 
                 sim = self.data.similarities.loc[accession_i, accession_j]
-                if np.isnan(sim):
-                    continue
+                # if np.isnan(sim):
+                #     continue
 
                 yield strain_i, strain_j, sim/100
                       
@@ -470,7 +470,6 @@ class ExhaustiveSampler():
     def __next__(self):
         if self._iterator is None:
             self.__iter__()
-        n = next(self._iterator)
         return next(self._iterator)
     
     # def __len__(self):
