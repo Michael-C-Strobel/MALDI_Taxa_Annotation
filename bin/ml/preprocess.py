@@ -26,8 +26,6 @@ def convert_spectra_to_tensor(json_file: Path):
         mz_array = mz_array[indices]
         intensity_array = intensity_array[indices]
 
-        # TODO: Optionally add binning
-
         # Convert to tensor
         mz_tensor = torch.tensor(mz_array)
         intensity_tensor = torch.tensor(intensity_array)

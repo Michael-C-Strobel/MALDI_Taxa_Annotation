@@ -27,7 +27,8 @@ def main():
                                     num_workers=7,)
     datamodule.setup('fit')
     
-    trainer = L.Trainer(max_epochs=150, log_every_n_steps=10, logger=logger)
+    trainer = L.Trainer(max_epochs=150, log_every_n_steps=10, logger=logger, devices=1,
+                        gradient_clip_val=0.5)
     tuner = L.pytorch.tuner.Tuner(trainer)
     
     lr_find_results = tuner.lr_find(model,

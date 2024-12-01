@@ -67,7 +67,7 @@ class MLP(L.LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        spectrum_a, spectrum_b, similarity = batch
+        spectrum_a, spectrum_b, similarity, metadata = batch
         embed_1 = self(spectrum_a)
         embed_2 = self(spectrum_b)
         pred_sim = F.cosine_similarity(embed_1, embed_2)
@@ -88,7 +88,7 @@ class MLP(L.LightningModule):
         self.train_metrics.reset()
 
     def validation_step(self, batch, batch_idx):
-        spectrum_a, spectrum_b, similarity = batch
+        spectrum_a, spectrum_b, similarity, metadata = batch
         embed_1 = self(spectrum_a)
         embed_2 = self(spectrum_b)
         pred_sim = F.cosine_similarity(embed_1, embed_2)
@@ -99,7 +99,7 @@ class MLP(L.LightningModule):
         return loss
     
     def test_step(self, batch, batch_idx):
-        spectrum_a, spectrum_b, similarity = batch
+        spectrum_a, spectrum_b, similarity, metadata = batch
         embed_1 = self(spectrum_a)
         embed_2 = self(spectrum_b)
         preds = F.cosine_similarity(embed_1, embed_2)
@@ -107,7 +107,7 @@ class MLP(L.LightningModule):
         return {'predictions': preds, 'similarity': similarity, 'loss': loss}
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        spectrum_a, spectrum_b, similarity = batch
+        spectrum_a, spectrum_b, similarity, metadata = batch
         embed_1 = self(spectrum_a)
         embed_2 = self(spectrum_b)
         preds = F.cosine_similarity(embed_1, embed_2)

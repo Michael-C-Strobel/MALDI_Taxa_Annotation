@@ -19,5 +19,6 @@ dependencies:
   - bioconda::matchms=0.18.0
   - ijson
   - ete3
+  - Joblib
   - pytest
   - pip

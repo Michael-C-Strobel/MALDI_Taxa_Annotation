@@ -13,6 +13,11 @@ import pandas as pd
 import warnings
 from psims.utils import StateTransitionWarning
 from psims.document import ReferentialIntegrityWarning
+from joblib import Parallel, delayed
+import numpy as np
+from typing import List
+
+GROUP_SIZE = 100
 
 def write_mzML_files_from_json(json_input:Path, output_mzML_dir:Path)->None:
     with open(json_input, 'r') as input_file:
@@ -52,6 +57,7 @@ def parse_driams_txt_to_dict(txt_file:Path, species_dict:dict)->dict:
 
     species = species_dict.get(sample_hash, None)
     if species is None:
+        # print("No species found for", sample_hash, flush=True)
         return None
 
     species = str(species).strip()
@@ -68,21 +74,15 @@ def parse_driams_txt_to_dict(txt_file:Path, species_dict:dict)->dict:
     
     return output_dict
 
+def parallel_parse_driams_txt_to_dict(txt_files:List[Path], species_dict:dict, output_mzML_dir:Path)->dict:
+    """Helper function to write to mzML. This function is used in parallel processing"""
 
-def write_mzML_files_from_txt(txt_glob:Path, driams_csv: Path, output_mzML_dir:Path)->None:
-    # Glob back from path
-    txt_glob = str(txt_glob)
-    all_txt_files = [Path(x) for x in glob(txt_glob)]
-    
-    metadata_csv = pd.read_csv(driams_csv)
-    species_dict = dict(zip(metadata_csv['code'], metadata_csv['species']))
-
-    for txt_file in tqdm(all_txt_files):
+    for txt_file in txt_files:
         data = parse_driams_txt_to_dict(txt_file, species_dict)
         if data is None:
             continue
-
-        sample_hash = data['sample hash']
+        
+        sample_hash = data['sample hash']   # Dangerous if sample hash is repeated
         species     = data['species']
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=StateTransitionWarning)
@@ -90,6 +90,7 @@ def write_mzML_files_from_txt(txt_glob:Path, driams_csv: Path, output_mzML_dir:P
             warnings.filterwarnings("ignore", category=UserWarning, message="No Data Processing method found. mzML file may not be fully standard-compliant")
 
             with MzMLWriter(open(output_mzML_dir / f'{sample_hash}.mzML', 'wb'), close=True) as writer:
+                # print("Writing to", output_mzML_dir / f'{sample_hash}.mzML')
                 writer.file_description()
                 writer.controlled_vocabularies()
                 with writer.run(id='my_analysis'):
@@ -106,15 +107,42 @@ def write_mzML_files_from_txt(txt_glob:Path, driams_csv: Path, output_mzML_dir:P
                         )
 
 
-def process_with_maldi_quant(input_path: Path, output_path: Path):
+def write_mzML_files_from_txt(txt_glob:Path, driams_csv: Path, output_mzML_dir:Path, n_jobs:int=-1)->None:
+    # Glob back from path
+    txt_glob = str(txt_glob)
+    all_txt_files = [Path(x) for x in glob(txt_glob)]
+    num_files = np.unique(all_txt_files).shape[0]
+    print(f"Found {num_files} txt files")
+    
+    metadata_csv = pd.read_csv(driams_csv)
+    species_dict = dict(zip(metadata_csv['code'], metadata_csv['species']))
+
+    # Split into groups to reduce overhead
+    print(f"Splitting into groups of size {GROUP_SIZE}")
+    all_txt_files = np.array_split(all_txt_files, num_files // GROUP_SIZE + 1)
+
+    # Parallel processing
+    Parallel(n_jobs=n_jobs)(delayed(parallel_parse_driams_txt_to_dict)(txt_files, species_dict, output_mzML_dir) for txt_files in tqdm(all_txt_files, desc="Writing mzML files"))
+    final_num_files = len(list(output_mzML_dir.glob("*.mzML")))
+    print(f"Finished writing mzML files. Wrote {final_num_files} files. Lost {num_files - final_num_files} files.")
+
+def process_with_maldi_quant(input_path: Path, output_path: Path, n_jobs:int=-1):
+    def _run_rscript(spectrum_paths: List[Path],):
+        for spectrum_path in spectrum_paths:
+            _output_path = output_path / f"{spectrum_path.stem}.mzML"
+            subprocess.run(['Rscript', 'preprocess_data.R', str(spectrum_path), str(_output_path)], 
+                           stdout = subprocess.DEVNULL, 
+                           stderr = subprocess.DEVNULL,
+                           check=False)
+
     # Performs peak picking, baseline correction, binning, and merging
     all_spectrum_paths = list(input_path.glob("*.mzML"))
 
-    for spectrum_path in tqdm(all_spectrum_paths):
-        _output_path = output_path / f"{spectrum_path.stem}.mzML"
-        subprocess.run(['Rscript', 'preprocess_data.R', str(spectrum_path), str(_output_path)],
-                        stdout = subprocess.DEVNULL,
-                        stderr = subprocess.DEVNULL)
+    # Split into groups to reduce overhead
+    all_spectrum_paths = np.array_split(all_spectrum_paths, len(all_spectrum_paths) // GROUP_SIZE + 1)
+
+    # Run the R script in parallel
+    Parallel(n_jobs=n_jobs)(delayed(_run_rscript)(spectrum_paths) for spectrum_paths in tqdm(all_spectrum_paths, desc="Running MALDIquant"))
 
 def convert_to_json(path: Path):
     # Read each mzML file, store to a single JSON file
@@ -123,7 +151,7 @@ def convert_to_json(path: Path):
     output_path = path.parent / f"{path.stem}.json"
     spectra_list = []  # List to hold all spectrum data
     
-    for spectrum_path in tqdm(all_spectrum_paths):
+    for spectrum_path in tqdm(all_spectrum_paths, desc="Converting to JSON"):
         mzml_file = mzml.read(str(spectrum_path))
         # Average the scans
         num_scans = 0
@@ -158,6 +186,7 @@ def main():
     parser.add_argument('--driams_csv', type=str, help='DRIAMS CSV file path', required=False, default=None)
     parser.add_argument('--output_mzML_dir', type=str, default='mzML_dir', help='Output directory for mzML files')
     parser.add_argument('--output_dir', type=str, help='Output file path', required=True)
+    parser.add_argument('--n_jobs', type=int, default=-1, help='Number of jobs to run in parallel')
     args = parser.parse_args()
 
     init_logging()
@@ -181,7 +210,7 @@ def main():
     elif input_file.suffix == '.txt' and args.driams_csv:
         if "*" not in str(input_file):
             raise ValueError("Expected a glob pattern in the input file")
-        write_mzML_files_from_txt(input_file, Path(args.driams_csv), output_mzML_dir)
+        # write_mzML_files_from_txt(input_file, Path(args.driams_csv), output_mzML_dir, args.n_jobs)
     else:
         raise ValueError('Input file must be a JSON or DRIAMS txt file')
 
@@ -190,7 +219,7 @@ def main():
     if not output_path.exists():
         output_path.mkdir(parents=True, exist_ok=True)
     
-    process_with_maldi_quant(output_mzML_dir, output_path)
+    process_with_maldi_quant(output_mzML_dir, output_path, args.n_jobs)
 
     convert_to_json(output_path)
 

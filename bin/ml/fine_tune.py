@@ -21,6 +21,7 @@ def main():
 
     # Load an autoencoder model
     # model = Autoencoder.load_from_checkpoint('./lightning_logs/autoencoder_model/version_15/checkpoints/epoch=149-step=3300.ckpt')
+    model = Autoencoder.load_from_checkpoint('./lightning_logs/autoencoder_model/version_20/checkpoints/epoch=149-step=11550.ckpt')
     print(model)
     model.convert() # TODO: disable backprop on first layers if needed
     
@@ -30,18 +31,21 @@ def main():
                                     '../../data/idbac_db/raw/ammended_db.csv',
                                     '../../data/idbac_db/processed_data',
                                     num_workers=7, 
-                                    wipe_test_sets=False,)
+                                    wipe_test_sets=True,)
                                     # wipe_test_sets=True)  #DEBUG
     datamodule.setup('fit')
     datamodule.plot(0)
 
-    trainer = L.Trainer(max_epochs=50, log_every_n_steps=10, logger=logger)
+    # Plot the train/test split
+    datamodule.full_dataset.plot_split('./train_test_split.png')
+
+    trainer = L.Trainer(max_epochs=50, log_every_n_steps=10, logger=logger, devices=1)
     tuner = L.pytorch.tuner.Tuner(trainer)
     
     lr_find_results = tuner.lr_find(model,
                                     datamodule,
-                                    min_lr=0.001,
-                                    max_lr=1.0,
+                                    min_lr=0.0001,   # 0.001
+                                    max_lr=1.0,    # 1.0
                                     early_stop_threshold=None)
     model.lr = lr_find_results.suggestion()
     print("Best learning rate: ", model.lr)

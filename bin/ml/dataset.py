@@ -62,6 +62,7 @@ class single_MALDI_TOF_DS(Dataset):
         else:
             metadata_table['accession'] = metadata_table['accession'].str.strip()
         metadata_table = metadata_table.loc[metadata_table['Strain name'].isin(all_spectra_names)]
+        metadata_table = metadata_table.drop_duplicates(subset='Strain name')   # Some strains occur twice due to multuple csv files
 
         self.metadata_table = metadata_table
         self.transform = transform
@@ -109,16 +110,16 @@ class single_MALDI_TOF_DS(Dataset):
         return spectrum, strain_name
     
     def preprocess(self,):
-        if not Path(self.root_dir).exists():
-            Path(self.root_dir).mkdir(parents=True, exist_ok=True)
+        if not (Path(self.root_dir) / 'spectra/').exists():
+            (Path(self.root_dir) / 'spectra/').mkdir(parents=True, exist_ok=True)
         print("Preprocessing files...")
         for strain_name, spectrum_as_tensor in convert_spectra_to_tensor(Path(self.preprocessing_dir) / 'baseline_corrected.json'):
-            torch.save(spectrum_as_tensor, Path(self.root_dir) / f'{strain_name}.pt')
+            torch.save(spectrum_as_tensor, Path(self.root_dir) / f'spectra/{strain_name}.pt')
 
 class Paired_MALDI_TOF_DS(Dataset):
-    def __init__(self, preprocessing_dir:str, 
-                 metadata_table:str, 
-                 root_dir: str, 
+    def __init__(self, preprocessing_dir:str,
+                 metadata_table:str,
+                 root_dir: str,
                  process:bool=True,
                  transform:callable=None):
         self.root_dir = root_dir
@@ -179,12 +180,12 @@ class Paired_MALDI_TOF_DS(Dataset):
         print(f"Found {len(na_accessions)} accessions with limited number of BLASTN results. Removing them.")
         print(f"Found {len(not_na_accessions)} accessions with sufficient BLASTN results.")
         # DEBUG
-        # temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(not_na_accessions) & \
-                                                    # temp_similarities['subject_genbank'].isin(not_na_accessions)]
+        temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(not_na_accessions) & \
+                                                    temp_similarities['subject_genbank'].isin(not_na_accessions)]
         print(f"Left with {len(temp_similarities)} pairs.")
         # Recalculate the square similarities
         # DEBUG
-        # square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
+        square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
 
         self.all_accessions = np.sort(np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values))))
 
@@ -216,7 +217,16 @@ class Paired_MALDI_TOF_DS(Dataset):
             spectrum_a = self.transform(spectrum_a)
             spectrum_b = self.transform(spectrum_b)
 
-        return spectrum_a, spectrum_b, torch.tensor(similarity/100, dtype=torch.float32)
+        metadata = {
+            'accession_a': accession_a,
+            'accession_b': accession_b,
+            'strain_a': strain_name_a,
+            'strain_b': strain_name_b,
+            'spectrum_a': spectrum_a,
+            'spectrum_b': spectrum_b,
+        }
+
+        return spectrum_a, spectrum_b, torch.tensor(similarity/100, dtype=torch.float32), metadata
     
     def get_by_strain_name(self, strain_name):
         accession = self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]
@@ -309,7 +319,7 @@ class Paired_MALDI_TOF_DS(Dataset):
 
         # Split based on the ground-truth dendrogram
         sims = self.similarities
-        # Covnert to distance matrix
+        # Convert to distance matrix
         if sims.max().max() < 99.9:
             raise ValueError('Similarity matrix is not in percentage format. Also, ensure diagonal is 100%')
         distance_matrix = 100 - sims
@@ -431,9 +441,9 @@ class ExhaustiveMALDI_TOF_DS(IterableDataset):
     #     return self.len
 
     def __getitem__(self, idx):
-        spectrum_a, spectrum_b, similarity = next(self.sampler)
+        spectrum_a, spectrum_b, similarity, metadata = next(self.sampler)
         assert 0.0 <= similarity <= 1.0
-        return spectrum_a, spectrum_b, similarity
+        return spectrum_a, spectrum_b, similarity, metadata
 
 class ExhaustiveSampler():
     def __init__(self, data: Paired_MALDI_TOF_DS, indices: torch.Tensor):
@@ -459,14 +469,23 @@ class ExhaustiveSampler():
     def _iter_strains(self):
         for i in range(self.num_strains):
             for j in range(i+1, self.num_strains):
-                strain_i, accession_i = self.data.get_by_strain_name(self.all_strains[i])
-                strain_j, accession_j = self.data.get_by_strain_name(self.all_strains[j])
+                strain_a, accession_a = self.data.get_by_strain_name(self.all_strains[i])
+                strain_b, accession_b = self.data.get_by_strain_name(self.all_strains[j])
 
-                sim = self.data.similarities.loc[accession_i, accession_j]
+                sim = self.data.similarities.loc[accession_a, accession_b]
                 # if np.isnan(sim):
                 #     continue
 
-                yield strain_i, strain_j, sim/100
+                metadata = {
+                    'accession_a': accession_a,
+                    'accession_b': accession_b,
+                    'strain_a': self.all_strains[i],
+                    'strain_b': self.all_strains[j],
+                    'spectrum_a': np.array(strain_a),
+                    'spectrum_b': np.array(strain_b),
+                }
+
+                yield strain_a, strain_b, sim/100, metadata
                       
     def __iter__(self):
         """Iterates overall all unique combinations of spectra.
@@ -544,9 +563,9 @@ def test_single_ds_preprocess(single_ds):
 @pytest.fixture
 def driams_ds():
     dataset = single_MALDI_TOF_DS('../../data/driams/preprocessing/',
-                                  '../../data/driams/preprocessing/merged_metadata.csv',
-                                  '../../data/driams/preprocessed',
-                                  process=True)
+                                    '../../data/driams/preprocessing/merged_metadata.csv',
+                                    '../../data/driams/preprocessed',
+                                    process=True)
     yield dataset
     del dataset
 

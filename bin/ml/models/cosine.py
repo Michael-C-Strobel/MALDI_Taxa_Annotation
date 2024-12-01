@@ -14,11 +14,11 @@ class RawCosine(L.LightningModule):
         return F.cosine_similarity(x[0], x[1])
     
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        spectrum_a, spectrum_b, similarity = batch
+        spectrum_a, spectrum_b, similarity, metadata = batch
         preds = self((spectrum_a, spectrum_b))
         if similarity is not None:
             loss = nn.functional.mse_loss(preds, similarity)
         else:
             loss = None
 
-        return {'predictions': preds, 'similarity': similarity, 'loss': loss}
+        return {'predictions': preds, 'similarity': similarity, 'loss': loss, 'metadata': metadata}

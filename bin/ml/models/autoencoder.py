@@ -138,7 +138,7 @@ class Autoencoder(L.LightningModule):
             self.log_dict(batch_value, on_epoch=True)
             return loss
         else:
-            spectrum_a, spectrum_b, similarity = batch
+            spectrum_a, spectrum_b, similarity, metadata = batch
             embed_1 = self(spectrum_a)
             embed_2 = self(spectrum_b)
             pred_sim = F.cosine_similarity(embed_1, embed_2)
@@ -166,7 +166,7 @@ class Autoencoder(L.LightningModule):
             self.log_dict(batch_value, on_epoch=True)
             return loss
         else:
-            spectrum_a, spectrum_b, similarity = batch
+            spectrum_a, spectrum_b, similarity, metadata = batch
             embed_1 = self(spectrum_a)
             embed_2 = self(spectrum_b)
             pred_sim = F.cosine_similarity(embed_1, embed_2)
@@ -179,7 +179,7 @@ class Autoencoder(L.LightningModule):
     def test_step(self, batch, batch_idx):
         if self.state == 'pretrain':
             raise ValueError("Cannot test pretraining model")
-        spectrum_a, spectrum_b, similarity = batch
+        spectrum_a, spectrum_b, similarity, metadata = batch
         embed_1 = self(spectrum_a)
         embed_2 = self(spectrum_b)
         preds = F.cosine_similarity(embed_1, embed_2)
@@ -190,7 +190,7 @@ class Autoencoder(L.LightningModule):
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         if self.state == 'pretrain':
             raise ValueError("Cannot predict using pretraining model")
-        spectrum_a, spectrum_b, similarity = batch
+        spectrum_a, spectrum_b, similarity, metadata = batch
         embed_1 = self(spectrum_a)
         embed_2 = self(spectrum_b)
         preds = F.cosine_similarity(embed_1, embed_2)
@@ -199,7 +199,7 @@ class Autoencoder(L.LightningModule):
         else:
             loss = None
 
-        return {'predictions': preds, 'similarity': similarity, 'loss': loss}
+        return {'predictions': preds, 'similarity': similarity, 'loss': loss, 'metadata': metadata}
 
     def on_validation_epoch_end(self):
         self.val_metrics.reset()
@@ -219,18 +219,19 @@ class Autoencoder(L.LightningModule):
         self.decoder = None
         self.prediction_head = MLP(input_dim=self.bottleneck_dim, output_dim=self.bottleneck_dim, hidden_dim=self.bottleneck_dim, hidden_layers=2)
         # Make prediction head a no-op
-        # self.prediction_head = nn.Identity()
+        self.prediction_head = nn.Identity()
         # self.prediction_head.forward = lambda x: x
 
         # print(len(list(self.parameters())))
 
         # Freeze the encoder
         if freeze_encoder:
-            for param in self.encoder.parameters():
+            for param in list(self.encoder.parameters())[:-1]:
                 param.requires_grad = False
 
 
     def load_converted_from_checkpoint(self, checkpoint_path):
         self.convert()
         self.load_state_dict(torch.load(checkpoint_path, map_location=self.device)['state_dict'], strict=True)
+        # self.prediction_head = nn.Identity()
         

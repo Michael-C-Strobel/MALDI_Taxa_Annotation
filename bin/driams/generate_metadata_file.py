@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import pandas as pd
 from typing import List
+from glob import glob
 
 def generate_metadata_file(input_paths:List[Path], output_file:Path)->None:
     """
@@ -36,8 +37,13 @@ def main():
     parser.add_argument('--output_file', type=str, help='Output file path', required=True)
     args = parser.parse_args()
 
+    # Semi-colon seperated list of globs
     input_csvs = args.input_csvs.split(';')
     input_csv_paths = [Path(input_csv) for input_csv in input_csvs]
+    # Glob each one and flatten
+    input_csv_paths = [Path(path) for input_csv_path in input_csv_paths for path in glob(str(input_csv_path))]
+
+    print(input_csv_paths)
 
     for input_csv_path in input_csv_paths:
         if not input_csv_path.exists():
@@ -48,7 +54,7 @@ def main():
     if not output_file.parent.exists():
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    generate_metadata_file(input_csvs, output_file)
+    generate_metadata_file(input_csv_paths, output_file)
 
 if __name__ == "__main__":
     main()

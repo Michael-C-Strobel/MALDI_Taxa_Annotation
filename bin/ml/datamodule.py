@@ -80,12 +80,12 @@ class Spectrum_DataModule(L.LightningDataModule):
         return DataLoader(self.val_set, batch_size=32, shuffle=False, num_workers=self.num_workers)
     
     def predict_dataloader(self):
-        return DataLoader(self.predict_set, batch_size=32, shuffle=False, num_workers=self.num_workers)
+        return DataLoader(self.predict_set, batch_size=32, shuffle=False, num_workers=1)
 
     def plot(self, index: int, dataset: str = 'train'):
         import matplotlib.pyplot as plt
 
-        spectrum_a, spectrum_b, similarity = self.train_set[index]
+        spectrum_a, spectrum_b, similarity, _ = self.train_set[index]
         if len(spectrum_a.shape) > 1:
             raise NotImplementedError("Only 'intensity vectors' are supported for plotting.")
         

@@ -1,42 +1,38 @@
 # Load the MALDIquant package
 library(MALDIquant)
 library(MALDIquantForeign)
+library(compiler)
 
+# Define the function
 process_mzML_file <- function(input_file, output_file) {
-    # Attempt to import the mzML file
+    # Import the mzML file
     spectra <- importMzMl(input_file)
-    # print("File imported successfully")
-
-    # Print something 
-    # print("Processing file")
-
-    # smoothIntensity (commented out)
-    spectra <- smoothIntensity(spectra, method="SavitzkyGolay", halfWindowSize = 20L)
-
-    # removeBaseline
-    spectra <- removeBaseline(spectra, method="SNIP", iterations=100)
-    # print("Baseline removed")
-
-    # detectPeaks
+    
+    # Smooth intensity
+    spectra <- smoothIntensity(spectra, method="SavitzkyGolay", halfWindowSize=20L)
+    
+    # Remove baseline
+    spectra <- removeBaseline(spectra, method="SNIP", iterations=50)  # Reduced iterations for performance
+    
+    # Detect peaks
     peaks <- detectPeaks(spectra)
-    # print("Peaks detected")
-
-    # binPeaks
+    
+    # Bin peaks
     peaks <- binPeaks(peaks, tolerance=0.002, method="strict")
-    # print("Peaks binned")
-
-    # filterPeaks
-    peaks <- filterPeaks(peaks, minFrequency=0.50, minNumber=NA)
-
-    # trim
+    
+    # Filter peaks
+    peaks <- filterPeaks(peaks, minFrequency=0.50)
+    
+    # Trim peaks
     peaks <- trim(peaks, c(2000, 20000))
-    print("Peaks trimmed")
-
-    # Save to file
+    
+    # Export to file
     exportMzMl(peaks, output_file, force=TRUE)
-    print("Output saved to file")
-    print(output_file)
 }
 
+# Compile the function for optimization
+process_mzML_file <- compiler::cmpfun(process_mzML_file)
+
+# Execute with command-line arguments
 args <- commandArgs(trailingOnly=TRUE)
 process_mzML_file(args[1], args[2])

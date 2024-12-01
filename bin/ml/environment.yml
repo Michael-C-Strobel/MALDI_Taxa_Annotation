@@ -15,6 +15,7 @@ dependencies:
   - pytorch-cuda=12.4
   - conda-forge::lightning
   - matplotlib
+  - scikit-learn==1.5.2
   - seaborn
   - pytest
   - pip
