@@ -40,7 +40,7 @@ class Spectrum_DataModule(L.LightningDataModule):
         binning_transform = BinSpectrum(10, 2_000, 20_000)
         eucliden_norm     = NormalizeIntensity()
         # Note transforms here need to be per-data point. Transforms using dataset-level statistics will cause leakage
-        self.transform = transforms.Compose([binning_transform, eucliden_norm]) 
+        self.transform = transforms.Compose([binning_transform, SquareRootTransform(), eucliden_norm]) 
 
     def prepare_data(self):
        pass
@@ -108,7 +108,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
         self.root_dir = root_dir
         self.num_workers = num_workers
 
-        self.transform = transforms.Compose([BinSpectrum(10, 2_000, 20_000), NormalizeIntensity()])
+        self.transform = transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
 
         self.full_dataset = single_MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False,
                                                 transform=self.transform)

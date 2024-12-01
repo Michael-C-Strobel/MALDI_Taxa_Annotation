@@ -28,12 +28,22 @@ def mirror_plot(spectrum_a: np.array, spectrum_b: np.array, output_path: Path, t
     title = kwargs.get('title')
     if title:
         plt.title(title)
+
     x_label = kwargs.get('x_label')
     if x_label:
         plt.xlabel(x_label)
+
     y_label = kwargs.get('y_label')
     if y_label:
         plt.ylabel(y_label)
+
+    top_label = kwargs.get('top_label')
+    if top_label:
+        plt.text(max_nonzero_idx-200, 0.8, top_label, fontsize=12, verticalalignment='center')
+    
+    bottom_label = kwargs.get('bottom_label')
+    if bottom_label:
+        plt.text(max_nonzero_idx-200, -0.8, bottom_label, fontsize=12, verticalalignment='center')
         
     plt.xlim(-50, max_nonzero_idx)
     plt.ylim(-1, 1)

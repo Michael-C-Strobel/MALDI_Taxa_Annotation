@@ -180,12 +180,12 @@ class Paired_MALDI_TOF_DS(Dataset):
         print(f"Found {len(na_accessions)} accessions with limited number of BLASTN results. Removing them.")
         print(f"Found {len(not_na_accessions)} accessions with sufficient BLASTN results.")
         # DEBUG
-        temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(not_na_accessions) & \
-                                                    temp_similarities['subject_genbank'].isin(not_na_accessions)]
+        # temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(not_na_accessions) & \
+        #                                             temp_similarities['subject_genbank'].isin(not_na_accessions)]
         print(f"Left with {len(temp_similarities)} pairs.")
         # Recalculate the square similarities
         # DEBUG
-        square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
+        # square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
 
         self.all_accessions = np.sort(np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values))))
 

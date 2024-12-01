@@ -6,6 +6,7 @@ import torchmetrics
 import torch.nn.functional as F
 import torch
 import lightning as L
+from torchmetrics import MetricCollection
 
 class MLP(L.LightningModule):
     def __init__(self, **kwargs):
@@ -19,8 +20,10 @@ class MLP(L.LightningModule):
 
         input_size = self.input_size
         self.layers = nn.ModuleList()
+
         for _ in range(self.hidden_layers):
             self.layers.append(nn.Linear(input_size, self.hidden_dim))
+            self.layers.append(nn.BatchNorm1d(self.hidden_dim))
             self.layers.append(nn.ReLU())
             self.layers.append(nn.Dropout(self.dropout))
             input_size = self.hidden_dim
@@ -31,7 +34,6 @@ class MLP(L.LightningModule):
         for layer in self.layers:
             x = layer(x)
         return x
-
 class PercentageZeros(torchmetrics.Metric):
     def __init__(self):
         super().__init__()
@@ -44,6 +46,57 @@ class PercentageZeros(torchmetrics.Metric):
 
     def compute(self):
         return self.zeros / self.total
+    
+class BCE_Metric(torchmetrics.Metric):
+    def __init__(self):
+        super().__init__()
+        # Add state variables to keep track of accumulated loss and sample count
+        self.add_state("total_loss", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("total_samples", default=torch.tensor(0), dist_reduce_fx="sum")
+
+    def update(self, preds: torch.Tensor, targets: torch.Tensor):
+        """
+        Update the state with predictions and targets.
+        
+        Args:
+            preds (torch.Tensor): Model predictions (logits or probabilities).
+            targets (torch.Tensor): Ground truth labels (binary).
+        """
+        bce_loss = F.binary_cross_entropy_with_logits(preds, targets.float(), reduction='sum')
+
+        self.total_loss += bce_loss
+        self.total_samples += targets.numel()
+
+    def compute(self):
+        """
+        Compute the average BCE loss over all updates.
+        """
+        return self.total_loss / self.total_samples
+    
+class cosine_metric(torchmetrics.Metric):
+    def __init__(self):
+        super().__init__()
+        self.add_state("total_loss", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("total_samples", default=torch.tensor(0), dist_reduce_fx="sum")
+
+    def update(self, preds: torch.Tensor, targets: torch.Tensor):
+        """
+        Update the state with predictions and targets.
+        
+        Args:
+            preds (torch.Tensor): Model predictions (logits or probabilities).
+            targets (torch.Tensor): Ground truth labels (binary).
+        """
+        cosine_loss = F.cosine_similarity(preds, targets, dim=1)
+
+        self.total_loss += cosine_loss
+        self.total_samples += targets.numel()
+
+    def compute(self):
+        """
+        Compute the average BCE loss over all updates.
+        """
+        return self.total_loss / self.total_samples
 
 
 class Autoencoder(L.LightningModule):
@@ -54,6 +107,8 @@ class Autoencoder(L.LightningModule):
         self.train_metrics = torchmetrics.MetricCollection({
             'mse': torchmetrics.MeanSquaredError(),
             'mae': torchmetrics.MeanAbsoluteError(),
+            # 'cosine_similarity': cosine_metric(),
+            # 'bce': BCE_Metric(),
             'perc_non_zeros': PercentageZeros()
             }, 
             prefix='train_'
@@ -61,6 +116,8 @@ class Autoencoder(L.LightningModule):
         self.val_metrics = torchmetrics.MetricCollection({
             'mse': torchmetrics.MeanSquaredError(),
             'mae': torchmetrics.MeanAbsoluteError(),
+            # 'cosine_similarity': cosine_metric(),
+            # 'bce': BCE_Metric(),
             'perc_non_zeros': PercentageZeros()
             },
             prefix='val_'
@@ -110,10 +167,6 @@ class Autoencoder(L.LightningModule):
         if self.state == 'pretrain':
             x = F.relu(self.encoder(x))
             x = self.decoder(x)
-            # x = F.sigmoid(x)
-            # print("Percentage of zeros")
-            # num_zeros = torch.sum(x > 1e-5)
-            # print(num_zeros / x.numel())
             return x
         else:
             x = F.relu(self.encoder(x))
@@ -124,16 +177,13 @@ class Autoencoder(L.LightningModule):
     def training_step(self, batch, batch_idx):
         if self.state == 'pretrain':
             spectrum, _ = batch
-            # print("Sepctrum % non-Zeros")
-            # num_zeros = torch.sum(spectrum > 1e-5)
-            # print(num_zeros / spectrum.numel())
+
             reconstruction = self(spectrum)
-            # print(reconstruction)
-            # bce loss
+
             const_weight = torch.tensor([13.81]).to(spectrum.device)
-            # weight = torch.where(spectrum > 1e-5, const_weight[1], const_weight[0])
+
             loss = nn.functional.binary_cross_entropy_with_logits(reconstruction, spectrum, pos_weight=const_weight)
-            # loss = nn.functional.mse_loss(reconstruction, spectrum)
+
             batch_value = self.train_metrics(reconstruction, spectrum)
             self.log_dict(batch_value, on_epoch=True)
             return loss
@@ -213,6 +263,15 @@ class Autoencoder(L.LightningModule):
         # self.encoder.eval()
         # self.decoder.eval()
         self.state = 'feature_extractor'
+
+        # Remove BCE From the training metrics (This doesn't work)
+        # metrics_to_remove = ['bce', 'cosine_similarity']
+
+        # self.train_metrics = torchmetrics.MetricCollection({k: v for k, v in self.train_metrics.items() if k not in metrics_to_remove}, 
+        #                                                 prefix='train_')
+        # self.val_metrics = torchmetrics.MetricCollection({k: v for k, v in self.val_metrics.items() if k not in metrics_to_remove},
+        #                                                  prefix='val_')
+
 
         self.encoder = self.encoder
 

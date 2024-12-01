@@ -17,11 +17,11 @@ from models.cosine import RawCosine
 from datamodule import Spectrum_DataModule
 from utils import mirror_plot
 
-from scipy.cluster.hierarchy import dendrogram, linkage, cut_tree
-from sklearn.metrics import fowlkes_mallows_score
+from scipy.cluster.hierarchy import dendrogram, linkage, cut_tree, cophenet
+from sklearn.metrics import fowlkes_mallows_score, adjusted_rand_score, normalized_mutual_info_score, adjusted_mutual_info_score
 
 
-def compute_fowlkes_mallows_score(y_true, y_pred, figure_path:Path=None, method:str='complete'):
+def compute_clustering_scores(y_true, y_pred, figure_path:Path=None, method:str='average'):
     """ Compute the fowlkes_mallows_score.
 
     Parameters
@@ -36,8 +36,10 @@ def compute_fowlkes_mallows_score(y_true, y_pred, figure_path:Path=None, method:
         The method to use for clustering, by default 'complete'
 
     Returns
-    ----------
-    
+    -------
+    dict
+        Dictionary containing lists of clustering scores: 'fowlkes_mallows', 'rand_index', 'nmi', 'ami'.
+
     """
 
     # Cluster
@@ -46,13 +48,40 @@ def compute_fowlkes_mallows_score(y_true, y_pred, figure_path:Path=None, method:
     true_linkage = linkage(y_true, method=method)
     pred_linkage = linkage(y_pred, method=method)
 
-    max_k = len(pred_linkage)
+    max_k = min(len(pred_linkage), 100) # Limit number of clusters to 100
 
-    scores = []
+    # Fowlkes Mallows Score
+    fm_scores = []
     for k in tqdm(list(range(2, max_k))):
         tc = np.squeeze(cut_tree(true_linkage, k))
         pc = np.squeeze(cut_tree(pred_linkage, k))
-        scores.append(fowlkes_mallows_score(tc, pc))
+        fm_scores.append(fowlkes_mallows_score(tc, pc))
+
+    # Rand Index
+    rand_scores = []
+    for k in tqdm(list(range(2, max_k))):
+        tc = np.squeeze(cut_tree(true_linkage, k))
+        pc = np.squeeze(cut_tree(pred_linkage, k))
+        rand_scores.append(adjusted_rand_score(tc, pc))
+        
+
+    # Normalized Mutual Information
+    nmi_scores = []
+    for k in tqdm(list(range(2, max_k))):
+        tc = np.squeeze(cut_tree(true_linkage, k))
+        pc = np.squeeze(cut_tree(pred_linkage, k))
+        nmi_scores.append(normalized_mutual_info_score(tc, pc))
+
+    # Adjusted Mutual Information
+    ami_scores = []
+    for k in tqdm(list(range(2, max_k))):
+        tc = np.squeeze(cut_tree(true_linkage, k))
+        pc = np.squeeze(cut_tree(pred_linkage, k))
+        ami_scores.append(adjusted_mutual_info_score(tc, pc))
+    
+    # Calculate cophenetic correlation
+    true_cophenetic_corr = cophenet(true_linkage, y_true)[0]
+    pred_cophenetic_corr = cophenet(pred_linkage, y_pred)[0]
 
 
     if figure_path:
@@ -60,27 +89,39 @@ def compute_fowlkes_mallows_score(y_true, y_pred, figure_path:Path=None, method:
         if not figure_path.parent.exists():
             figure_path.parent.mkdir(parents=True, exist_ok=True)
 
-        fig, axs = plt.subplots(1, 3, figsize=(15, 7))
+        fig, axs = plt.subplots(1, 3, figsize=(20, 7))
 
         # Plot the dendrograms
         dendrogram(true_linkage, ax=axs[0], color_threshold=0.7 * max(true_linkage[:, 2]))
         # axs[0].set_title(f"True Linkage\nCophenetic Correlation: {true_cophenetic_corr:.2f}")
         axs[0].set_xlabel("Sample index")
         axs[0].set_ylabel("Distance")
-        axs[0].set_title(f"True Linkage")
+        axs[0].set_title(f"True Linkage\nCophenetic Correlation: {true_cophenetic_corr:.2f}")
 
         dendrogram(pred_linkage, ax=axs[1], color_threshold=0.7 * max(pred_linkage[:, 2]))
-        # axs[1].set_title(f"Predicted Linkage\nCophenetic Correlation: {pred_cophenetic_corr:.2f}")
+
         axs[1].set_xlabel("Sample index")
         axs[1].set_ylabel("Distance")
-        axs[1].set_title(f"Predicted Linkage")
+        axs[1].set_title(f"Predicted Linkage\nCophenetic Correlation: {pred_cophenetic_corr:.2f}")
 
         # Plot the Fowlkes Mallows Score
-        auc = np.trapz(scores, range(2, max_k))/max_k
-        axs[2].plot(range(2, max_k), scores)
+        auc = np.trapz(fm_scores, range(2, max_k)) / (max_k - 2)
+        axs[2].plot(range(2, max_k), fm_scores, label=f"FM Score AUC={auc:.2f}")
+        
+        auc = np.trapz(rand_scores, range(2, max_k)) / (max_k - 2)
+        axs[2].plot(range(2, max_k), rand_scores, label=f"Rand Score AUC={auc:.2f}")
+
+        auc = np.trapz(nmi_scores, range(2, max_k)) / (max_k - 2)
+        axs[2].plot(range(2, max_k), nmi_scores, label=f"NMI Score AUC={auc:.2f}")
+
+        auc = np.trapz(ami_scores, range(2, max_k)) / (max_k - 2)
+        axs[2].plot(range(2, max_k), ami_scores, label=f"AMI Score AUC={auc:.2f}")
+
+        axs[2].legend()
+        
         axs[2].set_xlabel("Number of Clusters")
-        axs[2].set_ylabel("Fowlkes Mallows Score")
-        axs[2].set_title(f"Fowlkeys Mallows Score (Method={method})\nAUC={auc:.2f}")
+        axs[2].set_ylabel("Clustering Score")
+        axs[2].set_title(f"Clustering Evaluation")
         axs[2].set_ylim(-0.1, 1.1)
 
         plt.suptitle(f"Fowlkeys Mallows Score (Method={method})")
@@ -91,7 +132,12 @@ def compute_fowlkes_mallows_score(y_true, y_pred, figure_path:Path=None, method:
         plt.savefig(figure_path)
         plt.close(fig)
 
-    return scores
+    return {
+        'fowlkes_mallows': fm_scores,
+        'rand_index': rand_scores,
+        'nmi': nmi_scores,
+        'ami': ami_scores,
+    }
 
 def create_report(predictions:List[float], true_similarity:List[float], metadata:List[dict], output_path:Path, k:int=5):
     """Output the k worst predictions, with associated metadata to a folder.
@@ -124,18 +170,26 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
         if not subdir_path.exists():
             subdir_path.mkdir(parents=True, exist_ok=True)
 
-        print('idx', idx)
         # Save the spectra
         spectrum_a = metadata[idx]['spectrum_a']
         spectrum_b = metadata[idx]['spectrum_b']
+        accession_a = metadata[idx]['accession_a']
+        accession_b = metadata[idx]['accession_b']
         np.save(subdir_path / f"spectrum_a.npy", spectrum_a)
         np.save(subdir_path / f"spectrum_b.npy", spectrum_b)
-        mirror_plot(spectrum_a, spectrum_b, subdir_path / f"mirror.png", title=f"True Similarity: {true_similarity[idx]:.2f}\nPredicted Similarity: {predictions[idx]:.2f}",
-                    x_label="Mass Bin", y_label="Intensity")
+        mirror_plot(spectrum_a, spectrum_b, subdir_path / f"mirror.png", 
+                    title=f"True Similarity: {true_similarity[idx]:.2f}\nPredicted Similarity: {predictions[idx]:.2f}",
+                    x_label="Mass Bin",
+                    y_label="Intensity",
+                    top_label=accession_a,
+                    bottom_label=accession_b)
 
+        print(metadata[idx])
         # Save the metadata
         output_metadata = {} #metadata[idx].copy()
         with open(subdir_path / f"metadata.json", "w", encoding="utf-8") as f:
+            output_metadata['accession_a'] = accession_a
+            output_metadata['accession_b'] = accession_b
             output_metadata['true_similarity'] = true_similarity[idx].item()
             output_metadata['predicted_similarity'] = predictions[idx].item()
             output_metadata['index'] = idx.item()
@@ -251,10 +305,14 @@ def main():
     f = open(metric_path / "metrics.txt", 'w', encoding='utf-8')
 
     # Fowlkes Mallows Score
-    scores = compute_fowlkes_mallows_score(true_similarity, predictions, metric_path / "dendrograms.png")
-    print("Fowlkes Mallows Score:", scores)
-    f.write("Fowlkes Mallows Score: \n")
-    f.write(str(scores) + "\n")
+    scores = compute_clustering_scores(true_similarity, predictions, metric_path / "dendrograms.png")
+
+    if not (metric_path / 'clustering_scores').exists():
+        (metric_path / 'clustering_scores').mkdir(parents=True, exist_ok=True)
+    np.save(metric_path / 'clustering_scores' / "fowlkes_mallows_scores.npy", scores['fowlkes_mallows'])
+    np.save(metric_path / 'clustering_scores' / "rand_index_scores.npy", scores['rand_index'])
+    np.save(metric_path / 'clustering_scores' / "nmi_scores.npy", scores['nmi'])
+    np.save(metric_path / 'clustering_scores' / "ami_scores.npy", scores['ami'])
 
     # Correlation of predictions with true values
     correlation = np.corrcoef(predictions, true_similarity)[0, 1]

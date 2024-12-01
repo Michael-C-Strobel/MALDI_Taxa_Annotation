@@ -64,6 +64,27 @@ class BinSpectrum(object):
         binned_spectrum = np.histogram(spectrum[:, 0], bins=bins, weights=spectrum[:, 1])[0]
         return binned_spectrum
     
+class SquareRootTransform(object):
+    """ Performs a square root transformation on the intensities of the spectrum.
+    
+    Args:
+        None
+        
+    Returns:
+        np.ndarray: The transformed spectrum.
+    """
+    def __init__(self):
+        pass
+
+    def __call__(self, spectrum):
+        if len(spectrum.shape) == 1:
+            spectrum[1] = np.sqrt(spectrum[1])
+        elif len(spectrum.shape) == 2:
+            spectrum[:, 1] = np.sqrt(spectrum[:, 1])
+        else:
+            raise ValueError(f"Expected a 1D or 2D array with m/z and intensity values. Instead got {spectrum.shape}")
+        return spectrum
+
 class NormalizeIntensity(object):
     """ Divides a one-dimensional (binned) spectrum by its Euclidean norm.
 
