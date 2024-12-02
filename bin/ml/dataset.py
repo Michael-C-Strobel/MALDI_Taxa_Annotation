@@ -110,6 +110,7 @@ class single_MALDI_TOF_DS(Dataset):
         return spectrum, strain_name
     
     def preprocess(self,):
+        return
         if not (Path(self.root_dir) / 'spectra/').exists():
             (Path(self.root_dir) / 'spectra/').mkdir(parents=True, exist_ok=True)
         print("Preprocessing files...")

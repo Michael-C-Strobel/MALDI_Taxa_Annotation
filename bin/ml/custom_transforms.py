@@ -86,23 +86,36 @@ class SquareRootTransform(object):
         return spectrum
 
 class NormalizeIntensity(object):
-    """ Divides a one-dimensional (binned) spectrum by its Euclidean norm.
-
+    """Normalizes intensity values along a specified dimension using the Euclidean norm,
+    while preserving other dimensions such as m/z.
+    
     Args:
-        None
-
+        dim (int): The dimension to normalize (default is -1, the last dimension).
+        
     Returns:
-        np.ndarray: The normalized spectrum.
+        np.ndarray: The array with normalized intensities along the specified dimension.
     """
-    def __init__(self):
+    
+    def __init__(self,):
         pass
 
     def __call__(self, spectrum):
-        # Eucliden norm of the intensity values
-        norm = np.linalg.norm(spectrum)
-        spectrum = spectrum / norm
-        return spectrum
+        # If one dimensional, apply the norm
+        if len(spectrum.shape) == 1:
+            # Eucliden norm of the intensity values
+            norm = np.linalg.norm(spectrum)
+            spectrum = spectrum / norm
+            return spectrum
 
+        # If two dimensional, apply the norm to the second dimension
+        if len(spectrum.shape) == 2:
+            # Eucliden norm of the intensity values
+            norm = np.linalg.norm(spectrum[:, 1])
+            spectrum[:, 1] = spectrum[:, 1] / norm
+            return spectrum
+        
+        raise ValueError(f"Expected a 1D or 2D array with m/z and intensity values. Instead got {spectrum.shape}")
+    
 class SelectMassRange(object):
     """ Selects the mass range of a spectrum to the specified range. Both endpoints are inclusive.
 
@@ -149,6 +162,39 @@ class ExcludeMassRange(object):
         mask = (spectrum[:, 0] < self.min_mz) | (spectrum[:, 0] > self.max_mz)
         spectrum = spectrum[mask]
         return spectrum
+    
+class PadToLength(object):
+    """Pads a sequence along a specified dimension to a fixed length.
+    
+    Args:
+        length (int): The target length of the specified dimension.
+        dim (int): The dimension to pad (default is _, the last dimension).
+        padding_value (float): The value for the padded elements (default is np.nan).
+        
+    Returns:
+        np.ndarray: The padded sequence.
+    """
+    
+    def __init__(self, length: int, dim: int=0, padding_value=np.nan):
+        self.length = length
+        self.dim = dim
+        self.padding_value = padding_value
+
+    def __call__(self, sequence):
+        sequence = np.asarray(sequence)  # Ensure input is an array
+        dim = self.dim if self.dim >= 0 else sequence.ndim + self.dim
+        current_length = sequence.shape[dim]
+
+        if current_length >= self.length:
+            slicing = [slice(None)] * sequence.ndim
+            slicing[dim] = slice(0, self.length)
+            return sequence[tuple(slicing)]
+
+        pad_width = [(0, 0)] * sequence.ndim
+        pad_width[dim] = (0, self.length - current_length)
+
+        return np.pad(sequence, pad_width, constant_values=self.padding_value)
+
 
 @pytest.fixture
 def test_spectrum():

@@ -101,17 +101,20 @@ class Spectrum_DataModule(L.LightningDataModule):
         plt.savefig(f'{dataset}_{index}.png')
 
 class SingleSpectrum_DataModule(L.LightningDataModule):
-    def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str, num_workers:int=4):
+    def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str, transforms=None, num_workers:int=4,
+                 batch_size:int=32):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
         self.root_dir = root_dir
         self.num_workers = num_workers
 
-        self.transform = transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
+        self.transform = transforms
 
         self.full_dataset = single_MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False,
                                                 transform=self.transform)
+        
+        self.batch_size = batch_size
 
     def prepare_data(self):
        pass
@@ -120,7 +123,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
         pass
 
     def train_dataloader(self):
-        return DataLoader(self.full_dataset, batch_size=32, shuffle=True, num_workers=self.num_workers)
+        return DataLoader(self.full_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
     
 
 def test_dataloader():
