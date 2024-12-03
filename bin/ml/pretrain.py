@@ -59,15 +59,16 @@ def main():
     
     trainer = L.Trainer(max_epochs=150*66, log_every_n_steps=10, logger=logger, devices=1,
                         gradient_clip_val=1.0,)
-    tuner = L.pytorch.tuner.Tuner(trainer)
     
-    # lr_find_results = tuner.lr_find(model,
-    #                                 datamodule,
-    #                                 min_lr=0.001,
-    #                                 max_lr=1.0,
-    #                                 early_stop_threshold=None)
-    # model.lr = lr_find_results.suggestion()
-    # print("Best learning rate: ", model.lr)
+    if isinstance(model, Autoencoder):
+        tuner = L.pytorch.tuner.Tuner(trainer)
+        lr_find_results = tuner.lr_find(model,
+                                        datamodule,
+                                        min_lr=0.001,
+                                        max_lr=1.0,
+                                        early_stop_threshold=None)
+        model.lr = lr_find_results.suggestion()
+        print("Best learning rate: ", model.lr)
 
     trainer.fit(model, datamodule)
 
