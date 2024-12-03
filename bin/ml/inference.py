@@ -266,10 +266,11 @@ def main():
         true_similarity.extend(output['similarity'].cpu().numpy())
         # output['metadata'] is a dict of lists
         # want to convert it to a list of dicts
-        for i in range(len(output['metadata']['accession_a'])):
-            metadata.append({
-                k: v[i] for k, v in output['metadata'].items()
-            })
+        if 'metadata' in output:
+            for i in range(len(output['metadata']['accession_a'])):
+                metadata.append({
+                    k: v[i] for k, v in output['metadata'].items()
+                })
 
     # Save the predictions
     predictions = np.array(predictions)
@@ -300,7 +301,8 @@ def main():
         # json.dump(metadata, f, indent=4)
 
     # Create a report of the worst predictions
-    create_report(predictions, true_similarity, metadata, metric_path / "worst_predictions", k=5)
+    if len(metadata) > 0:
+        create_report(predictions, true_similarity, metadata, metric_path / "worst_predictions", k=5)
 
     f = open(metric_path / "metrics.txt", 'w', encoding='utf-8')
 

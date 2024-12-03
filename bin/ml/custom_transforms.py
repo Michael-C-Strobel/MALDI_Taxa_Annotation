@@ -140,6 +140,33 @@ class SelectMassRange(object):
         spectrum = spectrum[mask]
         return spectrum
     
+class SelectTopKPeaks(object):
+    """Select the top peaks by intensity from a spectrum.
+    
+    Args:
+        k (int): The number of peaks to select.
+        
+    Returns:
+        torch.Tensor: The reduced spectrum.
+    """
+    def __init__(self, k:int):
+        self.k = k
+
+    def __call__(self, spectrum):
+        if len(spectrum.shape) != 2:
+            raise ValueError(f"Expected a 2D tensor with m/z and intensity values. Instead got {spectrum.shape}")
+        
+        if spectrum.shape[1] < 2:
+            raise ValueError(f"Expected a 2D tensor with at least two columns (m/z and intensity). Instead got {spectrum.shape}")
+        
+        # Sort the spectrum by intensity (second column) and get indices
+        sorted_indices = torch.argsort(spectrum[:, 1], descending=True)
+        
+        # Select the top k peaks by intensity
+        spectrum = spectrum[sorted_indices[:self.k]]
+        
+        return spectrum
+    
 class ExcludeMassRange(object):
     """ Excludes the mass range of a spectrum to the specified range. Both endpoints are inclusive.
     
@@ -175,7 +202,7 @@ class PadToLength(object):
         np.ndarray: The padded sequence.
     """
     
-    def __init__(self, length: int, dim: int=0, padding_value=np.nan):
+    def __init__(self, length: int, dim: int=0, padding_value=-1.0):
         self.length = length
         self.dim = dim
         self.padding_value = padding_value
@@ -192,6 +219,8 @@ class PadToLength(object):
 
         pad_width = [(0, 0)] * sequence.ndim
         pad_width[dim] = (0, self.length - current_length)
+        # if self.length - current_length > 0:
+        #     print(f"Padding {self.length - current_length} elements to the sequence.")
 
         return np.pad(sequence, pad_width, constant_values=self.padding_value)
 

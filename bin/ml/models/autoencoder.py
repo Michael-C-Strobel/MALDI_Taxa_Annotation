@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import torch
 import lightning as L
 from torchmetrics import MetricCollection
+from .self_supervised_metrics import cosine_metric, PercentageZeros, BCE_Metric
 
 class MLP(L.LightningModule):
     def __init__(self, **kwargs):
@@ -34,70 +35,6 @@ class MLP(L.LightningModule):
         for layer in self.layers:
             x = layer(x)
         return x
-class PercentageZeros(torchmetrics.Metric):
-    def __init__(self):
-        super().__init__()
-        self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
-        self.add_state("zeros", default=torch.tensor(0), dist_reduce_fx="sum")
-
-    def update(self, preds: Tensor, target: Tensor):
-        self.total += preds.numel()
-        self.zeros += torch.sum(preds > 1e-5)
-
-    def compute(self):
-        return self.zeros / self.total
-    
-class BCE_Metric(torchmetrics.Metric):
-    def __init__(self):
-        super().__init__()
-        # Add state variables to keep track of accumulated loss and sample count
-        self.add_state("total_loss", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("total_samples", default=torch.tensor(0), dist_reduce_fx="sum")
-
-    def update(self, preds: torch.Tensor, targets: torch.Tensor):
-        """
-        Update the state with predictions and targets.
-        
-        Args:
-            preds (torch.Tensor): Model predictions (logits or probabilities).
-            targets (torch.Tensor): Ground truth labels (binary).
-        """
-        bce_loss = F.binary_cross_entropy_with_logits(preds, targets.float(), reduction='sum')
-
-        self.total_loss += bce_loss
-        self.total_samples += targets.numel()
-
-    def compute(self):
-        """
-        Compute the average BCE loss over all updates.
-        """
-        return self.total_loss / self.total_samples
-    
-class cosine_metric(torchmetrics.Metric):
-    def __init__(self):
-        super().__init__()
-        self.add_state("total_loss", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("total_samples", default=torch.tensor(0), dist_reduce_fx="sum")
-
-    def update(self, preds: torch.Tensor, targets: torch.Tensor):
-        """
-        Update the state with predictions and targets.
-        
-        Args:
-            preds (torch.Tensor): Model predictions (logits or probabilities).
-            targets (torch.Tensor): Ground truth labels (binary).
-        """
-        cosine_loss = F.cosine_similarity(preds, targets, dim=1)
-
-        self.total_loss += cosine_loss
-        self.total_samples += targets.numel()
-
-    def compute(self):
-        """
-        Compute the average BCE loss over all updates.
-        """
-        return self.total_loss / self.total_samples
-
 
 class Autoencoder(L.LightningModule):
     def __init__(self, hyperparameters):

@@ -3,18 +3,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from lightning import LightningModule
+from torch.optim.lr_scheduler import LambdaLR
 import torchmetrics
 from torchmetrics.classification import BinaryAUROC, MulticlassAccuracy
 from .autoencoder import BCE_Metric
 
-class SinusoidalPositionalEncoding(nn.Module):
+class SinusoidalPositionalEncoding(nn.Module):  # TODO: Somehow creating nan vals
     def __init__(self, dim):
         super().__init__()
         # Register div_term as a buffer to avoid being updated by the optimizer
         div_term = torch.exp(torch.arange(0, dim, 2).float() * (-np.log(10000.0) / dim))
         self.register_buffer("div_term", div_term)
 
-    def forward(self, x, pos):
+    def forward(self, x, pos):#, mask):
         """
         Args:
             x: Tensor of shape (batch_size, seq_len, dim) - Input features.
@@ -23,9 +24,21 @@ class SinusoidalPositionalEncoding(nn.Module):
         pos = pos.unsqueeze(-1)  # (batch_size, seq_len, 1) for broadcasting
         pe = torch.zeros_like(x)
         
+        # print('pe.shape', pe.shape)
+        # print('torch.sin(pos * self.div_term).shape', torch.sin(pos * self.div_term).shape)
         # Compute the sin and cosine embeddings
         pe[..., 0::2] = torch.sin(pos * self.div_term)  # Sine on even indices
         pe[..., 1::2] = torch.cos(pos * self.div_term)  # Cosine on odd indices
+
+        # if mask is not None:
+        #     pe = pe.masked_fill(mask.unsqueeze(-1), 0)
+
+            # if torch.isnan(pe[~mask]).any():
+            #     print('x.shape', x.shape)
+            #     print('pos.shape', pos.shape)
+            #     print('pe.shape', pe.shape)
+            #     print('mask.shape', mask.shape)
+            #     raise ValueError("Nan values in pe")
 
         return x + pe
     
@@ -63,38 +76,49 @@ class Transformer(nn.Module):
         self.output_head = nn.Linear(dim, output_head_dim)
 
     def forward(self, spectrum):
-        # print("batch shape", spectrum.shape)
-        padding = torch.isnan(spectrum[:,:,1]).bool()    # True indicates padding
-        # print(("Number of standard values", torch.sum(~padding)))
+        padding = (spectrum[:,:,0] == 0).bool()    # True indicates padding
+        z = spectrum[:,:,1]
 
-        z = self.embed(spectrum[:,:,1].unsqueeze(-1))   # Embed the intensity values
+        if torch.isnan(z).any():
+            raise ValueError("Nan values in z")
+
+        # z[padding] = 0
+
+        # print(("Number of standard values", torch.sum(~padding)))
+        # print(("Number of padding values", torch.sum(padding)))
+
+        z = self.embed(z.unsqueeze(-1))   # Embed the intensity values
         # If all nan, raise an error
         if torch.isnan(z).all():
             raise ValueError("All intensity embeddings are NaN")
         if torch.isnan(z)[~padding].any():
             raise ValueError("Nan values in z that aren't in padding")
         z = self.positional_encoding(z, pos=spectrum[:,:,0])    # Use m/z values as positions
+
         if torch.isnan(z)[~padding].any():
             raise ValueError("Nan values in z that aren't in padding")
-        # print("Padding shape:", padding.shape)
-        # print("Expected mask shape:", z.shape[:-1])
+
         modified_z = z.detach().clone()
         modified_z[padding] = 0
-        # print("modified_z shape", modified_z.shape)
-        # print("modified_z", modified_z)
+
         if torch.isnan(modified_z).any():
             raise ValueError("Nan values in modified_z that aren't in padding")
 
-        z = self.transformer(z, src_key_padding_mask=padding)
+        z = self.transformer(z, src_key_padding_mask=None) # Somehow, we don't actually allow padding?
 
         # Assert nothing is nan that isn't padded
         # print(z.shape)
         # print("torch.isnan(z)[~padding]", torch.isnan(z)[~padding].shape)
+        # print(z)
+
         if torch.isnan(z).all():
             raise ValueError("All values in z are NaN")    # WHY IS IT ERRORING HERE?
-        # if torch.isnan(z)[~padding].any():
-        #     raise ValueError("Nan values in z that aren't in padding")
+        if torch.isnan(z)[~padding].any():
+            raise ValueError("Nan values in z that aren't in padding")
 
+
+        # if torch.isnan(z).any():
+        #     raise ValueError("Nan values in z")
 
         if self.reduce == "mean":
             return self.output_head(z.sum(1))
@@ -115,12 +139,15 @@ class MaldiTransformer(LightningModule):
 
         self.train_metrics = torchmetrics.MetricCollection({
             # binary_cross_entropy_with_logits
-            'train_loss': BCE_Metric(),
-        })
+            'bce': BCE_Metric(),
+        },
+        prefix='train_')
         self.val_metrics = torchmetrics.MetricCollection({
-            'val_loss': BCE_Metric(),
+            'bce': BCE_Metric(),
             # 'val_mlmmicro_auc': BinaryAUROC(),
-        })
+        },
+        prefix='val_'
+        )
 
         # super().__init__(
         #     lr=lr,
@@ -142,7 +169,7 @@ class MaldiTransformer(LightningModule):
         lmbda = self.hparams.lmbda
         proportional = self.hparams.proportional
 
-        self.lr = self.hparams.get('lr', 3e-4)
+        self.lr = self.hparams.get('lr', 5e-4)
         self.weight_decay = self.hparams.get('weight_decay', 0.0)
         if 'lr' in self.hparams:
             print(f"Using learning rate: {self.lr}")
@@ -218,12 +245,16 @@ class MaldiTransformer(LightningModule):
 
         mlm_logits, padding_mask = self.forward(batch)
         
+        
         # Apply the mask to logits and true values
         mlm_logits_train = self.train_indices_select(mlm_logits, train_indices)
         trues_train = self.train_indices_select(intensity_true, train_indices)
 
-
-        valid_mask = ~torch.isnan(mlm_logits_train)
+        if torch.isnan(mlm_logits_train).any():
+            raise ValueError("Nan values in mlm_logits_train")
+        
+        if torch.isnan(trues_train).any():
+            raise ValueError("Nan values in trues_train")
         # Use the valid_mask to exclude padding during loss calculation
         mlm_loss = F.binary_cross_entropy_with_logits(
             mlm_logits_train,  # Only valid entries
@@ -239,7 +270,7 @@ class MaldiTransformer(LightningModule):
 
         batch_value = self.train_metrics(mlm_logits_train, trues_train)
         self.log_dict(batch_value, on_step=True, on_epoch=True)
-
+        # print('mlm_loss',mlm_loss)
         return mlm_loss
 
 
@@ -262,24 +293,30 @@ class MaldiTransformer(LightningModule):
             mlm_logits_train, trues_train.to(self.dtype)
         )
 
-        self.log(
-            "val_mlmloss",
-            mlm_loss,
-            on_step=False,
-            on_epoch=True,
-            batch_size=len(mlm_logits_train),
-            sync_dist=True,
-        )
+        # self.log(
+        #     "val_mlmloss",
+        #     mlm_loss,
+        #     on_step=False,
+        #     on_epoch=True,
+        #     batch_size=len(mlm_logits_train),
+        #     sync_dist=True,
+        # )
 
-        self.auroc(mlm_logits_train, trues_train)
-        self.log(
-            "val_mlmmicro_auc",
-            self.auroc,
-            on_step=False,
-            on_epoch=True,
-            batch_size=len(mlm_logits_train),
-            sync_dist=True,
-        )
+        # self.auroc(mlm_logits_train, trues_train)
+        # self.log(
+        #     "val_mlmmicro_auc",
+        #     self.auroc,
+        #     on_step=False,
+        #     on_epoch=True,
+        #     batch_size=len(mlm_logits_train),
+        #     sync_dist=True,
+        # )
+
+        batch_value = self.val_metrics(mlm_logits_train, trues_train)
+        self.log_dict(batch_value, on_epoch=True)
+
+
+
         return mlm_loss
 
     def predict_step(self, batch, batch_idx):
@@ -314,47 +351,130 @@ class MaldiTransformer(LightningModule):
             trues_train,
         )
 
+    # def shuffler(self, batch):
+    #     batch = batch.detach().clone()
+    #     mz = batch[:, :, 0]
+    #     intensity = batch[:, :, 1]
+
+    #     all_indices = torch.stack(torch.where(mz)).T
+    #     # all_indices = torch.stack(torch.where(~torch.isnan(intensity))).T
+
+    #     if self.prop:
+    #         raise NotImplementedError("Proportional shuffling not implemented")
+    #         intensities_norm = (
+    #             (intensity / intensity.sum(1)[:, None]).reshape(-1).cpu().numpy()
+    #         )
+    #         shuff, pos = torch.chunk(
+    #             torch.tensor(
+    #                 np.random.choice(
+    #                     len(all_indices),
+    #                     int(len(all_indices) * self.p),
+    #                     replace=False,
+    #                     p=(intensities_norm / intensities_norm.sum()),
+    #                 ),
+    #                 device=all_indices.device,
+    #             ),
+    #             2,
+    #         )
+
+    #     else:
+    #         desired_num = int(len(all_indices) * self.p)
+    #         if desired_num % 2 != 0:
+    #             desired_num -= 1
+
+    #         shuff, pos = torch.chunk(
+    #             torch.randperm(len(all_indices), device=all_indices.device)[
+    #                 : desired_num
+    #             ],
+                
+    #             2,
+    #         )
+
+    #     shuffled_shuff = shuff[torch.randperm(len(shuff), device=shuff.device)]
+
+    #     # Boolean mask that merges where peaks will be disjoint?
+    #     indexer = (all_indices[shuff] != all_indices[shuffled_shuff])[:, 0]
+
+    #     shuff = shuff[indexer]
+    #     shuffled_shuff = shuffled_shuff[indexer]
+    #     pos = pos[indexer]
+
+    #     train_indices = torch.zeros_like(mz.bool())
+    #     train_indices[all_indices[pos][:, 0], all_indices[pos][:, 1]] = True
+    #     train_indices[all_indices[shuff][:, 0], all_indices[shuff][:, 1]] = True
+
+    #     intensity_true = torch.ones_like(mz).long()
+    #     intensity_true[all_indices[shuff][:, 0], all_indices[shuff][:, 1]] = 0
+
+    #     all_indices[shuff] = all_indices[shuffled_shuff]
+
+    #     # Repad the batch
+    #     # new_mz = torch.ones_like(mz) * torch.nan
+    #     new_mz = torch.zeros_like(mz)
+    #     # new_intensity = torch.ones_like(intensity) * torch.nan
+    #     new_intensity = torch.zeros_like(intensity)# * torch.nan
+    #     if (mz[all_indices[:, 0], all_indices[:, 1]]==0).any():
+    #         raise ValueError("Nan values in new_mz")
+    #     if (intensity[all_indices[:, 0], all_indices[:, 1]]==0).any():
+    #         raise ValueError("Nan values in new_intensity")
+        
+    #     mz_to_copy = mz[all_indices[:, 0], all_indices[:, 1]].view(mz.shape[0], -1)
+    #     new_mz[:mz_to_copy.shape[0], :mz_to_copy.shape[1]] = mz_to_copy
+        
+    #     intensity_to_copy = intensity[all_indices[:, 0], all_indices[:, 1]].view(intensity.shape[0], -1)
+    #     new_intensity[:intensity_to_copy.shape[0], :intensity_to_copy.shape[1]] = intensity_to_copy
+
+    #     batch[:, :, 0] = new_mz
+    #     batch[:, :, 1] = new_intensity
+
+    #     # Not idea what these are yet
+    #     return {
+    #             'modified_batch': batch,
+    #             'train_indices': train_indices,
+    #             'intensity_true': intensity_true,
+    #             }
+    
+    def configure_optimizers(self):
+        optimizer = torch.optim.AdamW(
+            self.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        )
+        
+        # Define the warmup + constant LR scheduler
+        def lr_lambda(step):
+            if step < 250:
+                return step / 250  # Linearly scale from 0 to 1 over 250 steps
+            return 1.0  # Keep LR constant after warmup
+
+        scheduler = {
+            'scheduler': LambdaLR(optimizer, lr_lambda),
+            'interval': 'step',  # Update every step
+            'frequency': 1       # Ensure it runs each step
+        }
+
+        return [optimizer], [scheduler]
+    
     def shuffler(self, batch):
         batch = batch.detach().clone()
         mz = batch[:, :, 0]
         intensity = batch[:, :, 1]
 
         all_indices = torch.stack(torch.where(mz)).T
-        all_indices = torch.stack(torch.where(~torch.isnan(intensity))).T
+        
+        desired_num = int(len(all_indices) * self.p)
+        if desired_num % 2 != 0:
+            desired_num -= 1
 
-        if self.prop:
-            raise NotImplementedError("Proportional shuffling not implemented")
-            intensities_norm = (
-                (intensity / intensity.sum(1)[:, None]).reshape(-1).cpu().numpy()
-            )
-            shuff, pos = torch.chunk(
-                torch.tensor(
-                    np.random.choice(
-                        len(all_indices),
-                        int(len(all_indices) * self.p),
-                        replace=False,
-                        p=(intensities_norm / intensities_norm.sum()),
-                    ),
-                    device=all_indices.device,
-                ),
-                2,
-            )
+        shuff, pos = torch.chunk(
+            torch.randperm(len(all_indices), device=all_indices.device)[
+                : desired_num
+            ],
+            2,
+        )
+        shuffled_shuff = shuff[torch.randperm(len(shuff), device=shuff.device)] # Randomly shuffle the indices we will shuffle
 
-        else:
-            desired_num = int(len(all_indices) * self.p)
-            if desired_num % 2 != 0:
-                desired_num -= 1
+        # print('all_indices[shuffled_shuff]', all_indices[shuffled_shuff])
+        indexer = (all_indices[shuff] != all_indices[shuffled_shuff])[:, 0] # Boolean mask for only the indices not equal to each other
 
-            shuff, pos = torch.chunk(
-                torch.randperm(len(all_indices), device=all_indices.device)[
-                    : desired_num
-                ],
-                2,
-            )
-
-        shuffled_shuff = shuff[torch.randperm(len(shuff), device=shuff.device)]
-
-        indexer = (all_indices[shuff] != all_indices[shuffled_shuff])[:, 0]
 
         shuff = shuff[indexer]
         shuffled_shuff = shuffled_shuff[indexer]
@@ -369,25 +489,12 @@ class MaldiTransformer(LightningModule):
 
         all_indices[shuff] = all_indices[shuffled_shuff]
 
-        # Repad the batch
-        new_mz = torch.zeros_like(mz)
-        new_intensity = torch.zeros_like(intensity)
-        new_mz[all_indices[:, 0], all_indices[:, 1]] = mz[all_indices[:, 0], all_indices[:, 1]]
-        new_intensity[all_indices[:, 0], all_indices[:, 1]] = intensity[all_indices[:, 0], all_indices[:, 1]]
-
-        batch[:, :, 0] = new_mz
-        batch[:, :, 1] = new_intensity
-
-        # Not idea what these are yet
+        new_mz = mz[all_indices[:, 0], all_indices[:, 1]].view(mz.shape[0], -1)
+        new_intensity = intensity[all_indices[:, 0], all_indices[:, 1]].view(intensity.shape[0], -1)
+        intensity_true = intensity_true
+        train_indices = train_indices
         return {
-                'modified_batch': batch,
-                'train_indices': train_indices,
-                'intensity_true': intensity_true,
-                }
-    
-    def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(
-            self.parameters(), lr=self.lr, weight_decay=self.weight_decay
-        )
-
-        return optimizer
+            'modified_batch': torch.stack([new_mz, new_intensity], dim=-1),
+            'train_indices': train_indices,
+            'intensity_true': intensity_true,
+        }

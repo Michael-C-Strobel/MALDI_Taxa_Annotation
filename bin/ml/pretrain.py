@@ -43,7 +43,8 @@ def main():
     elif isinstance(model, MaldiTransformer):
         trans = transforms.Compose([SelectMassRange(2_000, 20_000), 
                                     NormalizeIntensity(),
-                                    PadToLength(200),])
+                                    SelectTopKPeaks(150),
+                                    PadToLength(150),]) # We're actually truncating a bit here to 150
         batch_size = 128
     else:
         raise ValueError("Model type not recognized.")
@@ -56,8 +57,8 @@ def main():
                                     batch_size=batch_size)
     datamodule.setup('fit')
     
-    trainer = L.Trainer(max_epochs=150, log_every_n_steps=10, logger=logger, devices=1,
-                        gradient_clip_val=0.5)
+    trainer = L.Trainer(max_epochs=150*66, log_every_n_steps=10, logger=logger, devices=1,
+                        gradient_clip_val=1.0,)
     tuner = L.pytorch.tuner.Tuner(trainer)
     
     # lr_find_results = tuner.lr_find(model,
