@@ -9,12 +9,17 @@ from custom_transforms import *
 
 class Spectrum_DataModule(L.LightningDataModule):
     def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str, num_workers:int=4, wipe_test_sets:bool=True,
+                 transforms=None,
+                 batch_size:int=32,
                  inference_set_to_use:str='test'):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
         self.root_dir = root_dir
         self.num_workers = num_workers
+    
+        self.batch_size = batch_size
+        self.transform = transforms
 
         self.train_indices = None
         self.val_indices = None
@@ -39,8 +44,8 @@ class Spectrum_DataModule(L.LightningDataModule):
 
         binning_transform = BinSpectrum(10, 2_000, 20_000)
         eucliden_norm     = NormalizeIntensity()
-        # Note transforms here need to be per-data point. Transforms using dataset-level statistics will cause leakage
-        self.transform = transforms.Compose([binning_transform, SquareRootTransform(), eucliden_norm]) 
+        # # Note transforms here need to be per-data point. Transforms using dataset-level statistics will cause leakage
+        # self.transform = transforms.Compose([binning_transform, SquareRootTransform(), eucliden_norm]) 
 
     def prepare_data(self):
        pass
@@ -74,13 +79,13 @@ class Spectrum_DataModule(L.LightningDataModule):
             self.predict_set = self.full_dataset
 
     def train_dataloader(self):
-        return DataLoader(self.train_set, batch_size=32, shuffle=True, num_workers=self.num_workers)
+        return DataLoader(self.train_set, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
     
     def val_dataloader(self):
-        return DataLoader(self.val_set, batch_size=32, shuffle=False, num_workers=self.num_workers)
+        return DataLoader(self.val_set, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
     
     def predict_dataloader(self):
-        return DataLoader(self.predict_set, batch_size=32, shuffle=False, num_workers=1)
+        return DataLoader(self.predict_set, batch_size=self.batch_size, shuffle=False, num_workers=1)
 
     def plot(self, index: int, dataset: str = 'train'):
         import matplotlib.pyplot as plt

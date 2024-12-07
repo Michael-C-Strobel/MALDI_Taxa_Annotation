@@ -4,6 +4,8 @@ from typing import List, Tuple
 
 from lightning.pytorch.loggers import TensorBoardLogger
 import lightning as L
+from torchvision import transforms
+from custom_transforms import *
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -16,6 +18,7 @@ from models.cosine import RawCosine
 
 from datamodule import Spectrum_DataModule
 from utils import mirror_plot
+import pandas as pd
 
 from scipy.cluster.hierarchy import dendrogram, linkage, cut_tree, cophenet
 from sklearn.metrics import fowlkes_mallows_score, adjusted_rand_score, normalized_mutual_info_score, adjusted_mutual_info_score
@@ -197,22 +200,27 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
             print(output_metadata)
             json.dump(output_metadata, f, indent=4)
 
+    # Generate a dataframe of all predictions, true values, and metadata
+    summary_df = pd.DataFrame({
+        'predicted_similarity': predictions,
+        'true_similarity': true_similarity,
+        'error': np.abs(np.array(predictions) - np.array(true_similarity)),
+        'accession_a': [meta['accession_a'] for meta in metadata],
+        'accession_b': [meta['accession_b'] for meta in metadata]
+    })
+
+    # Sort by error
+    summary_df = summary_df.sort_values(by='error', ascending=False)
+
+    # Save the summary DataFrame as a CSV file.
+    summary_df.to_csv(output_path / "summary.csv", index=False)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default=None)
     parser.add_argument("--metric_path", type=str, default="metrics")
     parser.add_argument("--inference_set", type=str, default="test", choices=["test", "val", "train"])
     args = parser.parse_args()
-
-    datamodule = Spectrum_DataModule('../../data/idbac_db/preprocessing',
-                                    '../../data/idbac_db/raw/ammended_db.csv',
-                                    '../../data/idbac_db/processed_data',
-                                    num_workers=7, 
-                                    wipe_test_sets=False,
-                                    inference_set_to_use=args.inference_set)
-
-    # Perform inference on all data
-    datamodule.setup('test')
 
     if str(args.model_name).lower() == 'cosine':
         model = RawCosine()
@@ -229,6 +237,8 @@ def main():
         model_path = model_path[0]
         print(f"Loding model from {model_path}")
 
+
+        trans=None
         # Load the model
         if 'mlp' in args.model_name.lower():
             model = MLP.load_from_checkpoint(model_path)
@@ -242,10 +252,22 @@ def main():
                     'weight_decay': 1e-5,
                     'dropout': 0.2,
                 }
+            trans = transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
             model = Autoencoder(hyperparameters)
             model.load_converted_from_checkpoint(model_path)
         else:
             raise ValueError(f"Unknown model name {args.model_name}")
+        
+    datamodule = Spectrum_DataModule('../../data/idbac_db/preprocessing',
+                                '../../data/idbac_db/raw/ammended_db.csv',
+                                '../../data/idbac_db/processed_data',
+                                num_workers=7, 
+                                wipe_test_sets=False,
+                                inference_set_to_use=args.inference_set,
+                                transforms=trans)
+
+    # Perform inference on all data
+    datamodule.setup('test')
 
     model.eval()
     logger = TensorBoardLogger('lightning_logs', name=str(args.model_name)+'/prediction')
