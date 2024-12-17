@@ -109,6 +109,7 @@ class NormalizeIntensity(object):
 
         # If two dimensional, apply the norm to the second dimension
         if len(spectrum.shape) == 2:
+            assert spectrum.shape[1] == 2, f"Expected a 2D array with m/z and intensity values. Instead got {spectrum.shape}"
             # Eucliden norm of the intensity values
             norm = np.linalg.norm(spectrum[:, 1])
             spectrum[:, 1] = spectrum[:, 1] / norm

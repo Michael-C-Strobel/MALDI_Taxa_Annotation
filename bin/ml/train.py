@@ -4,6 +4,9 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import lightning as L
 import torch
 
+from torchvision import transforms
+from custom_transforms import *
+
 def main():
 
     hyperparameters = {
@@ -20,11 +23,14 @@ def main():
     
     torch.set_float32_matmul_precision('medium')    # medium | high
     
+    trans =  transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
+
     datamodule = Spectrum_DataModule('../../data/idbac_db/preprocessing',
                                     '../../data/idbac_db/raw/ammended_db.csv',
                                     '../../data/idbac_db/processed_data',
                                     num_workers=7, 
-                                    wipe_test_sets=True,)
+                                    wipe_test_sets=True,
+                                    transforms=trans)
                                     # wipe_test_sets=True)  #DEBUG
     datamodule.setup('fit')
     datamodule.plot(0)

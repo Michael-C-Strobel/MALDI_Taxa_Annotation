@@ -14,10 +14,11 @@ import json
 
 from models.mlp import MLP
 from models.autoencoder import Autoencoder
+from models.transformer_embedding_prediction_head import TransformerPredictionHead
 from models.cosine import RawCosine
 
 from datamodule import Spectrum_DataModule
-from utils import mirror_plot
+from utils import mirror_plot, shannon_entropy
 import pandas as pd
 
 from scipy.cluster.hierarchy import dendrogram, linkage, cut_tree, cophenet
@@ -108,16 +109,16 @@ def compute_clustering_scores(y_true, y_pred, figure_path:Path=None, method:str=
         axs[1].set_title(f"Predicted Linkage\nCophenetic Correlation: {pred_cophenetic_corr:.2f}")
 
         # Plot the Fowlkes Mallows Score
-        auc = np.trapz(fm_scores, range(2, max_k)) / (max_k - 2)
+        auc = np.trapezoid(fm_scores, range(2, max_k)) / (max_k - 2)
         axs[2].plot(range(2, max_k), fm_scores, label=f"FM Score AUC={auc:.2f}")
         
-        auc = np.trapz(rand_scores, range(2, max_k)) / (max_k - 2)
+        auc = np.trapezoid(rand_scores, range(2, max_k)) / (max_k - 2)
         axs[2].plot(range(2, max_k), rand_scores, label=f"Rand Score AUC={auc:.2f}")
 
-        auc = np.trapz(nmi_scores, range(2, max_k)) / (max_k - 2)
+        auc = np.trapezoid(nmi_scores, range(2, max_k)) / (max_k - 2)
         axs[2].plot(range(2, max_k), nmi_scores, label=f"NMI Score AUC={auc:.2f}")
 
-        auc = np.trapz(ami_scores, range(2, max_k)) / (max_k - 2)
+        auc = np.trapezoid(ami_scores, range(2, max_k)) / (max_k - 2)
         axs[2].plot(range(2, max_k), ami_scores, label=f"AMI Score AUC={auc:.2f}")
 
         axs[2].legend()
@@ -180,6 +181,7 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
         accession_b = metadata[idx]['accession_b']
         np.save(subdir_path / f"spectrum_a.npy", spectrum_a)
         np.save(subdir_path / f"spectrum_b.npy", spectrum_b)
+
         mirror_plot(spectrum_a, spectrum_b, subdir_path / f"mirror.png", 
                     title=f"True Similarity: {true_similarity[idx]:.2f}\nPredicted Similarity: {predictions[idx]:.2f}",
                     x_label="Mass Bin",
@@ -187,7 +189,6 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
                     top_label=accession_a,
                     bottom_label=accession_b)
 
-        print(metadata[idx])
         # Save the metadata
         output_metadata = {} #metadata[idx].copy()
         with open(subdir_path / f"metadata.json", "w", encoding="utf-8") as f:
@@ -197,7 +198,14 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
             output_metadata['predicted_similarity'] = predictions[idx].item()
             output_metadata['index'] = idx.item()
             output_metadata['error'] = np.abs(predictions[idx].item() - true_similarity[idx].item())
-            print(output_metadata)
+            output_metadata['num_peaks_in_a'] = metadata[idx]['num_peaks_in_a'].item()
+            output_metadata['num_peaks_in_b'] = metadata[idx]['num_peaks_in_b'].item()
+            if len(spectrum_a.shape) == 2:
+                output_metadata['shannon_entropy_a'] = shannon_entropy(spectrum_a)
+                output_metadata['shannon_entropy_b'] = shannon_entropy(spectrum_b)
+            else:
+                output_metadata['shannon_entropy_a'] = None
+                output_metadata['shannon_entropy_b'] = None
             json.dump(output_metadata, f, indent=4)
 
     # Generate a dataframe of all predictions, true values, and metadata
@@ -206,7 +214,11 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
         'true_similarity': true_similarity,
         'error': np.abs(np.array(predictions) - np.array(true_similarity)),
         'accession_a': [meta['accession_a'] for meta in metadata],
-        'accession_b': [meta['accession_b'] for meta in metadata]
+        'accession_b': [meta['accession_b'] for meta in metadata],
+        'num_peaks_in_a': [meta['num_peaks_in_a'].item() for meta in metadata],
+        'num_peaks_in_b': [meta['num_peaks_in_b'].item() for meta in metadata],
+        'shannon_entropy_a': [shannon_entropy(meta['spectrum_a']) for meta in metadata],    # TODO: This is super inefficent, but it's fine for now
+        'shannon_entropy_b': [shannon_entropy(meta['spectrum_b']) for meta in metadata],
     })
 
     # Sort by error
@@ -242,6 +254,7 @@ def main():
         # Load the model
         if 'mlp' in args.model_name.lower():
             model = MLP.load_from_checkpoint(model_path)
+            trans =  transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
         elif 'autoencoder' in args.model_name.lower():
             hyperparameters = { # Temporary fix until I figure out how to deal with this
                     'input_dim': 1800,
@@ -255,6 +268,23 @@ def main():
             trans = transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
             model = Autoencoder(hyperparameters)
             model.load_converted_from_checkpoint(model_path)
+        elif 'transformer_embedding_prediction_model' in args.model_name.lower():
+            hyperparameters = {
+                'hidden_dim': 300,
+                'latent_dim': 300,
+                'hidden_layers': 3,
+                'dropout': 0.2,
+                'lr': 5e-4,
+                'weight_decay': 1e-5,
+                'freeze_encoder': False,
+                'encoder_path': './lightning_logs/maldi_transformer_model/version_175/checkpoints/epoch=2193-step=43880.ckpt'
+            }
+            trans = transforms.Compose([SelectMassRange(2_000, 20_000), 
+                                    NormalizeIntensity(),
+                                    SelectTopKPeaks(150),
+                                    PadToLength(150),])
+            # model = TransformerPredictionHead(hyperparameters)
+            model = TransformerPredictionHead.load_from_checkpoint(model_path)
         else:
             raise ValueError(f"Unknown model name {args.model_name}")
         

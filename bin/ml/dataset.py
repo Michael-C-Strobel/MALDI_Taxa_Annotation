@@ -218,11 +218,22 @@ class Paired_MALDI_TOF_DS(Dataset):
             spectrum_a = self.transform(spectrum_a)
             spectrum_b = self.transform(spectrum_b)
 
+        num_peaks_in_a = None
+        num_peaks_in_b = None
+        if len(spectrum_a.shape) == 2:
+            num_peaks_in_a = spectrum_a.shape[0]
+            num_peaks_in_b = spectrum_b.shape[0]
+        elif len(spectrum_a.shape) == 1:
+            num_peaks_in_a = (spectrum_a > 0).sum().item()
+            num_peaks_in_b = (spectrum_b > 0).sum().item()
+
         metadata = {
             'accession_a': accession_a,
             'accession_b': accession_b,
             'strain_a': strain_name_a,
             'strain_b': strain_name_b,
+            'num_peaks_in_a': num_peaks_in_a,
+            'num_peaks_in_b': num_peaks_in_b,
             'spectrum_a': spectrum_a,
             'spectrum_b': spectrum_b,
         }
@@ -233,10 +244,24 @@ class Paired_MALDI_TOF_DS(Dataset):
         accession = self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]
         spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
         
+        metadata = {}
+
+        num_peaks = None
+        if len(spectrum.shape) == 2:
+            num_peaks = spectrum.shape[0]
+        elif len(spectrum.shape) == 1:
+            num_peaks = (spectrum > 0).sum().item()
+
+        metadata.update({
+            'accession': accession,
+            'strain_name': strain_name,
+            'num_peaks': num_peaks,
+        })
+
         if self.transform:
             spectrum = self.transform(spectrum)
 
-        return spectrum, accession
+        return spectrum, metadata
 
     def strain_to_accession(self, strain_name):
         return self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]
@@ -470,20 +495,22 @@ class ExhaustiveSampler():
     def _iter_strains(self):
         for i in range(self.num_strains):
             for j in range(i+1, self.num_strains):
-                strain_a, accession_a = self.data.get_by_strain_name(self.all_strains[i])
-                strain_b, accession_b = self.data.get_by_strain_name(self.all_strains[j])
+                strain_a, meta_a = self.data.get_by_strain_name(self.all_strains[i])
+                strain_b, meta_b = self.data.get_by_strain_name(self.all_strains[j])
 
-                sim = self.data.similarities.loc[accession_a, accession_b]
+                sim = self.data.similarities.loc[meta_a['accession'], meta_b['accession']]
                 # if np.isnan(sim):
                 #     continue
 
                 metadata = {
-                    'accession_a': accession_a,
-                    'accession_b': accession_b,
+                    'accession_a': meta_a['accession'],
+                    'accession_b': meta_b['accession'],
                     'strain_a': self.all_strains[i],
                     'strain_b': self.all_strains[j],
                     'spectrum_a': np.array(strain_a),
                     'spectrum_b': np.array(strain_b),
+                    'num_peaks_in_a': meta_a['num_peaks'],
+                    'num_peaks_in_b': meta_b['num_peaks'],
                 }
 
                 yield strain_a, strain_b, sim/100, metadata

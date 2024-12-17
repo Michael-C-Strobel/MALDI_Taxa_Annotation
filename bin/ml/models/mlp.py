@@ -115,7 +115,7 @@ class MLP(L.LightningModule):
             loss = nn.functional.mse_loss(preds, similarity)
         else:
             loss = None
-        return {'predictions': preds, 'similarity': similarity, 'loss': loss}
+        return {'predictions': preds, 'similarity': similarity, 'loss': loss, 'metadata': metadata}
 
     def on_validation_epoch_end(self):
         self.val_metrics.reset()
