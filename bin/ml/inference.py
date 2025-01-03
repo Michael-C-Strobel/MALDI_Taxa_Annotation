@@ -18,7 +18,7 @@ from models.transformer_embedding_prediction_head import TransformerPredictionHe
 from models.cosine import RawCosine
 
 from datamodule import Spectrum_DataModule
-from utils import mirror_plot, shannon_entropy
+from utils import mirror_plot, shannon_entropy, estimate_convexity
 import pandas as pd
 
 from scipy.cluster.hierarchy import dendrogram, linkage, cut_tree, cophenet
@@ -210,6 +210,8 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
             # if len(spectrum_a.shape) == 2:
             output_metadata['shannon_entropy_a'] = shannon_entropy(spectrum_a)
             output_metadata['shannon_entropy_b'] = shannon_entropy(spectrum_b)
+            output_metadata['convexity_a'] = estimate_convexity(spectrum_a, rescale=True)
+            output_metadata['convexity_b'] = estimate_convexity(spectrum_b, rescale=True)
             # else:
             #     output_metadata['shannon_entropy_a'] = None
             #     output_metadata['shannon_entropy_b'] = None
@@ -219,6 +221,9 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
     # TODO: This is super inefficent, but it's fine for now
     shannon_entropy_a = [shannon_entropy(meta['spectrum_a']) for meta in metadata]
     shannon_entropy_b = [shannon_entropy(meta['spectrum_b']) for meta in metadata]
+    convexity_a = [estimate_convexity(meta['spectrum_a'], rescale=True) for meta in metadata]
+    convexity_b = [estimate_convexity(meta['spectrum_b'], rescale=True) for meta in metadata]
+
     # else:
     #     shannon_entropy_a = [None] * len(metadata)
     #     shannon_entropy_b = [None] * len(metadata)
@@ -234,6 +239,8 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
         'num_peaks_in_b': [meta['num_peaks_in_b'].item() for meta in metadata],
         'shannon_entropy_a': shannon_entropy_a,
         'shannon_entropy_b': shannon_entropy_b,
+        'convexity_a': convexity_a,
+        'convexity_b': convexity_b,
     })
 
     # Sort by error

@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from pathlib import Path
+from torch import Tensor
 import numpy as np
 import sys
 
@@ -166,3 +167,47 @@ def shannon_entropy(spectrum: np.array, padding_value:float=-1, bin_size:float=1
     normalized_entropy = entropy / np.log(len(binned_spectrum))
     
     return normalized_entropy.item()
+
+def estimate_convexity(spectrum: np.array, rescale:bool=False) -> tuple:
+    """
+    Estimates the convexity of a spectrum by fitting a quadratic polynomial
+    and returning the coefficient of the x^2 term along with the fitted points.
+
+    Args:
+        spectrum (np.array): A 2D array with m/z and intensity values.
+        rescale (bool): Whether to rescale the x & y values before fitting.
+
+    Returns:
+        tuple: (float, np.ndarray, np.ndarray)
+               - The coefficient of the x^2 term in the polynomial fit.
+               - The x values of the fit (same as input x values).
+               - The fitted y values corresponding to the input x values.
+    """
+    if isinstance(spectrum, Tensor):
+        spectrum = spectrum.numpy()
+
+    if not isinstance(spectrum, np.ndarray):
+        raise ValueError(f"Expected a numpy array, instead got {type(spectrum)}.")
+    
+    if len(spectrum.shape) != 2:
+        raise ValueError("Expected a 2D array with m/z and intensity values.")
+
+    x = spectrum[:, 0]
+    y = spectrum[:, 1]
+
+    if rescale:
+        # Rescale the x values between 0 and 100
+        x = (x - np.min(x)) / (np.max(x) - np.min(x)) * 100
+        # Rescale the y values between 0 and 100
+        y = (y - np.min(y)) / (np.max(y) - np.min(y)) * 100
+    
+    # Fit a quadratic polynomial
+    coefficients = np.polyfit(x, y, 2)
+    
+    # The coefficient of x^2 is the first coefficient
+    convexity = coefficients[0]
+    
+    # Generate the fitted y values
+    fitted_y = np.polyval(coefficients, x)
+    
+    return convexity#, x, fitted_y
