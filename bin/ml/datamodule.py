@@ -42,11 +42,6 @@ class Spectrum_DataModule(L.LightningDataModule):
             else:
                 self.test_indices = torch.load(Path(self.root_dir)/'test_indices.pt', weights_only=False)
 
-        binning_transform = BinSpectrum(10, 2_000, 20_000)
-        eucliden_norm     = NormalizeIntensity()
-        # # Note transforms here need to be per-data point. Transforms using dataset-level statistics will cause leakage
-        # self.transform = transforms.Compose([binning_transform, SquareRootTransform(), eucliden_norm]) 
-
     def prepare_data(self):
        pass
     

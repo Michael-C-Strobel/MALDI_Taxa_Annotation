@@ -11,6 +11,8 @@ from torch.utils.data import Subset, Sampler, IterableDataset
 import scipy
 import pytest
 
+import time
+
 from typing import (
     cast,
     Dict,
@@ -238,7 +240,19 @@ class Paired_MALDI_TOF_DS(Dataset):
             'spectrum_b': spectrum_b,
         }
 
-        return spectrum_a, spectrum_b, torch.tensor(similarity/100, dtype=torch.float32), metadata
+        ##### DEBUG PLEASE PLEASE PLEASE REMOVE 
+        # print("***DEBUG***")
+        # time.sleep(3)
+        # print("***DEBUG***")
+
+        # Original target:torch.tensor(similarity/100, dtype=torch.float32)
+
+        target = similarity/100
+        target = torch.tensor(target, dtype=torch.float32)
+        assert 0.0 <= target <= 1.0, f"Target is {target}"
+
+
+        return spectrum_a, spectrum_b, target, metadata
     
     def get_by_strain_name(self, strain_name):
         accession = self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]
@@ -513,7 +527,10 @@ class ExhaustiveSampler():
                     'num_peaks_in_b': meta_b['num_peaks'],
                 }
 
-                yield strain_a, strain_b, sim/100, metadata
+                target = sim/100
+                target = torch.tensor(target, dtype=torch.float32)
+
+                yield strain_a, strain_b, target, metadata
                       
     def __iter__(self):
         """Iterates overall all unique combinations of spectra.

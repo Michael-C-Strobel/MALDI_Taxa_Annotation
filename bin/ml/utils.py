@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from pathlib import Path
 import numpy as np
+import sys
 
 def mirror_plot_1d(spectrum_a, spectrum_b, output_path, tolerance, **kwargs):
     fig = plt.figure(figsize=(10, 6))
@@ -135,21 +136,23 @@ def shannon_entropy(spectrum: np.array, padding_value:float=-1, bin_size:float=1
     Returns:
         float: The Shannon entropy of the spectrum.
     """
-    if len(spectrum.shape) != 2:
-        raise ValueError("Expected a 2D array with m/z and intensity values.")
+    # if len(spectrum.shape) != 2:
+    #     raise ValueError("Expected a 2D array with m/z and intensity values.")
     
-    if spectrum.shape[1] != 2:
-        raise ValueError("Expected a 2D array with two columns (m/z and intensity).")
+    # if spectrum.shape[1] != 2:
+    #     raise ValueError("Expected a 2D array with two columns (m/z and intensity).")
     
     spectrum = np.array(spectrum)
-    spectrum = spectrum[spectrum[:, 0] != padding_value] # Remove padding
 
-    if min(spectrum[:, 1]) == 0:
-        raise ValueError("Spectrum is likely already binned. Entropy calculation will be incorrect.")
+    if len(spectrum.shape) == 1 or min(spectrum[:, 1]) == 0:
+        print("Spectrum is likely already binned. Entropy calculation will be incorrect.", file=sys.stderr)
+        binned_spectrum = spectrum[:]
+    else:
+        spectrum = spectrum[spectrum[:, 0] != padding_value] # Remove padding
 
-    # Bin spectra 
-    bins = np.arange(min(spectrum[:, 0]), max(spectrum[:, 0]), bin_size)
-    binned_spectrum = np.histogram(spectrum[:, 0], bins=bins, weights=spectrum[:, 1])[0]
+        # Bin spectra 
+        bins = np.arange(min(spectrum[:, 0]), max(spectrum[:, 0]), bin_size)
+        binned_spectrum = np.histogram(spectrum[:, 0], bins=bins, weights=spectrum[:, 1])[0]
 
     # Add a small value to avoid log(0)
     binned_spectrum += 1e-12

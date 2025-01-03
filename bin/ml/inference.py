@@ -45,6 +45,13 @@ def compute_clustering_scores(y_true, y_pred, figure_path:Path=None, method:str=
         Dictionary containing lists of clustering scores: 'fowlkes_mallows', 'rand_index', 'nmi', 'ami'.
 
     """
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    nan_trues = np.isnan(y_true)
+    if sum(nan_trues) > 0:
+        print("Warning: NaNs in true similarity matrix")
+        return None
 
     # Cluster
     y_true = 1 - np.array(y_true)
@@ -188,7 +195,7 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
                     y_label="Intensity",
                     top_label=accession_a,
                     bottom_label=accession_b)
-
+ 
         # Save the metadata
         output_metadata = {} #metadata[idx].copy()
         with open(subdir_path / f"metadata.json", "w", encoding="utf-8") as f:
@@ -200,13 +207,21 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
             output_metadata['error'] = np.abs(predictions[idx].item() - true_similarity[idx].item())
             output_metadata['num_peaks_in_a'] = metadata[idx]['num_peaks_in_a'].item()
             output_metadata['num_peaks_in_b'] = metadata[idx]['num_peaks_in_b'].item()
-            if len(spectrum_a.shape) == 2:
-                output_metadata['shannon_entropy_a'] = shannon_entropy(spectrum_a)
-                output_metadata['shannon_entropy_b'] = shannon_entropy(spectrum_b)
-            else:
-                output_metadata['shannon_entropy_a'] = None
-                output_metadata['shannon_entropy_b'] = None
+            # if len(spectrum_a.shape) == 2:
+            output_metadata['shannon_entropy_a'] = shannon_entropy(spectrum_a)
+            output_metadata['shannon_entropy_b'] = shannon_entropy(spectrum_b)
+            # else:
+            #     output_metadata['shannon_entropy_a'] = None
+            #     output_metadata['shannon_entropy_b'] = None
             json.dump(output_metadata, f, indent=4)
+
+    # if len(spectrum_a.shape) == 2:
+    # TODO: This is super inefficent, but it's fine for now
+    shannon_entropy_a = [shannon_entropy(meta['spectrum_a']) for meta in metadata]
+    shannon_entropy_b = [shannon_entropy(meta['spectrum_b']) for meta in metadata]
+    # else:
+    #     shannon_entropy_a = [None] * len(metadata)
+    #     shannon_entropy_b = [None] * len(metadata)
 
     # Generate a dataframe of all predictions, true values, and metadata
     summary_df = pd.DataFrame({
@@ -217,8 +232,8 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
         'accession_b': [meta['accession_b'] for meta in metadata],
         'num_peaks_in_a': [meta['num_peaks_in_a'].item() for meta in metadata],
         'num_peaks_in_b': [meta['num_peaks_in_b'].item() for meta in metadata],
-        'shannon_entropy_a': [shannon_entropy(meta['spectrum_a']) for meta in metadata],    # TODO: This is super inefficent, but it's fine for now
-        'shannon_entropy_b': [shannon_entropy(meta['spectrum_b']) for meta in metadata],
+        'shannon_entropy_a': shannon_entropy_a,
+        'shannon_entropy_b': shannon_entropy_b,
     })
 
     # Sort by error
