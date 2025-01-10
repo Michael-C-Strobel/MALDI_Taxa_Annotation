@@ -210,8 +210,10 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
             # if len(spectrum_a.shape) == 2:
             output_metadata['shannon_entropy_a'] = shannon_entropy(spectrum_a)
             output_metadata['shannon_entropy_b'] = shannon_entropy(spectrum_b)
-            output_metadata['convexity_a'] = estimate_convexity(spectrum_a, rescale=True)
-            output_metadata['convexity_b'] = estimate_convexity(spectrum_b, rescale=True)
+            if len(spectrum_a.shape) > 1:
+                print("spectrum_a.shape", spectrum_a.shape)
+                output_metadata['convexity_a'] = estimate_convexity(spectrum_a, rescale=True)
+                output_metadata['convexity_b'] = estimate_convexity(spectrum_b, rescale=True)
             # else:
             #     output_metadata['shannon_entropy_a'] = None
             #     output_metadata['shannon_entropy_b'] = None
@@ -221,8 +223,12 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
     # TODO: This is super inefficent, but it's fine for now
     shannon_entropy_a = [shannon_entropy(meta['spectrum_a']) for meta in metadata]
     shannon_entropy_b = [shannon_entropy(meta['spectrum_b']) for meta in metadata]
-    convexity_a = [estimate_convexity(meta['spectrum_a'], rescale=True) for meta in metadata]
-    convexity_b = [estimate_convexity(meta['spectrum_b'], rescale=True) for meta in metadata]
+    if len(spectrum_a.shape) > 1:
+        convexity_a = [estimate_convexity(meta['spectrum_a'], rescale=True) for meta in metadata]
+        convexity_b = [estimate_convexity(meta['spectrum_b'], rescale=True) for meta in metadata]
+    else:
+        convexity_a = [None] * len(metadata)
+        convexity_b = [None] * len(metadata)
 
     # else:
     #     shannon_entropy_a = [None] * len(metadata)
@@ -258,6 +264,7 @@ def main():
 
     if str(args.model_name).lower() == 'cosine':
         model = RawCosine()
+        trans = transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
 
     else:
         model_dir = Path('lightning_logs') / str(args.model_name) / 'checkpoints'
@@ -325,7 +332,7 @@ def main():
     logger = TensorBoardLogger('lightning_logs', name=str(args.model_name)+'/prediction')
 
     # Get the predictions
-    trainer = L.Trainer(logger=logger, devices=1)
+    trainer = L.Trainer(logger=logger, devices=[0])
 
     # Use the Trainer to run predictions
     outputs = trainer.predict(model, datamodule=datamodule, return_predictions=True)

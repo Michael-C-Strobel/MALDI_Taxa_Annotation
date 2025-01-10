@@ -29,16 +29,16 @@ def main():
                                     '../../data/idbac_db/raw/ammended_db.csv',
                                     '../../data/idbac_db/processed_data',
                                     num_workers=7, 
-                                    wipe_test_sets=True,
+                                    wipe_test_sets=False,
                                     transforms=trans)
                                     # wipe_test_sets=True)  #DEBUG
     datamodule.setup('fit')
     datamodule.plot(0)
 
     # Plot the train/test split
-    datamodule.full_dataset.plot_split('./train_test_split.png')
+    # datamodule.full_dataset.plot_split('./train_test_split.png')
     
-    trainer = L.Trainer(max_epochs=50, log_every_n_steps=10, logger=logger)
+    trainer = L.Trainer(max_epochs=50, log_every_n_steps=10, logger=logger, devices=[0])
     tuner = L.pytorch.tuner.Tuner(trainer)
     
     lr_find_results = tuner.lr_find(model,
