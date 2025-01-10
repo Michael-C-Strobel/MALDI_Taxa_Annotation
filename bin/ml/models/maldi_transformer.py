@@ -270,6 +270,14 @@ class MaldiTransformer(LightningModule):
 
         batch_value = self.train_metrics(mlm_logits_train, trues_train)
         self.log_dict(batch_value, on_step=True, on_epoch=True)
+
+        current_lr = self.optimizers().param_groups[0]['lr']
+        self.log("learning_rate", current_lr, prog_bar=True, on_step=True, on_epoch=True)
+        self.log("true_percent_zeros", torch.sum(trues_train == 0) / len(trues_train), prog_bar=True, on_step=True, on_epoch=True)
+        as_predictions = torch.sigmoid(mlm_logits_train) > 0.5
+
+        self.log("pred_percent_zeros", torch.sum(as_predictions == 0) / len(as_predictions), prog_bar=False, on_step=True, on_epoch=True)
+
         # print('mlm_loss',mlm_loss)
         return mlm_loss
 

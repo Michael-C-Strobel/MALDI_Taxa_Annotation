@@ -3,6 +3,8 @@ import torch.nn.functional as F
 import numpy as np
 from typing import Tuple
 import pytest
+from maldi_nn.utils import topf as _topf
+
 
 class PadSequence(object):
     """ Pad the input sequence to the target shape with the padding value.
@@ -160,11 +162,17 @@ class SelectTopKPeaks(object):
         if spectrum.shape[1] < 2:
             raise ValueError(f"Expected a 2D tensor with at least two columns (m/z and intensity). Instead got {spectrum.shape}")
         
+        spectrum = np.array(spectrum)
+
         # Sort the spectrum by intensity (second column) and get indices
-        sorted_indices = torch.argsort(spectrum[:, 1], descending=True)
+        sorted_indices = np.argsort(spectrum[:, 1])
         
         # Select the top k peaks by intensity
-        spectrum = spectrum[sorted_indices[:self.k]]
+        spectrum = spectrum[sorted_indices[-self.k:]]
+
+        # Sort by m/z values
+        sorted_indices = np.argsort(spectrum[:, 0])
+        spectrum = spectrum[sorted_indices]
         
         return spectrum
     
@@ -225,6 +233,42 @@ class PadToLength(object):
 
         return np.pad(sequence, pad_width, constant_values=self.padding_value)
 
+class topf(object):
+    """Applies the topf transformation described in TODO (see package documentation).
+    
+    Args:
+        None
+
+    Returns:
+        np.ndarray: The transformed spectrum.
+    """
+    def __init__(self):
+        pass
+
+    def __call__(self, spectrum):
+        spectrum = np.array(spectrum)
+
+        assert len(spectrum.shape) == 2, f"Expected a 2D array with m/z and intensity values. Instead got {spectrum.shape}"
+        assert spectrum.shape[1] == 2, f"Expected a 2D array with two rows (m/z and intensity). Instead got {spectrum.shape}."
+
+        persistance = _topf.PersistenceTransformer().fit_transform(spectrum)
+
+        return persistance
+
+class toTensor(object):
+    """Converts a numpy array to a PyTorch tensor.
+    
+    Args:
+        None
+
+    Returns:
+        torch.Tensor: The PyTorch tensor.
+    """
+    def __init__(self):
+        pass
+
+    def __call__(self, array):
+        return torch.tensor(array).to(torch.float32)
 
 @pytest.fixture
 def test_spectrum():

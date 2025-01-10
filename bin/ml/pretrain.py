@@ -41,10 +41,12 @@ def main():
         trans = transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
         batch_size = 32
     elif isinstance(model, MaldiTransformer):
-        trans = transforms.Compose([SelectMassRange(2_000, 20_000), 
+        trans = transforms.Compose([SelectMassRange(2_000, 20_000),
+                                    # topf(),
                                     NormalizeIntensity(),
                                     SelectTopKPeaks(150),
-                                    PadToLength(150),]) # We're actually truncating a bit here to 150
+                                    PadToLength(150),# We're actually truncating a bit here to 150
+                                    toTensor()])
         batch_size = 128
     else:
         raise ValueError("Model type not recognized.")

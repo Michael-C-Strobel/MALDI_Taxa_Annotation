@@ -65,14 +65,17 @@ def fetch_fasta_by_accessions(accessions, output_dir="fasta_files"):
         except Exception as e:
             logging.error("Error fetching data for accession %s: %s", accession, e)
 
-def create_fasta_from_df(df, output_dir="fasta_files"):
+def create_fasta_from_df(df, output_dir, output_csv):
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
     assert '16S Sequence' in df.columns, "16S Sequence column not found in DataFrame"
 
-    for row in tqdm(df.iter_rows(named=True)):
+    missing_accessions = df.filter(df['Genbank accession'] == 'NaN')
+    missing_accessions = df.filter(df['16S Sequence']      != 'NaN')
+
+    for row in tqdm(missing_accessions.iter_rows(named=True)):
         strain_name = row['Strain name'].replace(' ', '_')
 
         accession_standin = f"strain_{strain_name}"
@@ -81,12 +84,27 @@ def create_fasta_from_df(df, output_dir="fasta_files"):
        
         output_file = os.path.join(output_dir, f"{accession_standin}.fasta")
         with open(output_file, "w", encoding='utf-8') as f:
-            f.write(f">{accession_standin}\n{sequence}\n")
+            f.write(f">{accession_standin} : user-uploaded 16S \n{sequence}\n")
         logging.debug("Saved FASTA sequence for accession %s to %s", accession_standin, output_file)
+
+    # Replace missing accessions with the new accession standins
+    df = df.with_columns(
+        pl.when((pl.col('Genbank accession') == 'NaN') & (pl.col('16S Sequence') != 'Nan'))
+        .then(
+            pl.col('Strain name').map_elements(lambda x: f"strain_{x.replace(' ', '_')}" if x is not None else x)
+        )
+        .otherwise(pl.col('Genbank accession'))
+        .alias('Genbank accession')
+    )
+    output_csv = Path(output_csv)
+    if not output_csv.parent.exists():
+        output_csv.parent.mkdir(parents=True, exist_ok=True)
+    df.write_csv(output_csv)
 
 def main():
     parser = argparse.ArgumentParser(description='Collect fasta files')
     parser.add_argument('--input_csv', type=str, help='Input CSV file path', required=True)
+    parser.add_argument('--output_csv', type=str, help='Output CSV file path', required=False)
     parser.add_argument('--output_dir', type=str, help='Output directory', required=True)
     parser.add_argument('--email', type=str, help='Email address for Entrez', required=False)
     args = parser.parse_args()
@@ -98,6 +116,7 @@ def main():
 
     input_csv = Path(args.input_csv)
     output_dir = Path(args.output_dir)
+    output_csv = Path(args.output_csv)
 
     if not input_csv.suffix == '.csv':
         raise ValueError('Input file must be a CSV file')
@@ -110,11 +129,10 @@ def main():
     df = pl.read_csv(input_csv, infer_schema_length=None)
     
     genbank_accessions = df.filter(df['Genbank accession'] != 'NaN')['Genbank accession'].unique()
-    # fetch_fasta_by_accessions(list(genbank_accessions), output_dir)
+    fetch_fasta_by_accessions(list(genbank_accessions), output_dir)
 
-    missing_accessions = df.filter(df['Genbank accession'] == 'NaN')
-    missing_accessions = df.filter(df['16S Sequence']      != 'NaN')
-    create_fasta_from_df(missing_accessions, output_dir)
+
+    create_fasta_from_df(df, output_dir, output_csv)
 
 if __name__ == "__main__":
     main()
