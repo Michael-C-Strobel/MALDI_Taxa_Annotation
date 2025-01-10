@@ -33,7 +33,8 @@ def main():
     logger = TensorBoardLogger('lightning_logs', name='maldi_transformer_model')
 
     # model = Autoencoder(autoencoder_hyperparameters)
-    model = MaldiTransformer(MaldiTransformer_hyperparameters)
+    model = MaldiTransformer(MaldiTransformer_hyperparameters,
+                             padding_value=-1.0)
     
     torch.set_float32_matmul_precision('medium')    # medium | high
 
@@ -45,7 +46,7 @@ def main():
                                     # topf(),
                                     NormalizeIntensity(),
                                     SelectTopKPeaks(150),
-                                    PadToLength(150),# We're actually truncating a bit here to 150
+                                    PadToLength(150, padding_value=-1.0),# We're actually truncating a bit here to 150
                                     toTensor()])
         batch_size = 128
     else:

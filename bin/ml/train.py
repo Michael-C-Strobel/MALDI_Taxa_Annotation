@@ -28,7 +28,7 @@ def main():
     datamodule = Spectrum_DataModule('../../data/idbac_db/preprocessing',
                                     '../../data/idbac_db/raw/ammended_db.csv',
                                     '../../data/idbac_db/processed_data',
-                                    num_workers=7, 
+                                    num_workers=7,
                                     wipe_test_sets=False,
                                     transforms=trans)
                                     # wipe_test_sets=True)  #DEBUG

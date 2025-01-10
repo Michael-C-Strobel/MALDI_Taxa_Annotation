@@ -133,7 +133,8 @@ class Transformer(nn.Module):
 class MaldiTransformer(LightningModule):
     def __init__(
         self,
-        hyperparameters
+        hyperparameters,
+        padding_value:float=None
     ):
         super().__init__()
 
@@ -159,6 +160,8 @@ class MaldiTransformer(LightningModule):
         for key in hyperparameters.keys():
             self.hparams.update({key: hyperparameters[key]})
         self.save_hyperparameters()
+
+        self.padding_value = padding_value
 
         depth = self.hparams.depth
         dim = self.hparams.dim
@@ -461,7 +464,80 @@ class MaldiTransformer(LightningModule):
 
         return [optimizer], [scheduler]
     
-    def shuffler(self, batch):
+    def _padded_shuffler(self, batch):
+        """Shuffles peaks between spectra, and returns the shuffled spectra. Will not shuffle padding tokents.
+        Notably this function is not fully vectorized and may inversely affect performance.
+        
+        Args:
+            batch: Tensor of shape (batch_size, seq_len, 2) - Batch of spectra.
+
+        Returns:
+            modified_batch: Tensor of shape (batch_size, seq_len, 2) - Shuffled spectra.
+            train_indices: Tensor of shape (batch_size, seq_len) - Boolean mask of shuffled peaks.
+            intensity_true: Tensor of shape (batch_size, seq_len) - Boolean mask of shuffled peaks.
+        """
+        batch = batch.detach().clone()
+        mz = batch[:, :, 0]
+        intensity = batch[:, :, 1]
+        batch_size = len(batch)
+        assert batch_size > 1, "Batch size must be greater than 1 for padded shuffling"
+        assert self.padding_value is not None, "Padding value must be set for padded shuffling"
+
+        lengths_per_batch = torch.sum(mz != self.padding_value, dim=1)
+        desired_nums = (lengths_per_batch * self.p).long()
+
+        # For each spectrum, randomly sample desired_nums[i] from (0,lengths_per_batch[i]) 
+        rand_perms = [torch.randperm(lengths_per_batch[i]) for i in range(batch_size)]
+        indices_to_drop = [perm[:desired_nums[i]] for i,perm in enumerate(rand_perms)]
+
+        # Randomly sample additional indices to train on 
+        positive_indices = [perm[desired_nums[i]:desired_nums[i]*2] for i,perm in enumerate(rand_perms)]
+
+        # For each spectrum, randomly sample desired_nums[i] for 0,lengths_per_batch[k]) for k!= i, where k is in the index of random source spectra
+        # For each target spectrum, generate a list of source spectra of length desired_nums[i]
+        # Weighted sample
+        weights = torch.ones(batch_size, batch_size)
+        weights[torch.eye(batch_size).bool()] = 0
+        source_spectra = [torch.multinomial(weights[i], desired_nums[i], replacement=True) for i in range(batch_size)]
+        # For each source spectra, sample desired_nums[i] from (0,lengths_per_batch[i])
+        source_indices = [(source_spectra[i], torch.stack([torch.randperm(lengths_per_batch[k])[0] for k in source_spectra[i]])) for i in range(batch_size)]
+        # source_indices is now a list of [(source_spectra_index, peak_num)] for each target spectrum
+        
+        # For each spectrum, replace the indices to drop with the source indices
+        new_mz = mz.clone()
+        new_intensity = intensity.clone()
+        for i in range(batch_size):
+            new_mz[i, indices_to_drop[i]] = mz[source_indices[i]]
+            new_intensity[i, indices_to_drop[i]] = intensity[source_indices[i]]
+
+        # Create the boolean mask that selects the indices we will train on (shuffled peaks, and positive/static peaks)
+        train_indices = torch.zeros_like(mz).bool()
+        for i in range(batch_size):
+            train_indices[i, torch.concat([indices_to_drop[i], positive_indices[i]])] = True
+
+        # Create the boolean target vector for shuffled/not shuffled predictionv
+        intensity_true = torch.ones_like(mz).long()
+        for i in range(batch_size):
+            intensity_true[i, indices_to_drop[i]] = 0
+
+        return {
+            'modified_batch': torch.stack([new_mz, new_intensity], dim=-1),
+            'train_indices': train_indices,
+            'intensity_true': intensity_true,
+        }
+
+    def _standard_shuffler(self, batch)->dict:
+        """
+        Shuffles peaks between spectra, and returns the shuffled spectra. Can include padding tokens
+
+        Args:
+            batch: Tensor of shape (batch_size, seq_len, 2) - Batch of spectra.
+
+        Returns:
+            modified_batch: Tensor of shape (batch_size, seq_len, 2) - Shuffled spectra.
+            train_indices: Tensor of shape (batch_size, seq_len) - Boolean mask of shuffled peaks.
+            intensity_true: Tensor of shape (batch_size, seq_len) - Boolean mask of shuffled peaks.
+        """
         batch = batch.detach().clone()
         mz = batch[:, :, 0]
         intensity = batch[:, :, 1]
@@ -480,7 +556,6 @@ class MaldiTransformer(LightningModule):
         )
         shuffled_shuff = shuff[torch.randperm(len(shuff), device=shuff.device)] # Randomly shuffle the indices we will shuffle
 
-        # print('all_indices[shuffled_shuff]', all_indices[shuffled_shuff])
         indexer = (all_indices[shuff] != all_indices[shuffled_shuff])[:, 0] # Boolean mask for only the indices not equal to each other
 
 
@@ -499,10 +574,14 @@ class MaldiTransformer(LightningModule):
 
         new_mz = mz[all_indices[:, 0], all_indices[:, 1]].view(mz.shape[0], -1)
         new_intensity = intensity[all_indices[:, 0], all_indices[:, 1]].view(intensity.shape[0], -1)
-        intensity_true = intensity_true
-        train_indices = train_indices
         return {
             'modified_batch': torch.stack([new_mz, new_intensity], dim=-1),
             'train_indices': train_indices,
             'intensity_true': intensity_true,
         }
+
+    def shuffler(self, batch):
+        if self.padding_value is not None:
+            return self._padded_shuffler(batch)
+        else:
+            return self._standard_shuffler(batch)

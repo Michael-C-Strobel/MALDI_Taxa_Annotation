@@ -7,7 +7,8 @@ from maldi_nn.utils import topf as _topf
 
 
 class PadSequence(object):
-    """ Pad the input sequence to the target shape with the padding value.
+    """ Pad the input sequence to the target shape with the padding value. All 
+    padding is on the end of the tensor.
 
     Args:
         shape (Tuple[int,]): The target shape of the output tensor.
