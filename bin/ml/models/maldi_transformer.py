@@ -283,6 +283,7 @@ class MaldiTransformer(LightningModule):
 
 
     def validation_step(self, batch, batch_idx):
+        raise NotImplementedError("Validation step not implemented")
         batch["intensity"] = batch["intensity"].to(self.dtype)
         batch["mz"] = batch["mz"].to(self.dtype)
 

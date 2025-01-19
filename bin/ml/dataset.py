@@ -97,12 +97,26 @@ class single_MALDI_TOF_DS(Dataset):
             self.preprocess()
 
         self.all_accessions = self.metadata_table['accession'].unique()
+        # DEBUG, TEMPORARY
+        # Remove any accessions whose spectra were removed
+        removed = ['strain_B032', 'nan']
+        self.all_accessions = np.array([x for x in self.all_accessions if not (str(x) in removed)])
+        print(self.all_accessions)
+
+        self.n_genus = len(self.metadata_table['genus'].unique())
+
+        labels, uniques = pd.factorize(self.metadata_table['genus'].sort_values().unique())
+        # Create the class indices dictionary
+        one_hot_encoder = dict(zip(uniques, range(1, len(uniques) + 1)))  # Starting from 1
+        # Add 'nan' as class 0
+        one_hot_encoder['nan'] = 0
+        self.one_hot_encoder = one_hot_encoder
 
     def sample_strain_from_accession(self, accession):
         choices = self.metadata_table[self.metadata_table['accession'] == accession]
         if len(choices) == 0:
             raise ValueError(f"No strain found for accession '{accession}'")
-        return choices['Strain name'].sample(1).values[0]
+        return choices.sample(1).to_dict(orient='records')[0]
     
     def __len__(self):
         return len(self.all_accessions) * self.num_turns
@@ -111,7 +125,9 @@ class single_MALDI_TOF_DS(Dataset):
         # For DRIAMS, use the species name as the accession
         # strain_name will be the hash
         accession = self.all_accessions[idx % len(self.all_accessions)]
-        strain_name = self.sample_strain_from_accession(accession)
+        sampled_row = self.sample_strain_from_accession(accession)
+        strain_name = sampled_row['Strain name']
+        database_id = sampled_row['database_id']
         
         spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
 
@@ -121,7 +137,23 @@ class single_MALDI_TOF_DS(Dataset):
             except Exception as e:
                 raise RuntimeError(f"Error transforming spectrum for strain {strain_name} with accession {accession}") from e
 
-        return spectrum, strain_name
+        metadata = {
+            'accession': accession,
+            'Strain name': strain_name,
+            'class': str(self.metadata_table[self.metadata_table['database_id'] == database_id]['genus'].values[0]),
+            'database_id': database_id,
+        }
+
+        return spectrum, metadata
+    
+    def get_one_hot_encoded_classes(self):
+        """
+        
+        """
+        def one_hot_encode(classes:List):
+            return torch.Tensor([self.one_hot_encoder[str(x)] for x in classes]).to(torch.long)  # str() important to cover nan
+        return one_hot_encode
+         
     
     def preprocess(self,):
         return
@@ -642,6 +674,20 @@ def test_single_ds_sample_strain_from_accession(single_ds):
 
 def test_single_ds_preprocess(single_ds):
     single_ds.preprocess()
+
+def test_single_ds_metadata(single_ds):
+    metadata_df = pd.read_csv('../../data/idbac_db/raw/db.csv', nrows=5)
+    accession = metadata_df['Genbank accession'].str.split('.').str[0].values[0]
+    metadata = single_ds.sample_strain_from_accession(accession)
+    assert 'accession' in metadata
+    assert 'Strain name' in metadata
+    assert 'genus' in metadata
+
+    assert metadata['accession'] == accession
+    assert metadata['Strain name'] == metadata_df['Strain name'].values[0]
+    assert metadata['genus'] == metadata_df['genus'].values[0]
+
+
 
 @pytest.fixture
 def driams_ds():
