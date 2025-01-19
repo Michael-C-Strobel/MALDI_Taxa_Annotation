@@ -15,13 +15,17 @@ process_mzML_file <- function(input_file, output_file) {
     spectra <- removeBaseline(spectra, method="SNIP", iterations=50)  # Reduced iterations for performance
     
     # Detect peaks
-    peaks <- detectPeaks(spectra)
+    peaks = detectPeaks( spectra,
+                         halfWindowSize=10,
+                         method="MAD",
+                         SNR=4
+                        )
     
     # Bin peaks
-    peaks <- binPeaks(peaks, tolerance=0.002, method="strict")
+    peaks <- binPeaks(peaks, tolerance=0.001, method="strict")
     
     # Filter peaks
-    peaks <- filterPeaks(peaks, minFrequency=0.50)
+    peaks <- filterPeaks(peaks, minFrequency=0.70)
     
     # Trim peaks
     peaks <- trim(peaks, c(2000, 20000))

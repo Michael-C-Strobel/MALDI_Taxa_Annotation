@@ -1,4 +1,5 @@
 import argparse
+import sys
 from collections import defaultdict
 import json
 from pathlib import Path
@@ -7,6 +8,7 @@ import ijson
 from glob import glob
 from psims.mzml.writer import MzMLWriter
 from pyteomics import mzml
+import logging
 from utils import init_logging, convert_to_serializable
 from tqdm import tqdm
 import pandas as pd
@@ -22,7 +24,7 @@ GROUP_SIZE = 100
 def write_mzML_files_from_json(json_input:Path, output_mzML_dir:Path)->None:
     with open(json_input, 'r') as input_file:
         parser = ijson.items(input_file, 'item')
-        for obj in tqdm(parser):
+        for obj in tqdm(parser, desc="Writing mzML files"):
             obj = convert_to_serializable(obj)
             
             # Assume "Strain name" is the key for each object
@@ -127,13 +129,23 @@ def write_mzML_files_from_txt(txt_glob:Path, driams_csv: Path, output_mzML_dir:P
     print(f"Finished writing mzML files. Wrote {final_num_files} files. Lost {num_files - final_num_files} files.")
 
 def process_with_maldi_quant(input_path: Path, output_path: Path, n_jobs:int=-1):
+    debug = logging.getLogger().getEffectiveLevel() == logging.DEBUG
+    subprocess_output_path = subprocess.DEVNULL
+    subprocess_check = False
+
+    if debug:
+        n_jobs = 1
+        subprocess_output_path = sys.stdout
+        subprocess_check = True
+
+    
     def _run_rscript(spectrum_paths: List[Path],):
         for spectrum_path in spectrum_paths:
             _output_path = output_path / f"{spectrum_path.stem}.mzML"
             subprocess.run(['Rscript', 'preprocess_data.R', str(spectrum_path), str(_output_path)], 
-                           stdout = subprocess.DEVNULL, 
-                           stderr = subprocess.DEVNULL,
-                           check=False)
+                           stdout = subprocess_output_path, 
+                           stderr = subprocess_output_path,
+                           check  = subprocess_check)
 
     # Performs peak picking, baseline correction, binning, and merging
     all_spectrum_paths = list(input_path.glob("*.mzML"))
@@ -142,6 +154,8 @@ def process_with_maldi_quant(input_path: Path, output_path: Path, n_jobs:int=-1)
     all_spectrum_paths = np.array_split(all_spectrum_paths, len(all_spectrum_paths) // GROUP_SIZE + 1)
 
     # Run the R script in parallel
+    logging.info("Running MaldiQuant in Parallel")
+    logging.info("Outputting files to %s", output_path)
     Parallel(n_jobs=n_jobs)(delayed(_run_rscript)(spectrum_paths) for spectrum_paths in tqdm(all_spectrum_paths, desc="Running MALDIquant"))
 
 def convert_to_json(path: Path):
@@ -187,9 +201,10 @@ def main():
     parser.add_argument('--output_mzML_dir', type=str, default='mzML_dir', help='Output directory for mzML files')
     parser.add_argument('--output_dir', type=str, help='Output file path', required=True)
     parser.add_argument('--n_jobs', type=int, default=-1, help='Number of jobs to run in parallel')
+    parser.add_argument('--debug', action='store_true', help='Debug mode')
     args = parser.parse_args()
 
-    init_logging()
+    init_logging(args.debug)
 
     print("args.csv", args.driams_csv)
     print("args.input_file", args.input_file)
@@ -204,15 +219,18 @@ def main():
         raise ValueError('Input file must be a JSON file or a DRIAMS txt glob with associated csv')
     if not output_mzML_dir.exists():
         output_mzML_dir.mkdir(parents=True, exist_ok=True)
+    
 
-    if input_file.suffix == '.json':
-        write_mzML_files_from_json(input_file, output_mzML_dir)
-    elif input_file.suffix == '.txt' and args.driams_csv:
-        if "*" not in str(input_file):
-            raise ValueError("Expected a glob pattern in the input file")
-        # write_mzML_files_from_txt(input_file, Path(args.driams_csv), output_mzML_dir, args.n_jobs)
-    else:
-        raise ValueError('Input file must be a JSON or DRIAMS txt file')
+    # if input_file.suffix == '.json':
+    #     logging.info("Writing mzML files from JSON to %s", output_mzML_dir)
+    #     write_mzML_files_from_json(input_file, output_mzML_dir)
+
+    # elif input_file.suffix == '.txt' and args.driams_csv:
+    #     if "*" not in str(input_file):
+    #         raise ValueError("Expected a glob pattern in the input file")
+    #     write_mzML_files_from_txt(input_file, Path(args.driams_csv), output_mzML_dir, args.n_jobs)
+    # else:
+    #     raise ValueError('Input file must be a JSON or DRIAMS txt file')
 
     # Process the mzML files with MALDIquant
     output_path = Path(args.output_dir)

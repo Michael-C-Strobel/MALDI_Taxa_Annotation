@@ -57,8 +57,24 @@ class Spectrum_DataModule(L.LightningDataModule):
                 torch.save(val_indices, Path(self.root_dir)/'val_indices.pt')
                 torch.save(test_indices, Path(self.root_dir)/'test_indices.pt')
             else:
-                self.train_set = Subset(self.full_dataset, self.train_indices)
-                self.val_set = Subset(self.full_dataset, self.val_indices)
+                # DEBUG Remove accessions ['EF178692', 'AB184357', 'AB122711', 'AB184476', 'strain_B017']:
+                indices_to_drop = []
+                print(self.full_dataset.all_accessions)
+
+                # For SS: ['EF178692', 'AB184357', 'AB122711', 'AB184476', 'strain_B017', 'AB122711']
+
+                for x in ['strain_B032',]:
+                    indices_to_drop.append(list(self.full_dataset.all_accessions).index(x))
+                new_train_indices = [i for i in self.train_indices if i not in indices_to_drop]
+                new_val_indices = [i for i in self.val_indices if i not in indices_to_drop]
+
+                
+
+                print("Number of train indices dropped: ", len(self.train_indices) - len(new_train_indices))
+                print("Number of val indices dropped: ", len(self.val_indices) - len(new_val_indices))
+
+                self.train_set = Subset(self.full_dataset, new_train_indices) #self.train_indices)
+                self.val_set = Subset(self.full_dataset, new_val_indices) #self.val_indices)
             print(f"Training Set Size {len(self.train_set)/self.full_dataset.num_turns}")
             print(f"Validation Set Size {len(self.val_set)/self.full_dataset.num_turns}")
         if stage == 'test':

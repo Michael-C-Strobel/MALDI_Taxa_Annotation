@@ -105,6 +105,10 @@ class NormalizeIntensity(object):
     def __call__(self, spectrum):
         # If one dimensional, apply the norm
         if len(spectrum.shape) == 1:
+            # Raise error on empty spectrum
+            if sum(spectrum) == 0:
+                raise ValueError("Empty spectrum")
+
             # Eucliden norm of the intensity values
             norm = np.linalg.norm(spectrum)
             spectrum = spectrum / norm
@@ -112,6 +116,9 @@ class NormalizeIntensity(object):
 
         # If two dimensional, apply the norm to the second dimension
         if len(spectrum.shape) == 2:
+            if sum(spectrum[:, 1]) == 0:
+                raise ValueError(f"Expected a 2D array with at least two columns (m/z and intensity). Instead got {spectrum.shape}")
+
             assert spectrum.shape[1] == 2, f"Expected a 2D array with m/z and intensity values. Instead got {spectrum.shape}"
             # Eucliden norm of the intensity values
             norm = np.linalg.norm(spectrum[:, 1])

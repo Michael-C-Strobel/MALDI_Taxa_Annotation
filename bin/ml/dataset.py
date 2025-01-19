@@ -52,10 +52,19 @@ class single_MALDI_TOF_DS(Dataset):
                 metadata_table:str,
                 root_dir:str,
                 process:bool=True,
-                transform:callable=None):
+                transform:callable=None,
+                balance:str='accession'):
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+
+        balance = str(balance).lower()
+        if balance not in ['accession', 'class']:
+            raise ValueError(f"Invalid balance method. Expected one of ['accession', 'class'], got '{balance}'")
+        if balance == 'class':
+            raise NotImplementedError("Class balancing not yet implemented")
+        self.balance = balance
+
         all_spectra_names = [x.stem for x in self.all_spectra]
 
         metadata_table = pd.read_csv(metadata_table)
@@ -107,7 +116,10 @@ class single_MALDI_TOF_DS(Dataset):
         spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
 
         if self.transform:
-            spectrum = self.transform(spectrum)
+            try:
+                spectrum = self.transform(spectrum)
+            except Exception as e:
+                raise RuntimeError(f"Error transforming spectrum for strain {strain_name} with accession {accession}") from e
 
         return spectrum, strain_name
     
@@ -190,6 +202,7 @@ class Paired_MALDI_TOF_DS(Dataset):
         # DEBUG
         # square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
 
+        # Must be sorted to maintain train/test set consistency 
         self.all_accessions = np.sort(np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values))))
 
         # assert 'strain_B016' in self.all_accessions
@@ -212,13 +225,24 @@ class Paired_MALDI_TOF_DS(Dataset):
         accession_a = self.all_accessions[idx % len(self.all_accessions)]
         strain_name_a = self.sample_strain_from_accession(accession_a)
 
-        strain_name_b, accession_b, similarity = self.find_match_in_range(accession_a, strain_name_a, np.random.randint(0, self.sim_bins.shape[0] - 1))
+        # DEBUG TO DELETE STUFF
+        rand_int = np.random.randint(0, self.sim_bins.shape[0] - 1)
+        accession_b = None
+        # while accession_b is None or accession_b in ['EF178692', 'AB184357', 'AB122711', 'AB184476', 'strain_B017', 'AB122711']:  # SS preprocessing
+        while accession_b is None or accession_b in ['strain_B032',]:            
+            strain_name_b, accession_b, similarity = self.find_match_in_range(accession_a, strain_name_a, rand_int)
         spectrum_a = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_a}.pt', weights_only=True).to(torch.float32)
         spectrum_b = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_b}.pt', weights_only=True).to(torch.float32)
 
         if self.transform:
-            spectrum_a = self.transform(spectrum_a)
-            spectrum_b = self.transform(spectrum_b)
+            try:
+                spectrum_a = self.transform(spectrum_a)
+            except Exception as e:
+                raise RuntimeError(f"Error transforming spectrum_a for strain {strain_name_a} with accession {accession_a}") from e
+            try:
+                spectrum_b = self.transform(spectrum_b)
+            except Exception as e:
+                raise RuntimeError(f"Error transforming spectrum_b for strain {strain_name_b} with accession {accession_b}") from e
 
         num_peaks_in_a = None
         num_peaks_in_b = None
@@ -273,7 +297,10 @@ class Paired_MALDI_TOF_DS(Dataset):
         })
 
         if self.transform:
-            spectrum = self.transform(spectrum)
+            try:
+                spectrum = self.transform(spectrum)
+            except Exception as e:
+                raise RuntimeError(f"Error transforming spectrum for strain {strain_name} with accession {accession}") from e
 
         return spectrum, metadata
 
@@ -406,14 +433,22 @@ class Paired_MALDI_TOF_DS(Dataset):
             clustered_accessions = _merge_smallest_clusters(clustered_accessions)
 
         cluster_counts = clustered_accessions.cluster.value_counts()
-
         train_cluster_id = cluster_counts.idxmax().item()
         val_cluster_id = cluster_counts.idxmin().item()
         test_cluster_id = cluster_counts[cluster_counts.index != train_cluster_id].idxmax().item()
+        print("train_cluster_id", train_cluster_id)
+        print("val_cluster_id", val_cluster_id)
+        print("test_cluster_id", test_cluster_id)
+
+        print("clustered_accessions", clustered_accessions)
 
         train_accessions = clustered_accessions.loc[clustered_accessions.cluster == train_cluster_id, 'accession'].values
         val_accessions = clustered_accessions.loc[clustered_accessions.cluster == val_cluster_id, 'accession'].values
         test_accessions = clustered_accessions.loc[clustered_accessions.cluster == test_cluster_id, 'accession'].values
+
+        print('train_accessions', train_accessions)
+        print('val_accessions', val_accessions)
+        print('test_accessions', test_accessions)
 
         # Convert accessions to indices
         train_indices = [np.where(self.all_accessions == x)[0][0] for x in train_accessions]
@@ -509,8 +544,11 @@ class ExhaustiveSampler():
     def _iter_strains(self):
         for i in range(self.num_strains):
             for j in range(i+1, self.num_strains):
-                strain_a, meta_a = self.data.get_by_strain_name(self.all_strains[i])
-                strain_b, meta_b = self.data.get_by_strain_name(self.all_strains[j])
+                try:
+                    strain_a, meta_a = self.data.get_by_strain_name(self.all_strains[i])
+                    strain_b, meta_b = self.data.get_by_strain_name(self.all_strains[j])
+                except Exception as e:
+                    continue
 
                 sim = self.data.similarities.loc[meta_a['accession'], meta_b['accession']]
                 # if np.isnan(sim):

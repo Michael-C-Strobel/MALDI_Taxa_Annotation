@@ -27,7 +27,8 @@ def main():
         'dropout': 0.2,
         'p': 0.15,
         'lmbda': 1.0,
-        'proportional': False
+        'proportional': False,
+        'lr': 5e-5,
     }
 
     logger = TensorBoardLogger('lightning_logs', name='maldi_transformer_model')
@@ -67,8 +68,8 @@ def main():
         tuner = L.pytorch.tuner.Tuner(trainer)
         lr_find_results = tuner.lr_find(model,
                                         datamodule,
-                                        min_lr=0.001,
-                                        max_lr=1.0,
+                                        min_lr=0.00001,
+                                        max_lr=0.001,
                                         early_stop_threshold=None)
         model.lr = lr_find_results.suggestion()
         print("Best learning rate: ", model.lr)

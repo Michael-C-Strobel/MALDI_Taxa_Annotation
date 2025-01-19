@@ -52,10 +52,12 @@ class Transformer(nn.Module):
         dropout=0.2,
         reduce="none",
         output_head_dim=64,
+        padding_value=None
     ):
         super().__init__()
 
         self.embed = nn.Linear(1, dim)
+        self.padding_value = padding_value
 
         # This is particularly unfaithful to the source code
         self.transformer = nn.TransformerEncoder(
@@ -76,7 +78,11 @@ class Transformer(nn.Module):
         self.output_head = nn.Linear(dim, output_head_dim)
 
     def forward(self, spectrum):
-        padding = (spectrum[:,:,0] == 0).bool()    # True indicates padding
+        if self.padding_value is not None:
+            padding = (spectrum[:,:,0] == self.padding_value).bool()    # True indicates padding
+            # print(f"Found a total of {torch.sum(padding)} padding values, {torch.sum(padding)/padding.numel() }%")
+        else:
+            padding = None
         z = spectrum[:,:,1]
 
         if torch.isnan(z).any():
@@ -91,28 +97,18 @@ class Transformer(nn.Module):
         # If all nan, raise an error
         if torch.isnan(z).all():
             raise ValueError("All intensity embeddings are NaN")
-        if torch.isnan(z)[~padding].any():
-            raise ValueError("Nan values in z that aren't in padding")
+        if padding is not None:
+            if torch.isnan(z)[~padding].any():
+                raise ValueError("Nan values in z that aren't in padding")
         z = self.positional_encoding(z, pos=spectrum[:,:,0])    # Use m/z values as positions
 
         if torch.isnan(z)[~padding].any():
             raise ValueError("Nan values in z that aren't in padding")
 
-        modified_z = z.detach().clone()
-        modified_z[padding] = 0
-
-        if torch.isnan(modified_z).any():
-            raise ValueError("Nan values in modified_z that aren't in padding")
-
-        z = self.transformer(z, src_key_padding_mask=None) # Somehow, we don't actually allow padding?
-
-        # Assert nothing is nan that isn't padded
-        # print(z.shape)
-        # print("torch.isnan(z)[~padding]", torch.isnan(z)[~padding].shape)
-        # print(z)
+        z = self.transformer(z, src_key_padding_mask=padding) # Somehow, we don't actually allow padding?
 
         if torch.isnan(z).all():
-            raise ValueError("All values in z are NaN")    # WHY IS IT ERRORING HERE?
+            raise ValueError("All values in z are NaN")
         if torch.isnan(z)[~padding].any():
             raise ValueError("Nan values in z that aren't in padding")
 
@@ -185,6 +181,7 @@ class MaldiTransformer(LightningModule):
             dropout=dropout,
             reduce="none",
             output_head_dim=n_classes,
+            padding_value=padding_value
         )
 
         self.output_head = nn.Linear(dim, 1)
