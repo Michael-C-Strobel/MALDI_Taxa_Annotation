@@ -16,8 +16,7 @@ class Triplet_DataModule(L.LightningDataModule):
                  root_dir:str, 
                  transforms=None, 
                  num_workers:int=4,
-                 batch_size:int=32,
-                 **kwargs):
+                 batch_size:int=32,):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
@@ -28,7 +27,7 @@ class Triplet_DataModule(L.LightningDataModule):
 
         self.full_dataset = single_MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False,
                                                 transform=self.transform,
-                                                **kwargs)
+                                                require_genus=True, )
         
         self.batch_size = batch_size
 
@@ -57,8 +56,7 @@ def test_single_dataloader():
     dm = Triplet_DataModule('../../data/idbac_db/preprocessing',
                             '../../data/idbac_db/raw/db.csv',
                             '../../data/idbac_db/preprocessed',
-                            num_workers=1,
-                            require_genus=True)
+                            num_workers=1,)
     dm.setup('fit')
     train_loader = dm.train_dataloader()
     # Get one batch from each

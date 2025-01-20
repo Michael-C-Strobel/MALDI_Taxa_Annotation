@@ -92,6 +92,9 @@ class single_MALDI_TOF_DS(Dataset):
             temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(post_filtration_accessions) & \
                                                   temp_similarities['subject_genbank'].isin(post_filtration_accessions)]
             square_similarities = temp_similarities.pivot_table(index='query_genbank', columns='subject_genbank', values='pident')
+            # Set Diag to 100
+            np.fill_diagonal(square_similarities.values, 100)
+            
             # Ensure actually square
             if square_similarities.shape[0] != square_similarities.shape[1]:
                 raise ValueError(f"Similarities matrix is not square: {square_similarities.shape}")
@@ -190,15 +193,55 @@ class single_MALDI_TOF_DS(Dataset):
         """
 
         anchor_strain_name = metadata['Strain name']
+        anchor_accession = metadata['accession']
         anchor_class = metadata['class']
 
         # Positive triplet
         positive_mask = (self.metadata_table['genus'] == anchor_class)
 
-        new_positive_mask = (self.metadata_table['genus'] == anchor_class) & \
-                        (self.metadata_table['Strain name'] != anchor_strain_name)
-        if sum(new_positive_mask) > 0:
-            positive_mask = new_positive_mask
+        # Valid distance
+        relevant_dists = self.similarities.loc[anchor_accession, :].notna()
+        # print("na distances found", (len(relevant_dists) - sum(relevant_dists)))
+        relevant_dists = relevant_dists.loc[relevant_dists].index.values.tolist()
+        r_dists =relevant_dists
+        relevant_dists = self.metadata_table['accession'].astype(str).isin(relevant_dists)
+        # print("relevant_dists", relevant_dists.sum(), '/', len(relevant_dists))
+        # print("relevant_dists", relevant_dists.sum())
+        # print("positive_mask", positive_mask.sum())
+        positive_mask = positive_mask & relevant_dists
+
+        assert positive_mask.index.equals(self.metadata_table.index)
+
+        all_possible_accessions = self.metadata_table.loc[positive_mask, 'accession'].values.tolist()
+        # print('len(self.metadata_table)', len(self.metadata_table))
+        # print('len(all_possible_accessions)', len(all_possible_accessions))
+        # print('sum(positive_mask)', sum(positive_mask))
+        # print('len(pos_mask)', len(positive_mask))
+
+
+        if self.similarities.loc[anchor_accession, all_possible_accessions].isna().any():
+            print("self.similarities.loc[anchor_accession, all_possible_accessions].isna().any()")
+            print(self.similarities.loc[anchor_accession, all_possible_accessions].isna().any(), flush=True)
+
+
+            # Get location where this happens
+            print("anchor_accession", anchor_accession)
+            missing_accessions = []
+            for accession in all_possible_accessions:
+                if np.isnan(self.similarities.at[anchor_accession, accession]):
+                    print(f"Missing similarity for {accession}")
+                    print('In relevant_dists', accession in r_dists)
+                    idx_in_metadata = (self.metadata_table[self.metadata_table['accession'] == accession]).index
+                    print('In positive_mask', positive_mask[idx_in_metadata])
+                    print('value in relevant_dists', relevant_dists[idx_in_metadata])   
+                    missing_accessions.append(accession)
+
+            raise ValueError(f"Positive mask contains NaN values for {anchor_accession}")
+
+        # new_positive_mask = positive_mask & \
+        #                 (self.metadata_table['Strain name'] != anchor_strain_name)
+        # if sum(new_positive_mask) > 0:   # Avoid self comparison if possible
+        #     positive_mask = new_positive_mask
         
         positive_row = self.metadata_table[positive_mask].sample(1).to_dict(orient='records')[0]
         positive_metadata = {
@@ -207,12 +250,12 @@ class single_MALDI_TOF_DS(Dataset):
             'class': positive_row['genus'],
             'database_id': positive_row['database_id'],
         }
-        pos_sim = self.similarities.loc[metadata['accession'], positive_metadata['accession']]
+        pos_sim = self.similarities.loc[anchor_accession, positive_metadata['accession']]
         positive_spectrum = torch.load(Path(self.root_dir) / 'spectra' / f"{positive_metadata['Strain name']}.pt", weights_only=True).to(torch.float32)
 
         if self.transform:
             try:
-                positive_spectrum = self.transform(positive_spectrum)
+                positive_spectrum = torch.tensor(self.transform(positive_spectrum))
             except Exception as e:
                 raise RuntimeError(f"Error transforming positive spectrum for strain {positive_metadata['Strain name']} with accession {positive_metadata['accession']}") from e
 
@@ -229,9 +272,16 @@ class single_MALDI_TOF_DS(Dataset):
 
         if self.transform:
             try:
-                negative_spectrum = self.transform(negative_spectrum)
+                negative_spectrum = torch.tensor(self.transform(negative_spectrum))
             except Exception as e:
                 raise RuntimeError(f"Error transforming negative spectrum for strain {negative_metadata['Strain name']} with accession {negative_metadata['accession']}") from e
+
+        pos_sim = pos_sim/100
+        assert 0.0 <= pos_sim <= 1.0, f"pos_sim is {pos_sim} for {metadata['accession']} and {positive_metadata['accession']}"
+        # We don't actually care, since we're not backpropogating on it:
+        # neg_sim = neg_sim/100
+        # assert 0.0 <= neg_sim <= 1.0, f"neg_sim is {neg_sim}"
+
 
         return (positive_spectrum, negative_spectrum), (positive_metadata, negative_metadata), (pos_sim, neg_sim)
 
@@ -252,7 +302,7 @@ class single_MALDI_TOF_DS(Dataset):
         else:
             raise ValueError(f"Unknown strategy: {strategy}")
 
-        return (spectrum, positive_spectrum, negative_spectrum), (metadata, positive_metadata, negative_metadata), (None, pos_sim, neg_sim)
+        return (torch.tensor(spectrum), positive_spectrum, negative_spectrum), (metadata, positive_metadata, negative_metadata), (None, pos_sim, neg_sim)
         
 
     def preprocess(self,):

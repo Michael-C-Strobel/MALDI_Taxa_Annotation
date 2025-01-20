@@ -16,6 +16,7 @@ from models.mlp import MLP
 from models.autoencoder import Autoencoder
 from models.transformer_embedding_prediction_head import TransformerPredictionHead
 from models.cosine import RawCosine
+from models.Sentence_MALDI import Sentence_MALDI
 
 from datamodule import Spectrum_DataModule
 from utils import mirror_plot, shannon_entropy, estimate_convexity
@@ -319,6 +320,10 @@ def main():
                                     PadToLength(150),])
             # model = TransformerPredictionHead(hyperparameters)
             model = TransformerPredictionHead.load_from_checkpoint(model_path)
+        elif 'Sentence_MALDI' in args.model_name:
+            model = Sentence_MALDI.load_from_checkpoint(model_path)
+
+            trans =  transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
         else:
             raise ValueError(f"Unknown model name {args.model_name}")
         
