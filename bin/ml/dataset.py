@@ -52,10 +52,19 @@ class single_MALDI_TOF_DS(Dataset):
                 metadata_table:str,
                 root_dir:str,
                 process:bool=True,
-                transform:callable=None):
+                transform:callable=None,
+                balance:str='accession'):
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+
+        balance = str(balance).lower()
+        if balance not in ['accession', 'class']:
+            raise ValueError(f"Invalid balance method. Expected one of ['accession', 'class'], got '{balance}'")
+        if balance == 'class':
+            raise NotImplementedError("Class balancing not yet implemented")
+        self.balance = balance
+
         all_spectra_names = [x.stem for x in self.all_spectra]
 
         metadata_table = pd.read_csv(metadata_table)
@@ -88,12 +97,26 @@ class single_MALDI_TOF_DS(Dataset):
             self.preprocess()
 
         self.all_accessions = self.metadata_table['accession'].unique()
+        # DEBUG, TEMPORARY
+        # Remove any accessions whose spectra were removed
+        removed = ['strain_B032', 'nan']
+        self.all_accessions = np.array([x for x in self.all_accessions if not (str(x) in removed)])
+        print(self.all_accessions)
+
+        self.n_genus = len(self.metadata_table['genus'].unique())
+
+        labels, uniques = pd.factorize(self.metadata_table['genus'].sort_values().unique())
+        # Create the class indices dictionary
+        one_hot_encoder = dict(zip(uniques, range(1, len(uniques) + 1)))  # Starting from 1
+        # Add 'nan' as class 0
+        one_hot_encoder['nan'] = 0
+        self.one_hot_encoder = one_hot_encoder
 
     def sample_strain_from_accession(self, accession):
         choices = self.metadata_table[self.metadata_table['accession'] == accession]
         if len(choices) == 0:
             raise ValueError(f"No strain found for accession '{accession}'")
-        return choices['Strain name'].sample(1).values[0]
+        return choices.sample(1).to_dict(orient='records')[0]
     
     def __len__(self):
         return len(self.all_accessions) * self.num_turns
@@ -102,14 +125,35 @@ class single_MALDI_TOF_DS(Dataset):
         # For DRIAMS, use the species name as the accession
         # strain_name will be the hash
         accession = self.all_accessions[idx % len(self.all_accessions)]
-        strain_name = self.sample_strain_from_accession(accession)
+        sampled_row = self.sample_strain_from_accession(accession)
+        strain_name = sampled_row['Strain name']
+        database_id = sampled_row['database_id']
         
         spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
 
         if self.transform:
-            spectrum = self.transform(spectrum)
+            try:
+                spectrum = self.transform(spectrum)
+            except Exception as e:
+                raise RuntimeError(f"Error transforming spectrum for strain {strain_name} with accession {accession}") from e
 
-        return spectrum, strain_name
+        metadata = {
+            'accession': accession,
+            'Strain name': strain_name,
+            'class': str(self.metadata_table[self.metadata_table['database_id'] == database_id]['genus'].values[0]),
+            'database_id': database_id,
+        }
+
+        return spectrum, metadata
+    
+    def get_one_hot_encoded_classes(self):
+        """
+        
+        """
+        def one_hot_encode(classes:List):
+            return torch.Tensor([self.one_hot_encoder[str(x)] for x in classes]).to(torch.long)  # str() important to cover nan
+        return one_hot_encode
+         
     
     def preprocess(self,):
         return
@@ -190,6 +234,7 @@ class Paired_MALDI_TOF_DS(Dataset):
         # DEBUG
         # square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
 
+        # Must be sorted to maintain train/test set consistency 
         self.all_accessions = np.sort(np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values))))
 
         # assert 'strain_B016' in self.all_accessions
@@ -212,13 +257,24 @@ class Paired_MALDI_TOF_DS(Dataset):
         accession_a = self.all_accessions[idx % len(self.all_accessions)]
         strain_name_a = self.sample_strain_from_accession(accession_a)
 
-        strain_name_b, accession_b, similarity = self.find_match_in_range(accession_a, strain_name_a, np.random.randint(0, self.sim_bins.shape[0] - 1))
+        # DEBUG TO DELETE STUFF
+        rand_int = np.random.randint(0, self.sim_bins.shape[0] - 1)
+        accession_b = None
+        # while accession_b is None or accession_b in ['EF178692', 'AB184357', 'AB122711', 'AB184476', 'strain_B017', 'AB122711']:  # SS preprocessing
+        while accession_b is None or accession_b in ['strain_B032',]:            
+            strain_name_b, accession_b, similarity = self.find_match_in_range(accession_a, strain_name_a, rand_int)
         spectrum_a = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_a}.pt', weights_only=True).to(torch.float32)
         spectrum_b = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_b}.pt', weights_only=True).to(torch.float32)
 
         if self.transform:
-            spectrum_a = self.transform(spectrum_a)
-            spectrum_b = self.transform(spectrum_b)
+            try:
+                spectrum_a = self.transform(spectrum_a)
+            except Exception as e:
+                raise RuntimeError(f"Error transforming spectrum_a for strain {strain_name_a} with accession {accession_a}") from e
+            try:
+                spectrum_b = self.transform(spectrum_b)
+            except Exception as e:
+                raise RuntimeError(f"Error transforming spectrum_b for strain {strain_name_b} with accession {accession_b}") from e
 
         num_peaks_in_a = None
         num_peaks_in_b = None
@@ -273,7 +329,10 @@ class Paired_MALDI_TOF_DS(Dataset):
         })
 
         if self.transform:
-            spectrum = self.transform(spectrum)
+            try:
+                spectrum = self.transform(spectrum)
+            except Exception as e:
+                raise RuntimeError(f"Error transforming spectrum for strain {strain_name} with accession {accession}") from e
 
         return spectrum, metadata
 
@@ -406,14 +465,22 @@ class Paired_MALDI_TOF_DS(Dataset):
             clustered_accessions = _merge_smallest_clusters(clustered_accessions)
 
         cluster_counts = clustered_accessions.cluster.value_counts()
-
         train_cluster_id = cluster_counts.idxmax().item()
         val_cluster_id = cluster_counts.idxmin().item()
         test_cluster_id = cluster_counts[cluster_counts.index != train_cluster_id].idxmax().item()
+        print("train_cluster_id", train_cluster_id)
+        print("val_cluster_id", val_cluster_id)
+        print("test_cluster_id", test_cluster_id)
+
+        print("clustered_accessions", clustered_accessions)
 
         train_accessions = clustered_accessions.loc[clustered_accessions.cluster == train_cluster_id, 'accession'].values
         val_accessions = clustered_accessions.loc[clustered_accessions.cluster == val_cluster_id, 'accession'].values
         test_accessions = clustered_accessions.loc[clustered_accessions.cluster == test_cluster_id, 'accession'].values
+
+        print('train_accessions', train_accessions)
+        print('val_accessions', val_accessions)
+        print('test_accessions', test_accessions)
 
         # Convert accessions to indices
         train_indices = [np.where(self.all_accessions == x)[0][0] for x in train_accessions]
@@ -509,8 +576,11 @@ class ExhaustiveSampler():
     def _iter_strains(self):
         for i in range(self.num_strains):
             for j in range(i+1, self.num_strains):
-                strain_a, meta_a = self.data.get_by_strain_name(self.all_strains[i])
-                strain_b, meta_b = self.data.get_by_strain_name(self.all_strains[j])
+                try:
+                    strain_a, meta_a = self.data.get_by_strain_name(self.all_strains[i])
+                    strain_b, meta_b = self.data.get_by_strain_name(self.all_strains[j])
+                except Exception as e:
+                    continue
 
                 sim = self.data.similarities.loc[meta_a['accession'], meta_b['accession']]
                 # if np.isnan(sim):
@@ -604,6 +674,20 @@ def test_single_ds_sample_strain_from_accession(single_ds):
 
 def test_single_ds_preprocess(single_ds):
     single_ds.preprocess()
+
+def test_single_ds_metadata(single_ds):
+    metadata_df = pd.read_csv('../../data/idbac_db/raw/db.csv', nrows=5)
+    accession = metadata_df['Genbank accession'].str.split('.').str[0].values[0]
+    metadata = single_ds.sample_strain_from_accession(accession)
+    assert 'accession' in metadata
+    assert 'Strain name' in metadata
+    assert 'genus' in metadata
+
+    assert metadata['accession'] == accession
+    assert metadata['Strain name'] == metadata_df['Strain name'].values[0]
+    assert metadata['genus'] == metadata_df['genus'].values[0]
+
+
 
 @pytest.fixture
 def driams_ds():

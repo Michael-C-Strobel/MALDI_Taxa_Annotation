@@ -1,8 +1,11 @@
 import logging
 from decimal import Decimal
 
-def init_logging():
-    logging.basicConfig(level=logging.DEBUG)
+def init_logging(debug:bool=True):
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
 
 def convert_to_serializable(obj):

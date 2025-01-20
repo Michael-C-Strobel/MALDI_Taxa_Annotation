@@ -26,8 +26,8 @@ def main():
         'dropout': 0.2,
         'lr': 5e-4,
         'weight_decay': 1e-5,
-        'freeze_encoder': False,
-        'encoder_path': './lightning_logs/maldi_transformer_model/version_175/checkpoints/epoch=2193-step=43880.ckpt'
+        'freeze_encoder': True,
+        'encoder_path': './lightning_logs/maldi_transformer_model/version_204/checkpoints/epoch=9899-step=198000.ckpt'
     }
 
     # logger = TensorBoardLogger('lightning_logs', name='autoencoder_contrastive_model')
@@ -81,10 +81,11 @@ def main():
     
     lr_find_results = tuner.lr_find(model,
                                     datamodule,
-                                    min_lr=0.0001,   # 0.001
-                                    max_lr=1.0,    # 1.0
+                                    min_lr=0.00001,   # 0.001
+                                    max_lr=0.001,    # 1.0
                                     early_stop_threshold=None)
     model.lr = lr_find_results.suggestion()
+    model.lr = 0.00005
     print("Best learning rate: ", model.lr)
 
     trainer.fit(model, datamodule)

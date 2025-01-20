@@ -51,7 +51,12 @@ def compute_clustering_scores(y_true, y_pred, figure_path:Path=None, method:str=
     nan_trues = np.isnan(y_true)
     if sum(nan_trues) > 0:
         print("Warning: NaNs in true similarity matrix")
-        return None
+        return {
+        'fowlkes_mallows': None,
+        'rand_index': None,
+        'nmi': None,
+        'ami': None,
+    }
 
     # Cluster
     y_true = 1 - np.array(y_true)

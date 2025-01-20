@@ -52,10 +52,12 @@ class Transformer(nn.Module):
         dropout=0.2,
         reduce="none",
         output_head_dim=64,
+        padding_value=None
     ):
         super().__init__()
 
         self.embed = nn.Linear(1, dim)
+        self.padding_value = padding_value
 
         # This is particularly unfaithful to the source code
         self.transformer = nn.TransformerEncoder(
@@ -76,7 +78,11 @@ class Transformer(nn.Module):
         self.output_head = nn.Linear(dim, output_head_dim)
 
     def forward(self, spectrum):
-        padding = (spectrum[:,:,0] == 0).bool()    # True indicates padding
+        if self.padding_value is not None:
+            padding = (spectrum[:,:,0] == self.padding_value).bool()    # True indicates padding
+            # print(f"Found a total of {torch.sum(padding)} padding values, {torch.sum(padding)/padding.numel() }%")
+        else:
+            padding = None
         z = spectrum[:,:,1]
 
         if torch.isnan(z).any():
@@ -91,28 +97,18 @@ class Transformer(nn.Module):
         # If all nan, raise an error
         if torch.isnan(z).all():
             raise ValueError("All intensity embeddings are NaN")
-        if torch.isnan(z)[~padding].any():
-            raise ValueError("Nan values in z that aren't in padding")
+        if padding is not None:
+            if torch.isnan(z)[~padding].any():
+                raise ValueError("Nan values in z that aren't in padding")
         z = self.positional_encoding(z, pos=spectrum[:,:,0])    # Use m/z values as positions
 
         if torch.isnan(z)[~padding].any():
             raise ValueError("Nan values in z that aren't in padding")
 
-        modified_z = z.detach().clone()
-        modified_z[padding] = 0
-
-        if torch.isnan(modified_z).any():
-            raise ValueError("Nan values in modified_z that aren't in padding")
-
-        z = self.transformer(z, src_key_padding_mask=None) # Somehow, we don't actually allow padding?
-
-        # Assert nothing is nan that isn't padded
-        # print(z.shape)
-        # print("torch.isnan(z)[~padding]", torch.isnan(z)[~padding].shape)
-        # print(z)
+        z = self.transformer(z, src_key_padding_mask=padding) # Somehow, we don't actually allow padding?
 
         if torch.isnan(z).all():
-            raise ValueError("All values in z are NaN")    # WHY IS IT ERRORING HERE?
+            raise ValueError("All values in z are NaN")
         if torch.isnan(z)[~padding].any():
             raise ValueError("Nan values in z that aren't in padding")
 
@@ -133,7 +129,8 @@ class Transformer(nn.Module):
 class MaldiTransformer(LightningModule):
     def __init__(
         self,
-        hyperparameters
+        hyperparameters,
+        padding_value:float=None
     ):
         super().__init__()
 
@@ -160,6 +157,8 @@ class MaldiTransformer(LightningModule):
             self.hparams.update({key: hyperparameters[key]})
         self.save_hyperparameters()
 
+        self.padding_value = padding_value
+
         depth = self.hparams.depth
         dim = self.hparams.dim
         n_classes = self.hparams.n_classes
@@ -182,6 +181,7 @@ class MaldiTransformer(LightningModule):
             dropout=dropout,
             reduce="none",
             output_head_dim=n_classes,
+            padding_value=padding_value
         )
 
         self.output_head = nn.Linear(dim, 1)
@@ -283,6 +283,7 @@ class MaldiTransformer(LightningModule):
 
 
     def validation_step(self, batch, batch_idx):
+        raise NotImplementedError("Validation step not implemented")
         batch["intensity"] = batch["intensity"].to(self.dtype)
         batch["mz"] = batch["mz"].to(self.dtype)
 
@@ -358,89 +359,6 @@ class MaldiTransformer(LightningModule):
             logits_train,
             trues_train,
         )
-
-    # def shuffler(self, batch):
-    #     batch = batch.detach().clone()
-    #     mz = batch[:, :, 0]
-    #     intensity = batch[:, :, 1]
-
-    #     all_indices = torch.stack(torch.where(mz)).T
-    #     # all_indices = torch.stack(torch.where(~torch.isnan(intensity))).T
-
-    #     if self.prop:
-    #         raise NotImplementedError("Proportional shuffling not implemented")
-    #         intensities_norm = (
-    #             (intensity / intensity.sum(1)[:, None]).reshape(-1).cpu().numpy()
-    #         )
-    #         shuff, pos = torch.chunk(
-    #             torch.tensor(
-    #                 np.random.choice(
-    #                     len(all_indices),
-    #                     int(len(all_indices) * self.p),
-    #                     replace=False,
-    #                     p=(intensities_norm / intensities_norm.sum()),
-    #                 ),
-    #                 device=all_indices.device,
-    #             ),
-    #             2,
-    #         )
-
-    #     else:
-    #         desired_num = int(len(all_indices) * self.p)
-    #         if desired_num % 2 != 0:
-    #             desired_num -= 1
-
-    #         shuff, pos = torch.chunk(
-    #             torch.randperm(len(all_indices), device=all_indices.device)[
-    #                 : desired_num
-    #             ],
-                
-    #             2,
-    #         )
-
-    #     shuffled_shuff = shuff[torch.randperm(len(shuff), device=shuff.device)]
-
-    #     # Boolean mask that merges where peaks will be disjoint?
-    #     indexer = (all_indices[shuff] != all_indices[shuffled_shuff])[:, 0]
-
-    #     shuff = shuff[indexer]
-    #     shuffled_shuff = shuffled_shuff[indexer]
-    #     pos = pos[indexer]
-
-    #     train_indices = torch.zeros_like(mz.bool())
-    #     train_indices[all_indices[pos][:, 0], all_indices[pos][:, 1]] = True
-    #     train_indices[all_indices[shuff][:, 0], all_indices[shuff][:, 1]] = True
-
-    #     intensity_true = torch.ones_like(mz).long()
-    #     intensity_true[all_indices[shuff][:, 0], all_indices[shuff][:, 1]] = 0
-
-    #     all_indices[shuff] = all_indices[shuffled_shuff]
-
-    #     # Repad the batch
-    #     # new_mz = torch.ones_like(mz) * torch.nan
-    #     new_mz = torch.zeros_like(mz)
-    #     # new_intensity = torch.ones_like(intensity) * torch.nan
-    #     new_intensity = torch.zeros_like(intensity)# * torch.nan
-    #     if (mz[all_indices[:, 0], all_indices[:, 1]]==0).any():
-    #         raise ValueError("Nan values in new_mz")
-    #     if (intensity[all_indices[:, 0], all_indices[:, 1]]==0).any():
-    #         raise ValueError("Nan values in new_intensity")
-        
-    #     mz_to_copy = mz[all_indices[:, 0], all_indices[:, 1]].view(mz.shape[0], -1)
-    #     new_mz[:mz_to_copy.shape[0], :mz_to_copy.shape[1]] = mz_to_copy
-        
-    #     intensity_to_copy = intensity[all_indices[:, 0], all_indices[:, 1]].view(intensity.shape[0], -1)
-    #     new_intensity[:intensity_to_copy.shape[0], :intensity_to_copy.shape[1]] = intensity_to_copy
-
-    #     batch[:, :, 0] = new_mz
-    #     batch[:, :, 1] = new_intensity
-
-    #     # Not idea what these are yet
-    #     return {
-    #             'modified_batch': batch,
-    #             'train_indices': train_indices,
-    #             'intensity_true': intensity_true,
-    #             }
     
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
@@ -461,7 +379,80 @@ class MaldiTransformer(LightningModule):
 
         return [optimizer], [scheduler]
     
-    def shuffler(self, batch):
+    def _padded_shuffler(self, batch):
+        """Shuffles peaks between spectra, and returns the shuffled spectra. Will not shuffle padding tokents.
+        Notably this function is not fully vectorized and may inversely affect performance.
+        
+        Args:
+            batch: Tensor of shape (batch_size, seq_len, 2) - Batch of spectra.
+
+        Returns:
+            modified_batch: Tensor of shape (batch_size, seq_len, 2) - Shuffled spectra.
+            train_indices: Tensor of shape (batch_size, seq_len) - Boolean mask of shuffled peaks.
+            intensity_true: Tensor of shape (batch_size, seq_len) - Boolean mask of shuffled peaks.
+        """
+        batch = batch.detach().clone()
+        mz = batch[:, :, 0]
+        intensity = batch[:, :, 1]
+        batch_size = len(batch)
+        assert batch_size > 1, "Batch size must be greater than 1 for padded shuffling"
+        assert self.padding_value is not None, "Padding value must be set for padded shuffling"
+
+        lengths_per_batch = torch.sum(mz != self.padding_value, dim=1)
+        desired_nums = (lengths_per_batch * self.p).long()
+
+        # For each spectrum, randomly sample desired_nums[i] from (0,lengths_per_batch[i]) 
+        rand_perms = [torch.randperm(lengths_per_batch[i]) for i in range(batch_size)]
+        indices_to_drop = [perm[:desired_nums[i]] for i,perm in enumerate(rand_perms)]
+
+        # Randomly sample additional indices to train on 
+        positive_indices = [perm[desired_nums[i]:desired_nums[i]*2] for i,perm in enumerate(rand_perms)]
+
+        # For each spectrum, randomly sample desired_nums[i] for 0,lengths_per_batch[k]) for k!= i, where k is in the index of random source spectra
+        # For each target spectrum, generate a list of source spectra of length desired_nums[i]
+        # Weighted sample
+        weights = torch.ones(batch_size, batch_size)
+        weights[torch.eye(batch_size).bool()] = 0
+        source_spectra = [torch.multinomial(weights[i], desired_nums[i], replacement=True) for i in range(batch_size)]
+        # For each source spectra, sample desired_nums[i] from (0,lengths_per_batch[i])
+        source_indices = [(source_spectra[i], torch.stack([torch.randperm(lengths_per_batch[k])[0] for k in source_spectra[i]])) for i in range(batch_size)]
+        # source_indices is now a list of [(source_spectra_index, peak_num)] for each target spectrum
+        
+        # For each spectrum, replace the indices to drop with the source indices
+        new_mz = mz.clone()
+        new_intensity = intensity.clone()
+        for i in range(batch_size):
+            new_mz[i, indices_to_drop[i]] = mz[source_indices[i]]
+            new_intensity[i, indices_to_drop[i]] = intensity[source_indices[i]]
+
+        # Create the boolean mask that selects the indices we will train on (shuffled peaks, and positive/static peaks)
+        train_indices = torch.zeros_like(mz).bool()
+        for i in range(batch_size):
+            train_indices[i, torch.concat([indices_to_drop[i], positive_indices[i]])] = True
+
+        # Create the boolean target vector for shuffled/not shuffled predictionv
+        intensity_true = torch.ones_like(mz).long()
+        for i in range(batch_size):
+            intensity_true[i, indices_to_drop[i]] = 0
+
+        return {
+            'modified_batch': torch.stack([new_mz, new_intensity], dim=-1),
+            'train_indices': train_indices,
+            'intensity_true': intensity_true,
+        }
+
+    def _standard_shuffler(self, batch)->dict:
+        """
+        Shuffles peaks between spectra, and returns the shuffled spectra. Can include padding tokens
+
+        Args:
+            batch: Tensor of shape (batch_size, seq_len, 2) - Batch of spectra.
+
+        Returns:
+            modified_batch: Tensor of shape (batch_size, seq_len, 2) - Shuffled spectra.
+            train_indices: Tensor of shape (batch_size, seq_len) - Boolean mask of shuffled peaks.
+            intensity_true: Tensor of shape (batch_size, seq_len) - Boolean mask of shuffled peaks.
+        """
         batch = batch.detach().clone()
         mz = batch[:, :, 0]
         intensity = batch[:, :, 1]
@@ -480,7 +471,6 @@ class MaldiTransformer(LightningModule):
         )
         shuffled_shuff = shuff[torch.randperm(len(shuff), device=shuff.device)] # Randomly shuffle the indices we will shuffle
 
-        # print('all_indices[shuffled_shuff]', all_indices[shuffled_shuff])
         indexer = (all_indices[shuff] != all_indices[shuffled_shuff])[:, 0] # Boolean mask for only the indices not equal to each other
 
 
@@ -499,10 +489,14 @@ class MaldiTransformer(LightningModule):
 
         new_mz = mz[all_indices[:, 0], all_indices[:, 1]].view(mz.shape[0], -1)
         new_intensity = intensity[all_indices[:, 0], all_indices[:, 1]].view(intensity.shape[0], -1)
-        intensity_true = intensity_true
-        train_indices = train_indices
         return {
             'modified_batch': torch.stack([new_mz, new_intensity], dim=-1),
             'train_indices': train_indices,
             'intensity_true': intensity_true,
         }
+
+    def shuffler(self, batch):
+        if self.padding_value is not None:
+            return self._padded_shuffler(batch)
+        else:
+            return self._standard_shuffler(batch)
