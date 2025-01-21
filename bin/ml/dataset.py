@@ -10,6 +10,7 @@ from torch import default_generator
 from torch.utils.data import Subset, Sampler, IterableDataset
 import scipy
 import pytest
+import copy
 
 import time
 
@@ -53,7 +54,8 @@ class single_MALDI_TOF_DS(Dataset):
                 root_dir:str,
                 process:bool=True,
                 transform:callable=None,
-                balance:str='accession'):
+                balance:str='accession',
+                require_genus:bool=False):
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
@@ -76,10 +78,30 @@ class single_MALDI_TOF_DS(Dataset):
         metadata_table = metadata_table.drop_duplicates(subset='Strain name')   # Some strains occur twice due to multuple csv files
 
         self.metadata_table = metadata_table
+        if require_genus:
+            self.metadata_table = self.metadata_table.loc[self.metadata_table['genus'].notna()]
+
         self.transform = transform
 
         self.num_turns = 2
-        
+
+        similarities = Path(self.root_dir) / 'similarities.feather'
+        self.similarities = None
+        if similarities.exists():
+            temp_similarities = pd.read_feather(similarities)
+            post_filtration_accessions = self.metadata_table.accession.unique()
+            temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(post_filtration_accessions) & \
+                                                  temp_similarities['subject_genbank'].isin(post_filtration_accessions)]
+            square_similarities = temp_similarities.pivot_table(index='query_genbank', columns='subject_genbank', values='pident')
+            # Set Diag to 100
+            np.fill_diagonal(square_similarities.values, 100)
+            
+            # Ensure actually square
+            if square_similarities.shape[0] != square_similarities.shape[1]:
+                raise ValueError(f"Similarities matrix is not square: {square_similarities.shape}")
+            self.similarities = square_similarities
+
+
         if not process:
             preprocessing_dir_stat = Path(self.preprocessing_dir).stat()
             most_recent_m_time = get_most_recent_modified_time()
@@ -96,12 +118,16 @@ class single_MALDI_TOF_DS(Dataset):
         else:
             self.preprocess()
 
-        self.all_accessions = self.metadata_table['accession'].unique()
+        self.all_accessions = self.metadata_table.loc[self.metadata_table['accession'].notna(), 'accession'].unique().astype(str)
+        
+        if self.similarities is not None:
+            self.all_accessions = np.intersect1d(self.all_accessions, self.similarities.index.values.astype(str))
+            self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
+
         # DEBUG, TEMPORARY
         # Remove any accessions whose spectra were removed
         removed = ['strain_B032', 'nan']
         self.all_accessions = np.array([x for x in self.all_accessions if not (str(x) in removed)])
-        print(self.all_accessions)
 
         self.n_genus = len(self.metadata_table['genus'].unique())
 
@@ -154,7 +180,132 @@ class single_MALDI_TOF_DS(Dataset):
             return torch.Tensor([self.one_hot_encoder[str(x)] for x in classes]).to(torch.long)  # str() important to cover nan
         return one_hot_encode
          
-    
+    def _genus_triplets(self, metadata:dict):
+        """ Generates positive and negative triplets based on genus.
+
+        The positive triplet is from the same genus, while the negative triplet is from a different genus.
+
+        Args:
+            metadata (dict): The metadata dictionary.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: The positive and negative triplets.
+            Tuple[dict, dict]: The positive and negative metadata.
+        """
+
+        anchor_strain_name = metadata['Strain name']
+        anchor_accession = metadata['accession']
+        anchor_class = metadata['class']
+
+        # Positive triplet
+        positive_mask = (self.metadata_table['genus'] == anchor_class)
+
+        # Valid distance
+        relevant_dists = self.similarities.loc[anchor_accession, :].notna()
+        # print("na distances found", (len(relevant_dists) - sum(relevant_dists)))
+        relevant_dists = relevant_dists.loc[relevant_dists].index.values.tolist()
+        r_dists =relevant_dists
+        relevant_dists = self.metadata_table['accession'].astype(str).isin(relevant_dists)
+        # print("relevant_dists", relevant_dists.sum(), '/', len(relevant_dists))
+        # print("relevant_dists", relevant_dists.sum())
+        # print("positive_mask", positive_mask.sum())
+        positive_mask = positive_mask & relevant_dists
+
+        assert positive_mask.index.equals(self.metadata_table.index)
+
+        all_possible_accessions = self.metadata_table.loc[positive_mask, 'accession'].values.tolist()
+        # print('len(self.metadata_table)', len(self.metadata_table))
+        # print('len(all_possible_accessions)', len(all_possible_accessions))
+        # print('sum(positive_mask)', sum(positive_mask))
+        # print('len(pos_mask)', len(positive_mask))
+
+
+        if self.similarities.loc[anchor_accession, all_possible_accessions].isna().any():
+            print("self.similarities.loc[anchor_accession, all_possible_accessions].isna().any()")
+            print(self.similarities.loc[anchor_accession, all_possible_accessions].isna().any(), flush=True)
+
+
+            # Get location where this happens
+            print("anchor_accession", anchor_accession)
+            missing_accessions = []
+            for accession in all_possible_accessions:
+                if np.isnan(self.similarities.at[anchor_accession, accession]):
+                    print(f"Missing similarity for {accession}")
+                    print('In relevant_dists', accession in r_dists)
+                    idx_in_metadata = (self.metadata_table[self.metadata_table['accession'] == accession]).index
+                    print('In positive_mask', positive_mask[idx_in_metadata])
+                    print('value in relevant_dists', relevant_dists[idx_in_metadata])   
+                    missing_accessions.append(accession)
+
+            raise ValueError(f"Positive mask contains NaN values for {anchor_accession}")
+
+        # new_positive_mask = positive_mask & \
+        #                 (self.metadata_table['Strain name'] != anchor_strain_name)
+        # if sum(new_positive_mask) > 0:   # Avoid self comparison if possible
+        #     positive_mask = new_positive_mask
+        
+        positive_row = self.metadata_table[positive_mask].sample(1).to_dict(orient='records')[0]
+        positive_metadata = {
+            'accession': positive_row['accession'],
+            'Strain name': positive_row['Strain name'],
+            'class': positive_row['genus'],
+            'database_id': positive_row['database_id'],
+        }
+        pos_sim = self.similarities.loc[anchor_accession, positive_metadata['accession']]
+        positive_spectrum = torch.load(Path(self.root_dir) / 'spectra' / f"{positive_metadata['Strain name']}.pt", weights_only=True).to(torch.float32)
+
+        if self.transform:
+            try:
+                positive_spectrum = torch.tensor(self.transform(positive_spectrum))
+            except Exception as e:
+                raise RuntimeError(f"Error transforming positive spectrum for strain {positive_metadata['Strain name']} with accession {positive_metadata['accession']}") from e
+
+        # Negative triplet
+        negative_row = self.metadata_table[self.metadata_table['genus'] != anchor_class].sample(1).to_dict(orient='records')[0]
+        negative_metadata = {
+            'accession': negative_row['accession'],
+            'Strain name': negative_row['Strain name'],
+            'class': negative_row['genus'],
+            'database_id': negative_row['database_id'],
+        }
+        neg_sim = self.similarities.loc[metadata['accession'], negative_metadata['accession']]
+        negative_spectrum = torch.load(Path(self.root_dir) / 'spectra' / f"{negative_metadata['Strain name']}.pt", weights_only=True).to(torch.float32)
+
+        if self.transform:
+            try:
+                negative_spectrum = torch.tensor(self.transform(negative_spectrum))
+            except Exception as e:
+                raise RuntimeError(f"Error transforming negative spectrum for strain {negative_metadata['Strain name']} with accession {negative_metadata['accession']}") from e
+
+        pos_sim = pos_sim/100
+        assert 0.0 <= pos_sim <= 1.0, f"pos_sim is {pos_sim} for {metadata['accession']} and {positive_metadata['accession']}"
+        # We don't actually care, since we're not backpropogating on it:
+        # neg_sim = neg_sim/100
+        # assert 0.0 <= neg_sim <= 1.0, f"neg_sim is {neg_sim}"
+
+
+        return (positive_spectrum, negative_spectrum), (positive_metadata, negative_metadata), (pos_sim, neg_sim)
+
+    def generate_triplets(self, spectrum:torch.Tensor, metadata:dict, strategy:str='genus'):
+        """ Generates the positive and negative triplets for a given metadata input and strategy.
+
+        Args:
+            metadata (dict): The metadata dictionary.
+            strategy (str, optional): The strategy to use for generating triplets. Defaults to 'genus'.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: The positive and negative triplets.
+            Tuple[dict, dict]: The positive and negative metadata.
+        """
+
+        if strategy == 'genus':
+            (positive_spectrum, negative_spectrum), (positive_metadata, negative_metadata), (pos_sim, neg_sim) = self._genus_triplets(metadata)
+        else:
+            raise ValueError(f"Unknown strategy: {strategy}")
+
+        return (torch.tensor(spectrum), positive_spectrum, negative_spectrum), (metadata, positive_metadata, negative_metadata), (None, pos_sim, neg_sim)
+        
+
     def preprocess(self,):
         return
         if not (Path(self.root_dir) / 'spectra/').exists():
@@ -468,19 +619,19 @@ class Paired_MALDI_TOF_DS(Dataset):
         train_cluster_id = cluster_counts.idxmax().item()
         val_cluster_id = cluster_counts.idxmin().item()
         test_cluster_id = cluster_counts[cluster_counts.index != train_cluster_id].idxmax().item()
-        print("train_cluster_id", train_cluster_id)
-        print("val_cluster_id", val_cluster_id)
-        print("test_cluster_id", test_cluster_id)
+        # print("train_cluster_id", train_cluster_id)
+        # print("val_cluster_id", val_cluster_id)
+        # print("test_cluster_id", test_cluster_id)
 
-        print("clustered_accessions", clustered_accessions)
+        # print("clustered_accessions", clustered_accessions)
 
         train_accessions = clustered_accessions.loc[clustered_accessions.cluster == train_cluster_id, 'accession'].values
         val_accessions = clustered_accessions.loc[clustered_accessions.cluster == val_cluster_id, 'accession'].values
         test_accessions = clustered_accessions.loc[clustered_accessions.cluster == test_cluster_id, 'accession'].values
 
-        print('train_accessions', train_accessions)
-        print('val_accessions', val_accessions)
-        print('test_accessions', test_accessions)
+        # print('train_accessions', train_accessions)
+        # print('val_accessions', val_accessions)
+        # print('test_accessions', test_accessions)
 
         # Convert accessions to indices
         train_indices = [np.where(self.all_accessions == x)[0][0] for x in train_accessions]
@@ -501,9 +652,35 @@ class Paired_MALDI_TOF_DS(Dataset):
         train_indices = np.repeat(train_indices, self.num_turns)
         val_indices = np.repeat(val_indices, self.num_turns)
 
-        return (Subset(self, train_indices), Subset(self, val_indices), Subset(self, test_indices)), \
+        return (self.subset(train_indices), self.subset(val_indices), self.subset(test_indices)), \
                 (train_indices, val_indices, test_indices)
 
+    def subset(self, indices):
+        # Make a copy, in this way the sliced similarities can be used to identify the subset
+        subset_dataset = copy.deepcopy(self)
+        # Match indices to accessions
+        mapped_indices = [idx % len(self.all_accessions) for idx in indices]    # TODO: This is untennable. Need to switch to unique IDS
+        accessions = self.all_accessions[mapped_indices]
+
+        # Remove any accessions whose spectra were removed
+        subset_dataset.sliced_similarities = {k: v.loc[v['subject_genbank'].isin(accessions)] for k, v in self.sliced_similarities.items() if str(k) in accessions}       # OVERLAPS FOR EACH SUBSET
+
+        # The same thing but long-winded and good for debugging:
+        # updated_sliced_similarities = {}
+        # for k, v in self.sliced_similarities.items():
+        #     print(f"Checking key: {k}")
+        #     if k in accessions:
+        #         print(f"Key {k} is in accessions")
+        #         filtered_values = v.loc[v['subject_genbank'].isin(accessions)]
+        #         print(f"Filtered DataFrame for key {k} from {v.shape} to {filtered_values.shape}")
+        #         updated_sliced_similarities[k] = filtered_values
+        #     else:
+        #         print(f"Key {k} is NOT in accessions and will be removed")
+
+        # # Update self.sliced_similarities
+        # self.sliced_similarities = updated_sliced_similarities
+
+        return Subset(subset_dataset, indices)
 
     def plot_split(self,output_path:str=None):
         if self.linkage is None or self.clustered_accessions is None:

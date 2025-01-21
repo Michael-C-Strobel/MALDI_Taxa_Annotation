@@ -59,7 +59,6 @@ class Spectrum_DataModule(L.LightningDataModule):
             else:
                 # DEBUG Remove accessions ['EF178692', 'AB184357', 'AB122711', 'AB184476', 'strain_B017']:
                 indices_to_drop = []
-                print(self.full_dataset.all_accessions)
 
                 # For SS: ['EF178692', 'AB184357', 'AB122711', 'AB184476', 'strain_B017', 'AB122711']
 
@@ -73,8 +72,12 @@ class Spectrum_DataModule(L.LightningDataModule):
                 print("Number of train indices dropped: ", len(self.train_indices) - len(new_train_indices))
                 print("Number of val indices dropped: ", len(self.val_indices) - len(new_val_indices))
 
-                self.train_set = Subset(self.full_dataset, new_train_indices) #self.train_indices)
-                self.val_set = Subset(self.full_dataset, new_val_indices) #self.val_indices)
+                # self.train_set = Subset(self.full_dataset, new_train_indices) #self.train_indices)                                                              # THIS IS A BUG, THIS WILL CAUSE DATA LEAKAGE FOR CROSS-SET PAIRS
+                # self.val_set = Subset(self.full_dataset, new_val_indices) #self.val_indices)
+
+                self.train_set = self.full_dataset.subset(new_train_indices)
+                self.val_set = self.full_dataset.subset(new_val_indices)
+
             print(f"Training Set Size {len(self.train_set)/self.full_dataset.num_turns}")
             print(f"Validation Set Size {len(self.val_set)/self.full_dataset.num_turns}")
         if stage == 'test':
@@ -145,22 +148,24 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
 def test_dataloader():
     dm = Spectrum_DataModule('../../data/idbac_db/preprocessing',
                             '../../data/idbac_db/raw/db.csv',
-                            '../../data/idbac_db/preprocessed',
-                            num_workers=1)
+                            '../../data/idbac_db/test_dir',
+                            num_workers=1,
+                            batch_size=1)
     dm.setup('fit')
     train_loader = dm.train_dataloader()
     val_loader = dm.val_dataloader()
     # Get one batch from each
     train_loader_iter = iter(train_loader)
     val_loader_iter = iter(val_loader)
-    print(next(train_loader_iter))
-    print(next(val_loader_iter))
+    next(train_loader_iter)
+    next(val_loader_iter)
 
 def test_single_dataloader():
     dm = SingleSpectrum_DataModule('../../data/idbac_db/preprocessing',
                             '../../data/idbac_db/raw/db.csv',
-                            '../../data/idbac_db/preprocessed',
-                            num_workers=1)
+                            '../../data/idbac_db/test_dir',
+                            num_workers=1,
+                            batch_size=1)
     dm.setup('fit')
     train_loader = dm.train_dataloader()
     # Get one batch from each
