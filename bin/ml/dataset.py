@@ -651,9 +651,32 @@ class Paired_MALDI_TOF_DS(Dataset):
         train_indices = np.repeat(train_indices, self.num_turns)
         val_indices = np.repeat(val_indices, self.num_turns)
 
-        return (Subset(self, train_indices), Subset(self, val_indices), Subset(self, test_indices)), \
+        return (self.subset(train_indices), self.subset(val_indices), self.subset(test_indices)), \
                 (train_indices, val_indices, test_indices)
 
+    def subset(self, indices):
+        # Match indices to accessions
+        accessions = self.all_accessions[indices]
+        
+        # Remove any accessions whose spectra were removed
+        self.sliced_similarities = {k: v.loc[v['subject_genbank'].isin(accessions)] for k, v in self.sliced_similarities.items() if k in accessions}
+
+        # The same thing but long-winded and good for debugging:
+        # updated_sliced_similarities = {}
+        # for k, v in self.sliced_similarities.items():
+        #     print(f"Checking key: {k}")
+        #     if k in accessions:
+        #         print(f"Key {k} is in accessions")
+        #         filtered_values = v.loc[v['subject_genbank'].isin(accessions)]
+        #         print(f"Filtered DataFrame for key {k} from {v.shape} to {filtered_values.shape}")
+        #         updated_sliced_similarities[k] = filtered_values
+        #     else:
+        #         print(f"Key {k} is NOT in accessions and will be removed")
+
+        # # Update self.sliced_similarities
+        # self.sliced_similarities = updated_sliced_similarities
+
+        return Subset(self, indices)
 
     def plot_split(self,output_path:str=None):
         if self.linkage is None or self.clustered_accessions is None:
