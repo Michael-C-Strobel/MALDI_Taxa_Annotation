@@ -12,26 +12,26 @@ from custom_transforms import *
 
 def main():
 
-    # hyperparameters = {
-    #     'input_dim': 1800,
-    #     'output_dim': 250,
-    #     'hidden_dim': 300,
-    #     'hidden_layers': 3,
-    #     'weight_decay': 1e-5,
-    #     'dropout': 0.2,
-    # }
-    Sentence_MALDI_hyperparameters = {
-            'input_dim': 1800,
-            'output_bin_edges': torch.Tensor([0, 0.95, 0.97, 0.99, 1.0]),
-            'hidden_dim': 300,
-            'hidden_layers': 3,
-            'weight_decay': 1e-5,
-            'dropout': 0.2,
+    hyperparameters = {
+        'input_dim': 1800,
+        'output_dim': 250,
+        'hidden_dim': 300,
+        'hidden_layers': 3,
+        'weight_decay': 1e-5,
+        'dropout': 0.2,
     }
+    # Sentence_MALDI_hyperparameters = {
+    #         'input_dim': 1800,
+    #         'output_bin_edges': torch.Tensor([0, 0.95, 0.97, 0.99, 1.0]),
+    #         'hidden_dim': 300,
+    #         'hidden_layers': 3,
+    #         'weight_decay': 1e-5,
+    #         'dropout': 0.2,
+    # }
 
-    # model = MLP(hyperparameters)
+    model = MLP(hyperparameters)
     # model = MLPClassifier(hyperparameters)
-    model = Sentence_MALDI(Sentence_MALDI_hyperparameters)
+    # model = Sentence_MALDI(Sentence_MALDI_hyperparameters)
     
     torch.set_float32_matmul_precision('medium')    # medium | high
     
@@ -55,7 +55,7 @@ def main():
 
         datamodule = SingleSpectrum_DataModule('../../data/idbac_db/preprocessing',
                             '../../data/idbac_db/raw/ammended_db.csv',
-                            '../../data/idbac_db/preprocessed',
+                            '../../data/idbac_db/processed_data',
                             num_workers=7,
                             transforms=trans,
                             )
@@ -66,7 +66,7 @@ def main():
 
         datamodule = Triplet_DataModule('../../data/idbac_db/preprocessing',
                             '../../data/idbac_db/raw/ammended_db.csv',
-                            '../../data/idbac_db/preprocessed',
+                            '../../data/idbac_db/processed_data',
                             num_workers=7,
                             transforms=trans)
 

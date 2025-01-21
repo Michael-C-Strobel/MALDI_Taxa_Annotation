@@ -75,8 +75,8 @@ class Spectrum_DataModule(L.LightningDataModule):
                 # self.train_set = Subset(self.full_dataset, new_train_indices) #self.train_indices)                                                              # THIS IS A BUG, THIS WILL CAUSE DATA LEAKAGE FOR CROSS-SET PAIRS
                 # self.val_set = Subset(self.full_dataset, new_val_indices) #self.val_indices)
 
-                self.train_test = self.full_dataset.subset(new_train_indices)
-                self.val_test = self.full_dataset.subset(new_val_indices)
+                self.train_set = self.full_dataset.subset(new_train_indices)
+                self.val_set = self.full_dataset.subset(new_val_indices)
 
             print(f"Training Set Size {len(self.train_set)/self.full_dataset.num_turns}")
             print(f"Validation Set Size {len(self.val_set)/self.full_dataset.num_turns}")
@@ -159,7 +159,7 @@ def test_dataloader():
     val_loader_iter = iter(val_loader)
     next(train_loader_iter)
     next(val_loader_iter)
-    
+
 def test_single_dataloader():
     dm = SingleSpectrum_DataModule('../../data/idbac_db/preprocessing',
                             '../../data/idbac_db/raw/db.csv',

@@ -10,6 +10,7 @@ from torch import default_generator
 from torch.utils.data import Subset, Sampler, IterableDataset
 import scipy
 import pytest
+import copy
 
 import time
 
@@ -655,11 +656,14 @@ class Paired_MALDI_TOF_DS(Dataset):
                 (train_indices, val_indices, test_indices)
 
     def subset(self, indices):
+        # Make a copy, in this way the sliced similarities can be used to identify the subset
+        subset_dataset = copy.deepcopy(self)
         # Match indices to accessions
-        accessions = self.all_accessions[indices]
-        
+        mapped_indices = [idx % len(self.all_accessions) for idx in indices]    # TODO: This is untennable. Need to switch to unique IDS
+        accessions = self.all_accessions[mapped_indices]
+
         # Remove any accessions whose spectra were removed
-        self.sliced_similarities = {k: v.loc[v['subject_genbank'].isin(accessions)] for k, v in self.sliced_similarities.items() if k in accessions}
+        subset_dataset.sliced_similarities = {k: v.loc[v['subject_genbank'].isin(accessions)] for k, v in self.sliced_similarities.items() if str(k) in accessions}       # OVERLAPS FOR EACH SUBSET
 
         # The same thing but long-winded and good for debugging:
         # updated_sliced_similarities = {}
@@ -676,7 +680,7 @@ class Paired_MALDI_TOF_DS(Dataset):
         # # Update self.sliced_similarities
         # self.sliced_similarities = updated_sliced_similarities
 
-        return Subset(self, indices)
+        return Subset(subset_dataset, indices)
 
     def plot_split(self,output_path:str=None):
         if self.linkage is None or self.clustered_accessions is None:
