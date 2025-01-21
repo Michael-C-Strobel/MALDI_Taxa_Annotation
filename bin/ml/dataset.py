@@ -304,6 +304,18 @@ class single_MALDI_TOF_DS(Dataset):
             raise ValueError(f"Unknown strategy: {strategy}")
 
         return (torch.tensor(spectrum), positive_spectrum, negative_spectrum), (metadata, positive_metadata, negative_metadata), (None, pos_sim, neg_sim)
+    
+    def subset(self, indices:List):
+        #  Make a copy, in this way the sliced similarities can be used to identify the subset
+        subset_dataset = copy.deepcopy(self)
+        # Match indices to accessions
+        mapped_indices = [idx % len(self.all_accessions) for idx in indices]    # TODO: This is untennable. Need to switch to unique IDS
+        accessions = np.unique(self.all_accessions[mapped_indices])
+
+        # Remove any accessions whose spectra were removed
+        subset_dataset.similarities = subset_dataset.similarities.loc[accessions, accessions]
+
+        return Subset(subset_dataset, indices)
         
 
     def preprocess(self,):
@@ -655,7 +667,7 @@ class Paired_MALDI_TOF_DS(Dataset):
         return (self.subset(train_indices), self.subset(val_indices), self.subset(test_indices)), \
                 (train_indices, val_indices, test_indices)
 
-    def subset(self, indices):
+    def subset(self, indices:List):
         # Make a copy, in this way the sliced similarities can be used to identify the subset
         subset_dataset = copy.deepcopy(self)
         # Match indices to accessions
