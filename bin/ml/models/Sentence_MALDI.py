@@ -207,15 +207,44 @@ class Sentence_MALDI(L.LightningModule):
         self.train_metrics.reset()
 
     def validation_step(self, batch, batch_idx):
-        raise NotImplementedError("Validation step not implemented")
-        spectrum_a, spectrum_b, similarity, metadata = batch
-        embed_1 = self(spectrum_a)
-        embed_2 = self(spectrum_b)
-        pred_sim = F.cosine_similarity(embed_1, embed_2)
+        spectra = [x[0] for x in batch]
+        metadata = [x[1] for x in batch]
+        similarities = [x[2] for x in batch]
 
-        loss = nn.functional.mse_loss(pred_sim, similarity)
-        batch_value = self.val_metrics(pred_sim, similarity)
+        # Unpack the batch
+        anchors = [x[0] for x in spectra]
+        positives = [x[1] for x in spectra]
+        negatives = [x[2] for x in spectra]
+
+        anchor_metadata = [x[0] for x in metadata]
+        positive_metadata = [x[1] for x in metadata]
+        negative_metadata = [x[2] for x in metadata]
+        
+        pos_similarities = torch.tensor([x[1] for x in similarities], device=self.device)
+        neg_similarities = torch.tensor([x[2] for x in similarities])
+
+        # Forward pass
+        pos_preds, neg_preds = self(torch.stack(anchors), torch.stack(positives), torch.stack(negatives))
+
+        # Calculate loss
+        pos_targets = self.transform_to_classification(pos_similarities)
+        neg_targets = torch.ones_like(neg_similarities, device=self.device, dtype=torch.long) * (self.output_dim - 1)
+
+        # Underweight the negative samples (since they are guarenteed 50%, other classes split the remaining 50%)
+        class_weights = torch.ones(self.output_dim, device=self.device)
+        class_weights[-1] = 0.1
+
+        pos_loss = F.cross_entropy(pos_preds, pos_targets, weight=class_weights)
+        neg_loss = F.cross_entropy(neg_preds, neg_targets, weight=class_weights)
+        
+        loss = pos_loss + neg_loss
+        preds = torch.cat((pos_preds, neg_preds), dim=0)
+        targets = torch.cat((pos_targets, neg_targets), dim=0)
+
+        batch_value = self.val_metrics(preds, targets)
         self.log_dict(batch_value, on_epoch=True)
+        self.log('val_loss', loss, on_step=True, on_epoch=True)
+
         return loss
     
     def test_step(self, batch, batch_idx):

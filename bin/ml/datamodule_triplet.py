@@ -31,11 +31,35 @@ class Triplet_DataModule(L.LightningDataModule):
         
         self.batch_size = batch_size
 
+        # Get train/val/test indices
+        self.train_indices = None
+        self.val_indices = None
+        self.test_indices = None
+        if Path(self.root_dir)/'train_indices.pt':
+            self.train_indices = torch.load(Path(self.root_dir)/'train_indices.pt', weights_only=False)
+        if Path(self.root_dir)/'val_indices.pt':
+            self.val_indices = torch.load(Path(self.root_dir)/'val_indices.pt', weights_only=False)
+        if Path(self.root_dir)/'test_indices.pt':
+            self.test_indices = torch.load(Path(self.root_dir)/'test_indices.pt', weights_only=False)
+
     def prepare_data(self):
-       pass
+        pass
 
     def setup(self, stage:str):
-        pass
+        if stage == 'fit':
+           if self.train_indices is None or self.val_indices is None:
+               raise ValueError("Expected train_indices and val_indices to be set")
+           
+           self.train_set = self.full_dataset.subset(self.train_indices)
+           self.val_set   = self.full_dataset.subset(self.val_indices)
+
+           print("Train set size: ", len(self.train_set))
+           print("Val set size: ", len(self.val_set))
+        elif stage == 'test':
+           raise NotImplementedError("Test set not implemented yet")
+        
+        elif stage == 'all':
+            self.predict_set = self.full_dataset.subset(self.test_indices)
 
     def collate_fn(self, batch):
         # Note that the collate_fn is not parallelized, so this is less efficent than a __getitem__ implementation
@@ -45,14 +69,32 @@ class Triplet_DataModule(L.LightningDataModule):
 
     def train_dataloader(self):
         return DataLoader(
-                            self.full_dataset, 
+                            self.train_set, 
                             batch_size=self.batch_size, 
                             shuffle=True,
                             num_workers=self.num_workers,
                             collate_fn=self.collate_fn
                         )
     
-def test_single_dataloader():
+    def val_dataloader(self):
+        return DataLoader(
+                            self.val_set, 
+                            batch_size=self.batch_size, 
+                            shuffle=False,
+                            num_workers=self.num_workers,
+                            collate_fn=self.collate_fn
+                        )
+    
+    def test_dataloader(self):
+        return DataLoader(
+                            self.predict_set, 
+                            batch_size=self.batch_size, 
+                            shuffle=False,
+                            num_workers=self.num_workers,
+                            collate_fn=self.collate_fn
+                        )
+    
+def test_triplet():
     dm = Triplet_DataModule('../../data/idbac_db/preprocessing',
                             '../../data/idbac_db/raw/db.csv',
                             '../../data/idbac_db/preprocessed',
@@ -62,3 +104,18 @@ def test_single_dataloader():
     # Get one batch from each
     train_loader_iter = iter(train_loader)
     print(next(train_loader_iter))
+
+
+def test_triplet_tt_split():
+    dm = Triplet_DataModule('../../data/idbac_db/preprocessing',
+                            '../../data/idbac_db/raw/db.csv',
+                            '../../data/idbac_db/preprocessed',
+                            num_workers=1,)
+    dm.setup('fit')
+    train_loader = dm.train_dataloader()
+    val_loader   = dm.val_dataloader()
+    # Get one batch from each
+    train_loader_iter = iter(train_loader)
+    val_loader_iter = iter(val_loader)
+    print(next(train_loader_iter))
+    print(next(val_loader_iter))
