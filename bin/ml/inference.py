@@ -7,6 +7,7 @@ import lightning as L
 from torchvision import transforms
 from custom_transforms import *
 import numpy as np
+import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -20,10 +21,81 @@ from models.Sentence_MALDI import Sentence_MALDI
 
 from datamodule import Spectrum_DataModule
 from utils import mirror_plot, shannon_entropy, estimate_convexity
-import pandas as pd
 
 from scipy.cluster.hierarchy import dendrogram, linkage, cut_tree, cophenet
 from sklearn.metrics import fowlkes_mallows_score, adjusted_rand_score, normalized_mutual_info_score, adjusted_mutual_info_score
+
+def compute_information_imbalance(prediction_table:pd.DataFrame, output_path:Path, num_permutations=30, method='dense')->float:
+    """ Computes the information imbalance as described in https://doi.org/10.1093/pnasnexus/pgac039.
+    Briefly, the metric is descibed by two values Delta(B → A), Delta(A → B). Where
+    Delta(A → B) ≈ 2〈r^B | r^A = 1〉/ N where r is rank for similarity measures A and B, 
+    and brackets denote an expected value (which we compute explicity).
+
+    Note: This metric is calculated per accession, not per spectrum.
+
+    Parameters
+    ----------
+    prediction_table : pd.DataFrame
+        The DataFrame containing the predictions and metadata
+    output_path : Path
+        The path to save the output to
+
+    Returns
+    ----------
+    float
+        The information imbalance measurement
+    """
+    k =1
+    if method == 'dense':
+        num_permutations = 1
+    table = prediction_table.copy()
+    # Make the prediction_table 'square' by swapping accessions and concatenating
+    reversed_table = table.rename(columns={
+        'accession_a': 'accession_b',
+        'accession_b': 'accession_a'
+    })
+    table = pd.concat([table, reversed_table], ignore_index=True)
+    # Quantize table for fair comparison
+    table['true_similarity'] = np.round(table['true_similarity'], 2)
+    table['predicted_similarity'] = np.round(table['predicted_similarity'], 2)
+    def _compute_rank_metrics(k):
+        grouped = table.groupby('accession_a')
+        # Rank predicted and true similarities
+        table['predicted_rank'] = grouped['predicted_similarity'].rank(method=method).reset_index(drop=True)
+        table['true_rank'] = grouped['true_similarity'].rank(method=method).reset_index(drop=True)
+        # Calculate expected ranks
+        expected_rank_true_given_pred = []
+        expected_rank_pred_given_true = []
+        for accession, group in grouped:
+            true_rank_sel = group.loc[group['predicted_rank'] == k, 'true_rank']
+            pred_rank_sel = group.loc[group['true_rank'] == k, 'predicted_rank']
+            if len(true_rank_sel) == 0:
+                print(f"Warning: No values for group {accession} at predicted rank {k}")
+            expected_rank_true_given_pred.append(true_rank_sel.mean())
+            if len(pred_rank_sel) == 0:
+                print(f"Warning: No values for group {accession} at true rank {k}")
+            expected_rank_pred_given_true.append(pred_rank_sel.mean())
+        # Compute deltas
+        delta_pred_given_true = 2 * np.nanmean(expected_rank_true_given_pred) / max(table['true_rank'].max(), table['predicted_rank'].max()) 
+        delta_true_given_pred = 2 * np.nanmean(expected_rank_pred_given_true) / max(table['true_rank'].max(), table['predicted_rank'].max()) 
+        return delta_true_given_pred, delta_pred_given_true
+    deltas = []
+    for _ in range(num_permutations):
+        delta_true_given_pred, delta_pred_given_true = _compute_rank_metrics(k)
+        deltas.append((delta_true_given_pred, delta_pred_given_true))
+    avg_delta_true_given_pred = np.mean([d[0] for d in deltas])
+    avg_delta_pred_given_true = np.mean([d[1] for d in deltas])
+    information_imbalance = {
+        'delta_true_given_pred': avg_delta_true_given_pred,
+        'delta_pred_given_true': avg_delta_pred_given_true
+    }
+    print(information_imbalance)
+    # Write as json
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(information_imbalance, f, indent=4)
+
+    return information_imbalance
+
 
 
 def compute_clustering_scores(y_true, y_pred, figure_path:Path=None, method:str='average'):
@@ -261,6 +333,8 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
     # Save the summary DataFrame as a CSV file.
     summary_df.to_csv(output_path / "summary.csv", index=False)
 
+    return summary_df
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default=None)
@@ -393,7 +467,8 @@ def main():
 
     # Create a report of the worst predictions
     if len(metadata) > 0:
-        create_report(predictions, true_similarity, metadata, metric_path / "worst_predictions", k=5)
+        prediction_table = create_report(predictions, true_similarity, metadata, metric_path / "worst_predictions", k=5)
+        compute_information_imbalance(prediction_table, metric_path / "information_imbalance.txt")
 
     f = open(metric_path / "metrics.txt", 'w', encoding='utf-8')
 
