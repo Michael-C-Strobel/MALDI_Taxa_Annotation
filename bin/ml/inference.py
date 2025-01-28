@@ -25,7 +25,186 @@ from utils import mirror_plot, shannon_entropy, estimate_convexity
 from scipy.cluster.hierarchy import dendrogram, linkage, cut_tree, cophenet
 from sklearn.metrics import fowlkes_mallows_score, adjusted_rand_score, normalized_mutual_info_score, adjusted_mutual_info_score
 
-def compute_information_imbalance(prediction_table:pd.DataFrame, output_path:Path, num_permutations=30, method='dense')->float:
+def compute_taxa_clustering_scores(prediction_table:pd.DataFrame, output_path:Path, metadata:pd.DataFrame, tax_level:str='genus', plot=False)->dict:
+    """ Computes the average precision ('purity') and recall ('completeness') for each taxon at the specified taxonomic level. 
+    Metrics are returned with both macro and micro averages.
+
+    Parameters
+    ----------
+    prediction_table : pd.DataFrame
+        The DataFrame containing the predictions and metadata
+    output_path : Path
+        The path to save the output to
+    metadata : pd.DataFrame
+        The metadata associated with the spectra
+    tax_level : str, optional
+        The taxonomic level to compute clustering scores for, by default 'genus'    
+    """
+    table = prediction_table.copy()
+    # Make the prediction_table 'square' by swapping accessions and concatenating
+    reversed_table = table.rename(columns={
+        'accession_a': 'accession_b',
+        'accession_b': 'accession_a'
+    })
+    table = pd.concat([table, reversed_table], ignore_index=True)
+    
+    # Get the taxa for each accession
+    accession_taxa_mapping = metadata.set_index('Genbank accession')[tax_level].to_dict()
+
+    table['taxa_a'] = table['accession_a'].map(accession_taxa_mapping)
+    table['taxa_b'] = table['accession_b'].map(accession_taxa_mapping)
+    table['equal_taxa'] = table['taxa_a'] == table['taxa_b']
+
+    # Remove any taxa with only one member
+    table = table[table['taxa_a'].map(table['taxa_a'].value_counts()) > 1]
+
+    # Group by taxa
+    grouped = table.groupby('taxa_a')
+
+    # Compute precision and recall for each taxon across thresholds
+    thresholds = list(np.arange(-1.0, 1.1, 0.05))
+
+    micro_precision = []
+    micro_recall = []
+
+    num_positives = table.loc[table['equal_taxa'], 'equal_taxa'].sum()
+    for threshold in thresholds:
+        precision = table.loc[table['predicted_similarity'] >= threshold, 'equal_taxa'].mean()
+        tp = table.loc[(table['predicted_similarity'] >= threshold) & (table['equal_taxa']), 'equal_taxa'].sum()
+        recall = tp / num_positives
+
+        micro_precision.append(precision)
+        micro_recall.append(recall)
+
+    per_taxa_precision = []
+    per_taxa_recall = []
+
+    per_group_precision = {}
+    per_group_recall = {}
+    for taxa, group in grouped:
+        num_positives = group['equal_taxa'].sum()
+        group_precision = []
+        group_recall = []
+        for threshold in thresholds:
+            precision = group.loc[group['predicted_similarity'] >= threshold, 'equal_taxa'].mean() if len(group.loc[group['predicted_similarity'] >= threshold]) > 0 else 0
+            tp = group.loc[(group['predicted_similarity'] >= threshold) & (group['equal_taxa']), 'equal_taxa'].sum()
+            recall = tp / num_positives if num_positives > 0 else 0
+
+            group_precision.append(precision)
+            group_recall.append(recall)
+
+        per_group_precision[taxa] = group_precision
+        per_group_recall[taxa] = group_recall
+
+    per_taxa_precision = [np.nanmean([v[i] for v in per_group_precision.values()]) for i in range(len(thresholds))]
+    per_taxa_recall = [np.nanmean([v[i] for v in per_group_recall.values()]) for i in range(len(thresholds))]
+
+    clustering_scores = {
+        "params": {"tax_level": tax_level},
+        "thresholds": thresholds,
+        "micro_precision": micro_precision,
+        "micro_recall": micro_recall,
+        "per_taxa_precision": per_taxa_precision,
+        "per_taxa_recall": per_taxa_recall,
+        "per_group_precision": per_group_precision,
+        "per_group_recall": per_group_recall,
+    }
+
+    if not output_path.parent.exists():
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write as json
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(clustering_scores, f, indent=4)
+
+    if plot:
+        # Plot the precision recall curve for averaged scores
+        fig = plt.figure()
+
+        sorted_indices = np.argsort(micro_recall)
+        plt.plot(np.array(micro_recall)[sorted_indices], np.array(micro_precision)[sorted_indices], label="Micro Average")
+
+        plt.xlabel("Recall")
+        plt.ylabel("Precision")
+
+        plt.title(f"Precision-Recall Curve for Taxonomic Level: {tax_level}")
+        plt.xlim(0, 1)
+        plt.ylim(0, 1)
+        plt.savefig(output_path.parent / f"precision_recall_{tax_level}_micro.png")
+
+        # Macro average
+        fig = plt.figure()
+        plt.plot(per_taxa_recall, per_taxa_precision, label="Macro Average")
+
+        plt.xlabel("Recall")
+        plt.ylabel("Precision")
+
+        plt.title(f"Precision-Recall Curve for Taxonomic Level: {tax_level}")
+        plt.xlim(0, 1)
+        plt.ylim(0, 1)
+        plt.savefig(output_path.parent / f"precision_recall_{tax_level}_macro.png")
+
+
+    
+
+def compute_top_in_top_k(prediction_table:pd.DataFrame, output_path:Path, k_range:List[int]=[1, 3, 5, 7, 10])->List[float]:
+    """Computes the highest ground truth rank from rank 0-k. 
+    
+    Parameters
+    ----------
+    prediction_table : pd.DataFrame
+        The DataFrame containing the predictions and metadata
+    output_path : Path
+        The path to save the output to
+    k_range : List[int], optional
+        The range of k values to compute top in top k for, by default [1, 3, 5, 7, 10]
+    
+    Returns
+    -------
+    List[float]
+        The top in top k scores
+    """
+    table = prediction_table.copy()
+    # Make the prediction_table 'square' by swapping accessions and concatenating
+    reversed_table = table.rename(columns={
+        'accession_a': 'accession_b',
+        'accession_b': 'accession_a'
+    })
+    table = pd.concat([table, reversed_table], ignore_index=True)
+
+    grouped = table.groupby('accession_a')
+    # Rank predicted and true similarities
+    method='dense'
+    table['true_similarity'] = np.round(table['true_similarity'], 2)
+    table['predicted_similarity'] = np.round(table['predicted_similarity'], 2)
+    table['predicted_rank'] = grouped['predicted_similarity'].rank(method=method).reset_index(drop=True)
+    table['true_rank'] = grouped['true_similarity'].rank(method=method).reset_index(drop=True)
+    # Calculate the minimum rank for predicted rank 1...k
+    top_in_top_k = []
+    avg_in_top_k = []
+    for k in k_range:
+        per_accession = grouped.apply(lambda x: x.loc[x['predicted_rank'] <= k, 'true_rank'].min())
+        top_in_top_k.append(per_accession.mean())
+        per_accession = grouped.apply(lambda x: x.loc[x['predicted_rank'] <= k, 'true_rank'].mean())
+        avg_in_top_k.append(per_accession.mean())
+
+    top_in_top_k = {
+        'params': {'k_range': k_range, 'method': method},
+        'top_in_top_k': top_in_top_k,
+        'avg_in_top_k': avg_in_top_k,
+    }
+
+    if not output_path.parent.exists():
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write as json
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(top_in_top_k, f, indent=4)
+
+    return top_in_top_k
+
+
+def compute_information_imbalance(prediction_table:pd.DataFrame, output_path:Path, k:int=1, num_permutations:int=30, method='dense')->float:
     """ Computes the information imbalance as described in https://doi.org/10.1093/pnasnexus/pgac039.
     Briefly, the metric is descibed by two values Delta(B → A), Delta(A → B). Where
     Delta(A → B) ≈ 2〈r^B | r^A = 1〉/ N where r is rank for similarity measures A and B, 
@@ -45,7 +224,6 @@ def compute_information_imbalance(prediction_table:pd.DataFrame, output_path:Pat
     float
         The information imbalance measurement
     """
-    k =1
     if method == 'dense':
         num_permutations = 1
     table = prediction_table.copy()
@@ -78,18 +256,31 @@ def compute_information_imbalance(prediction_table:pd.DataFrame, output_path:Pat
         # Compute deltas
         delta_pred_given_true = 2 * np.nanmean(expected_rank_true_given_pred) / max(table['true_rank'].max(), table['predicted_rank'].max()) 
         delta_true_given_pred = 2 * np.nanmean(expected_rank_pred_given_true) / max(table['true_rank'].max(), table['predicted_rank'].max()) 
-        return delta_true_given_pred, delta_pred_given_true
+        
+        raw_ranks_pred_given_true = np.nanmean(expected_rank_true_given_pred)
+        raw_ranks_true_given_pred = np.nanmean(expected_rank_pred_given_true)
+        
+        return delta_true_given_pred, delta_pred_given_true, raw_ranks_pred_given_true, raw_ranks_true_given_pred
     deltas = []
     for _ in range(num_permutations):
-        delta_true_given_pred, delta_pred_given_true = _compute_rank_metrics(k)
-        deltas.append((delta_true_given_pred, delta_pred_given_true))
+        delta_true_given_pred, delta_pred_given_true, raw_ranks_pred_given_true, raw_ranks_true_given_pred = _compute_rank_metrics(k)
+        deltas.append((delta_true_given_pred, delta_pred_given_true, raw_ranks_pred_given_true, raw_ranks_true_given_pred))
     avg_delta_true_given_pred = np.mean([d[0] for d in deltas])
     avg_delta_pred_given_true = np.mean([d[1] for d in deltas])
+    avg_rank_true_given_pred = np.mean([d[2] for d in deltas])
+    avg_rank_pred_given_true = np.mean([d[3] for d in deltas])
     information_imbalance = {
+        'params': {'k': k, 'num_permutations': num_permutations, 'method': method},
         'delta_true_given_pred': avg_delta_true_given_pred,
-        'delta_pred_given_true': avg_delta_pred_given_true
+        'delta_pred_given_true': avg_delta_pred_given_true,
+        'avg_rank_true_given_pred': avg_rank_true_given_pred,
+        'avg_rank_pred_given_true': avg_rank_pred_given_true,
     }
     print(information_imbalance)
+
+    if not output_path.parent.exists():
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
     # Write as json
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(information_imbalance, f, indent=4)
@@ -408,6 +599,9 @@ def main():
                                 wipe_test_sets=False,
                                 inference_set_to_use=args.inference_set,
                                 transforms=trans)
+    
+    metadata_table = '../../data/idbac_db/raw/ammended_db.csv'
+    metadata_table = pd.read_csv(metadata_table)
 
     # Perform inference on all data
     datamodule.setup('test')
@@ -468,7 +662,15 @@ def main():
     # Create a report of the worst predictions
     if len(metadata) > 0:
         prediction_table = create_report(predictions, true_similarity, metadata, metric_path / "worst_predictions", k=5)
-        compute_information_imbalance(prediction_table, metric_path / "information_imbalance.txt")
+        for k in [1,3,5,7,10]:
+            compute_information_imbalance(prediction_table, metric_path / "information_imbalance"/ f"information_imbalance_{k}_dense.txt", k=k, method='dense')
+            compute_information_imbalance(prediction_table, metric_path / "information_imbalance"/ f"information_imbalance_{k}_min.txt", k=k, method='min')
+
+        compute_top_in_top_k(prediction_table, metric_path / "top_in_top_k.json", k_range=list(range(1, 15)))
+
+        # Compute taxa-dependent clustering scores
+        for tax_level in ["genus", "species"]:
+            compute_taxa_clustering_scores(prediction_table, metric_path / f"clustering_scores_{tax_level}.json", metadata_table, tax_level=tax_level, plot=True)
 
     f = open(metric_path / "metrics.txt", 'w', encoding='utf-8')
 
