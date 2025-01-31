@@ -47,7 +47,9 @@ def compute_taxa_clustering_scores(prediction_table:pd.DataFrame, output_path:Pa
     # Make the prediction_table 'square' by swapping accessions and concatenating
     reversed_table = table.rename(columns={
         'accession_a': 'accession_b',
-        'accession_b': 'accession_a'
+        'accession_b': 'accession_a'.
+        'taxa_a': 'taxa_b',
+        'taxa_b': 'taxa_a',
     })
     table = pd.concat([table, reversed_table], ignore_index=True)
     
