@@ -12,6 +12,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import json
+import logging
+import os 
 
 from models.mlp import MLP
 from models.autoencoder import Autoencoder
@@ -22,6 +24,7 @@ from models.Sentence_MALDI import Sentence_MALDI
 from datamodule import Spectrum_DataModule
 from utils import mirror_plot, shannon_entropy, estimate_convexity
 
+from scipy.spatial.distance import squareform
 from scipy.cluster.hierarchy import dendrogram, linkage, cut_tree, cophenet
 from sklearn.metrics import fowlkes_mallows_score, adjusted_rand_score, normalized_mutual_info_score, adjusted_mutual_info_score
 
@@ -288,8 +291,228 @@ def compute_information_imbalance(prediction_table:pd.DataFrame, output_path:Pat
     return information_imbalance
 
 
+def compute_clustering_scores_per_genera(prediction_table,
+                                         metadata:pd.DataFrame,
+                                         output_path:Path=None,
+                                         figure_path:Path=None,
+                                         method:str='average'):
+    """ Compute the fowlkes_mallows_score per genera. 
+    
+    Parameters
+    ----------
+    y_true : np.ndarray
+        The true similarity matrix as a condensed similarity matrix
+    y_pred : np.ndarray
+        The predicted similarity matrix as a condensed similarity matrix
+    metadata : pd.DataFrame
+        The metadata associated with the spectra
+    output_path : Path, optional
+        The path to save the clustering scores, by default None
+    figure_path : Path, optional
+        The path to save the dendrogram comparison plot, by default None
+        
+    Returns
+    -------
+    dict
+        Dictionary containing lists of clustering scores: 'fowlkes_mallows', 'rand_index', 'nmi', 'ami'.
+    """
 
-def compute_clustering_scores(y_true, y_pred, figure_path:Path=None, method:str='average'):
+    def _helper(genus_group):
+        print('genus_group', genus_group.shape)
+        print(genus_group)
+
+        # Convert to square distance matrix
+        true_square_df = genus_group.pivot(index='strain_a', columns='strain_b', values='true_similarity')
+        true_square = true_square_df.values
+        true_square = (true_square + true_square.T) / 2
+        pred_square_df = genus_group.pivot(index='strain_a', columns='strain_b', values='predicted_similarity')
+        pred_square = pred_square_df.values
+        pred_square = (pred_square + pred_square.T) / 2
+
+        # Save to "./debug"
+        os.makedirs('./debug', exist_ok=True)
+        genus_group.to_csv('./debug/genus_group.csv')
+        true_square_df.to_csv('./debug/true_square_df.csv')
+        
+
+        print('true_square_df', true_square_df.shape)
+        print(true_square_df)
+        
+        print('true_square', true_square.shape)
+        print('pred_square', pred_square.shape)
+
+        # Print indices with nan values in true_square_df
+        nan_indices = true_square_df.isna().sum().sum()
+        if nan_indices > 0:
+            print(f"Warning: {nan_indices} nan values in true_square_df")
+            # Print all indices where this happens
+            print(true_square_df[true_square_df.isna().any(axis=1)].index)
+
+        # Convert to condensed distance matrix
+        true_square = true_square
+        pred_square = pred_square
+
+        # To scipy squareform vector
+        true_square = squareform(true_square, force='tovector', checks=False)
+        pred_square = squareform(pred_square, force='tovector', checks=False)
+
+        # Compute Scores
+        scores = compute_clustering_scores(true_square, pred_square, method=method, max_k=None)
+
+        true_label_mapping = {i: label for i, label in enumerate(true_square_df.index)}
+        pred_label_mapping = {i: label for i, label in enumerate(true_square_df.index)}
+
+        return scores, true_square, pred_square, true_label_mapping, pred_label_mapping
+
+    tax_level = 'genus'
+    table = prediction_table.copy()
+    # Make the prediction_table 'square' by swapping accessions and concatenating
+    reversed_table = table.rename(columns={
+        'accession_a': 'accession_b',
+        'accession_b': 'accession_a',
+        'strain_a': 'strain_b',
+        'strain_b': 'strain_a',
+        'taxa_a': 'taxa_b',
+        'taxa_b': 'taxa_a',
+    })
+    table = pd.concat([table, reversed_table], ignore_index=True)
+    
+    # Get the taxa for each accession
+    accession_taxa_mapping = metadata.set_index('Genbank accession')[tax_level].to_dict()
+
+    table['taxa_a'] = table['accession_a'].map(accession_taxa_mapping)
+    table['taxa_b'] = table['accession_b'].map(accession_taxa_mapping)
+    table['equal_taxa'] = table['taxa_a'] == table['taxa_b']
+
+    table['names'] = table['strain_a'] + ';' + table['strain_b']
+
+    
+    table.to_csv('./debug/table.csv')
+
+    # Remove duplicate pairs (this is coming from poor input data todo: deprecate)
+    table = table.drop_duplicates(subset=['names'])
+
+    # We only want things with equal taxa
+    table = table[table['equal_taxa']]
+
+    # Remove any taxa with less than 10 members (need 3 to get any non-trivial clustering metric), but 10 is arbitrary
+    print(table['taxa_a'].value_counts())
+    counts = table['taxa_a'].value_counts()
+    table = table[table['taxa_a'].map(counts) >= 10]
+    logging.info(f"Computing clustering scores for {len(table['taxa_a'].unique())} genera")
+
+
+    # Group by taxa
+    grouped = table.groupby('taxa_a')
+
+    output_dict = {}
+    true_matrix_dict = {}
+    pred_matrix_dict = {}
+    # Compute clustering scores for each genus
+    for genus, group in grouped:
+        print(f"Running helper for {genus}")
+        out = _helper(group)
+        output_dict[genus] = out[0]
+        true_matrix_dict[genus] = {'data':out[1], 'mapping':out[3]}
+        pred_matrix_dict[genus] = {'data':out[2], 'mapping':out[4]}
+
+    json.dump(output_dict, open('./temp_test_output.json', "w", encoding="utf-8"), indent=4)
+
+    if output_path:
+        output_path = Path(output_path)
+        if not output_path.parent.exists():
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(output_dict, f, indent=4)
+
+    if figure_path:
+        species_mapping = metadata.set_index('Strain name')['species'].to_dict()
+
+        for genus in list(output_dict.keys()):
+
+            # Get species with more than 5 members
+            _strain_names = metadata.loc[metadata['genus'] == genus, 'Strain name'].unique()
+            species_counts = metadata.loc[metadata['genus'] == genus, 'species'].value_counts()
+            species_counts = species_counts[species_counts >=2]
+            # if len(species_counts) > 20:
+            #     raise NotImplementedError("Too many species to plot")
+            species_color_mapping = {species: sns.color_palette('tab20')[i] for i, species in enumerate(species_counts.index.tolist()[:20])}
+            strain_name_color_mapping = {strain: species_color_mapping.get(species_mapping[strain], 'black') for strain in _strain_names}   # If we have a genus but no species, will be black
+
+            genus_path = figure_path / f"{genus}" / "clustering_score.png"
+            if not genus_path.parent.exists():
+                genus_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Plot the average Fowlkes-Mallows score
+            fig = plt.figure()
+            scores = output_dict[genus]
+            plt.plot(np.arange(2, len(scores['fowlkes_mallows'])+2), scores['fowlkes_mallows'], label="Fowlkes Mallows")
+
+            plt.ylabel("Clustering Score")
+            plt.xlabel("Number of Clusters")
+            plt.title("Clustering Scores per Genus")
+
+            plt.savefig(genus_path, dpi=300)
+            plt.close(fig)  # Close to free memory
+
+            #### Plot the true dendrogram ####
+            fig, ax = plt.subplots(figsize=(0.08 * len(true_matrix_dict[genus]['mapping']), 10))
+            
+            true_linkage_as_dist = 1 - true_matrix_dict[genus]['data']
+            true_linkage_as_dist = np.clip(true_linkage_as_dist, 0, 1)  # Clamp values
+
+            true_linkage_as_dist = linkage(true_linkage_as_dist, method=method)
+            dendrogram(true_linkage_as_dist, color_threshold=999)
+
+            plt.title(f"True Linkage for {genus}")
+
+            # Set x-axis labels with colors
+            current_x_locs = ax.get_xticks()
+            current_x_ticks = ax.get_xticklabels()
+            new_x_ticks = [true_matrix_dict[genus]['mapping'][int(tick.get_text())] for tick in current_x_ticks]
+
+            strain_name_colors = [strain_name_color_mapping.get(strain_name, "black") for strain_name in new_x_ticks]
+
+            ax.set_xticks(current_x_locs)
+            ax.set_xticklabels(new_x_ticks, rotation=90, fontsize=10, fontweight='bold')
+
+            for tick, color in zip(ax.get_xticklabels(), strain_name_colors):
+                tick.set_color(color)
+
+            plt.savefig(figure_path / f"{genus}" / "true_linkage.png", dpi=300)
+            plt.close(fig)  # Free memory
+
+            #### Plot the predicted dendrogram ####
+            fig, ax = plt.subplots(figsize=(0.08 * len(pred_matrix_dict[genus]['mapping']), 10))
+
+            pred_linkage_as_dist = 1 - pred_matrix_dict[genus]['data']
+            pred_linkage_as_dist = np.clip(pred_linkage_as_dist, 0, 1)  # Clamp values
+
+            pred_linkage_as_dist = linkage(pred_linkage_as_dist, method=method)
+            dendrogram(pred_linkage_as_dist, color_threshold=999)
+
+            plt.title(f"Predicted Linkage for {genus}")
+
+            # Set x-axis labels with colors
+            current_x_locs = ax.get_xticks()
+            current_x_ticks = ax.get_xticklabels()
+            new_x_ticks = [pred_matrix_dict[genus]['mapping'][int(tick.get_text())] for tick in current_x_ticks]
+
+            strain_name_colors = [strain_name_color_mapping.get(strain_name, "black") for strain_name in new_x_ticks]
+
+            ax.set_xticks(current_x_locs)
+            ax.set_xticklabels(new_x_ticks, rotation=90, fontsize=10, fontweight='bold')
+
+            for tick, color in zip(ax.get_xticklabels(), strain_name_colors):
+                tick.set_color(color)
+
+            plt.savefig(figure_path / f"{genus}" / "predicted_linkage.png", dpi=300)
+            plt.close(fig)  # Free memory
+
+
+def compute_clustering_scores(y_true, y_pred, figure_path:Path=None, method:str='average',
+                              max_k:int=100)->dict:
     """ Compute the fowlkes_mallows_score.
 
     Parameters
@@ -302,6 +525,8 @@ def compute_clustering_scores(y_true, y_pred, figure_path:Path=None, method:str=
         The path to save the dendrogram comparison plot, by default None
     method : str, optional
         The method to use for clustering, by default 'complete'
+    max_k : int, optional
+        The maximum number of clusters to evaluate, by default 100. None will use the maximum number of clusters.
 
     Returns
     -------
@@ -328,7 +553,10 @@ def compute_clustering_scores(y_true, y_pred, figure_path:Path=None, method:str=
     true_linkage = linkage(y_true, method=method)
     pred_linkage = linkage(y_pred, method=method)
 
-    max_k = min(len(pred_linkage), 100) # Limit number of clusters to 100
+    if max_k is not None:
+        max_k = min(len(pred_linkage), 100) # Limit number of clusters to 100
+    else:
+        max_k = len(pred_linkage)
 
     # Fowlkes Mallows Score
     fm_scores = []
@@ -508,6 +736,8 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
         'predicted_similarity': predictions,
         'true_similarity': true_similarity,
         'error': np.abs(np.array(predictions) - np.array(true_similarity)),
+        'strain_a': [meta['strain_a'] for meta in metadata],
+        'strain_b': [meta['strain_b'] for meta in metadata],
         'accession_a': [meta['accession_a'] for meta in metadata],
         'accession_b': [meta['accession_b'] for meta in metadata],
         'num_peaks_in_a': [meta['num_peaks_in_a'].item() for meta in metadata],
@@ -671,6 +901,9 @@ def main():
         # Compute taxa-dependent clustering scores
         for tax_level in ["genus", "species"]:
             compute_taxa_clustering_scores(prediction_table, metric_path / f"clustering_scores_{tax_level}.json", metadata_table, tax_level=tax_level, plot=True)
+
+        # Computer per-genus clustering scores
+        compute_clustering_scores_per_genera(prediction_table, metadata_table, metric_path / "clustering_scores_per_genera.json", metric_path / "clustering_scores_per_genera/")
 
     f = open(metric_path / "metrics.txt", 'w', encoding='utf-8')
 
