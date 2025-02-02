@@ -20,6 +20,7 @@ from models.autoencoder import Autoencoder
 from models.transformer_embedding_prediction_head import TransformerPredictionHead
 from models.cosine import RawCosine
 from models.Sentence_MALDI import Sentence_MALDI
+from models.mlp_binary_classifier import MLPBinaryClassifier
 
 from datamodule import Spectrum_DataModule
 from utils import mirror_plot, shannon_entropy, estimate_convexity
@@ -27,6 +28,8 @@ from utils import mirror_plot, shannon_entropy, estimate_convexity
 from scipy.spatial.distance import squareform
 from scipy.cluster.hierarchy import dendrogram, linkage, cut_tree, cophenet
 from sklearn.metrics import fowlkes_mallows_score, adjusted_rand_score, normalized_mutual_info_score, adjusted_mutual_info_score
+
+# def compute_binary 
 
 def compute_taxa_clustering_scores(prediction_table:pd.DataFrame, output_path:Path, metadata:pd.DataFrame, tax_level:str='genus', plot=False)->dict:
     """ Computes the average precision ('purity') and recall ('completeness') for each taxon at the specified taxonomic level. 
@@ -47,14 +50,19 @@ def compute_taxa_clustering_scores(prediction_table:pd.DataFrame, output_path:Pa
     # Make the prediction_table 'square' by swapping accessions and concatenating
     reversed_table = table.rename(columns={
         'accession_a': 'accession_b',
-        'accession_b': 'accession_a'.
+        'accession_b': 'accession_a',
         'taxa_a': 'taxa_b',
         'taxa_b': 'taxa_a',
     })
     table = pd.concat([table, reversed_table], ignore_index=True)
     
     # Get the taxa for each accession
+    metadata['Genbank accession'] = metadata['Genbank accession'].str.strip().str.split('.').str[0]
+    metadata.dropna(subset=[tax_level], inplace=True)
     accession_taxa_mapping = metadata.set_index('Genbank accession')[tax_level].to_dict()
+
+    assert 'JQ691549' in accession_taxa_mapping, "JQ691549 not in accession_taxa_mapping"
+    assert 'AB184413' in accession_taxa_mapping, "AB184413 not in accession_taxa_mapping"
 
     table['taxa_a'] = table['accession_a'].map(accession_taxa_mapping)
     table['taxa_b'] = table['accession_b'].map(accession_taxa_mapping)
@@ -62,6 +70,8 @@ def compute_taxa_clustering_scores(prediction_table:pd.DataFrame, output_path:Pa
 
     # Remove any taxa with only one member
     table = table[table['taxa_a'].map(table['taxa_a'].value_counts()) > 1]
+
+    table.to_csv(f'./debug/pr_table_{tax_level}.csv')
 
     # Group by taxa
     grouped = table.groupby('taxa_a')
@@ -149,9 +159,6 @@ def compute_taxa_clustering_scores(prediction_table:pd.DataFrame, output_path:Pa
         plt.ylim(0, 1)
         plt.savefig(output_path.parent / f"precision_recall_{tax_level}_macro.png")
 
-
-    
-
 def compute_top_in_top_k(prediction_table:pd.DataFrame, output_path:Path, k_range:List[int]=[1, 3, 5, 7, 10])->List[float]:
     """Computes the highest ground truth rank from rank 0-k. 
     
@@ -207,7 +214,6 @@ def compute_top_in_top_k(prediction_table:pd.DataFrame, output_path:Path, k_rang
         json.dump(top_in_top_k, f, indent=4)
 
     return top_in_top_k
-
 
 def compute_information_imbalance(prediction_table:pd.DataFrame, output_path:Path, k:int=1, num_permutations:int=30, method='dense')->float:
     """ Computes the information imbalance as described in https://doi.org/10.1093/pnasnexus/pgac039.
@@ -374,12 +380,11 @@ def compute_clustering_scores_per_genera(prediction_table,
         'accession_b': 'accession_a',
         'strain_a': 'strain_b',
         'strain_b': 'strain_a',
-        'taxa_a': 'taxa_b',
-        'taxa_b': 'taxa_a',
     })
     table = pd.concat([table, reversed_table], ignore_index=True)
     
     # Get the taxa for each accession
+    metadata['Genbank accession'] = metadata['Genbank accession'].str.strip().str.split('.').str[0]
     accession_taxa_mapping = metadata.set_index('Genbank accession')[tax_level].to_dict()
 
     table['taxa_a'] = table['accession_a'].map(accession_taxa_mapping)
@@ -397,10 +402,10 @@ def compute_clustering_scores_per_genera(prediction_table,
     # We only want things with equal taxa
     table = table[table['equal_taxa']]
 
-    # Remove any taxa with less than 10 members (need 3 to get any non-trivial clustering metric), but 10 is arbitrary
+    # Remove any taxa with less than x members (need 3 to get any non-trivial clustering metric), but x is arbitrary
     print(table['taxa_a'].value_counts())
     counts = table['taxa_a'].value_counts()
-    table = table[table['taxa_a'].map(counts) >= 10]
+    table = table[table['taxa_a'].map(counts) >= 3]
     logging.info(f"Computing clustering scores for {len(table['taxa_a'].unique())} genera")
 
 
@@ -784,7 +789,7 @@ def main():
 
         trans=None
         # Load the model
-        if 'mlp' in args.model_name.lower():
+        if 'mlp_model' in args.model_name.lower():
             model = MLP.load_from_checkpoint(model_path)
             trans =  transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
         elif 'autoencoder' in args.model_name.lower():
@@ -820,7 +825,11 @@ def main():
         elif 'Sentence_MALDI' in args.model_name:
             model = Sentence_MALDI.load_from_checkpoint(model_path)
 
-            trans =  transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
+            trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
+        elif 'MLPBinaryClassifier' in args.model_name:
+            model = MLPBinaryClassifier.load_from_checkpoint(model_path)
+
+            trans = transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
         else:
             raise ValueError(f"Unknown model name {args.model_name}")
         
@@ -905,7 +914,7 @@ def main():
             compute_taxa_clustering_scores(prediction_table, metric_path / f"clustering_scores_{tax_level}.json", metadata_table, tax_level=tax_level, plot=True)
 
         # Computer per-genus clustering scores
-        compute_clustering_scores_per_genera(prediction_table, metadata_table, metric_path / "clustering_scores_per_genera.json", metric_path / "clustering_scores_per_genera/")
+        # compute_clustering_scores_per_genera(prediction_table, metadata_table, metric_path / "clustering_scores_per_genera.json", metric_path / "clustering_scores_per_genera/")
 
     f = open(metric_path / "metrics.txt", 'w', encoding='utf-8')
 
@@ -931,10 +940,10 @@ def main():
     # Plot
     fig = plt.figure()
     sns.scatterplot(x=true_similarity, y=predictions, alpha=0.5)
-    x_min = min(min(true_similarity), min(predictions))
-    x_max = max(max(true_similarity), max(predictions))
-    y_min = min(min(true_similarity), min(predictions))
-    y_max = max(max(true_similarity), max(predictions))
+    x_min = np.nanmin([np.nanmin(true_similarity), np.nanmin(predictions)])
+    x_max = np.nanmax([np.nanmax(true_similarity), np.nanmax(predictions)])
+    y_min = np.nanmin([np.nanmin(true_similarity), np.nanmin(predictions)])
+    y_max = np.nanmax([np.nanmax(true_similarity), np.nanmax(predictions)])
     plt.xlim(x_min, x_max)
     plt.ylim(y_min, y_max)
     plt.xlabel("True Sequence Similarity Similarity")

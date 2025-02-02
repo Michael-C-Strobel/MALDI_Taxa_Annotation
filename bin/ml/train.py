@@ -1,6 +1,7 @@
 from models.mlp import MLP
 from models.mlp_classifier import MLPClassifier
 from models.Sentence_MALDI import Sentence_MALDI
+from models.mlp_binary_classifier import MLPBinaryClassifier
 from datamodule import Spectrum_DataModule, SingleSpectrum_DataModule
 from datamodule_triplet import Triplet_DataModule
 from lightning.pytorch.loggers import TensorBoardLogger
@@ -12,30 +13,41 @@ from custom_transforms import *
 
 def main():
 
-    # hyperparameters = {
-    #     'input_dim': 1800,
-    #     'output_dim': 250,
-    #     'hidden_dim': 300,
-    #     'hidden_layers': 3,
-    #     'weight_decay': 1e-5,
-    #     'dropout': 0.2,
-    # }
+    hyperparameters = {
+        'input_dim': 1800,
+        'output_dim': 250,
+        'hidden_dim': 300,
+        'hidden_layers': 3,
+        'weight_decay': 1e-5,
+        'dropout': 0.2,
+    }
     Sentence_MALDI_hyperparameters = {
-            'input_dim': 1800,
-            'output_bin_edges': torch.Tensor([0.95, 0.97, 0.99, 1.0]),
+            'input_dim': 1700,
+            # 'output_bin_edges': torch.Tensor([0.95, 0.97, 0.99, 1.0]),
+            'output_bin_edges': torch.Tensor([1.0]),
             'hidden_dim': 300,
             'hidden_layers': 3,
             'weight_decay': 1e-5,
             'dropout': 0.2,
     }
+    mlp_binary_classifier_hyperparameters = {
+        'input_dim': 1700,
+        'output_dim': 2,
+        'hidden_dim': 300,
+        'hidden_layers': 3,
+        'weight_decay': 1e-5,
+        'dropout': 0.2,
+        'lr': 5e-6,
+    }
 
     # model = MLP(hyperparameters)
     # model = MLPClassifier(hyperparameters)
     model = Sentence_MALDI(Sentence_MALDI_hyperparameters)
+    # model = MLPBinaryClassifier(mlp_binary_classifier_hyperparameters)
     
     torch.set_float32_matmul_precision('medium')    # medium | high
     
-    trans =  transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
+    trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
 
     if isinstance(model, MLP):
         logger = TensorBoardLogger('lightning_logs', name='MLP_model')
@@ -44,9 +56,9 @@ def main():
                                         '../../data/idbac_db/raw/ammended_db.csv',
                                         '../../data/idbac_db/processed_data',
                                         num_workers=7,
-                                        wipe_test_sets=False,
-                                        transforms=trans)
-                                        # wipe_test_sets=True)  #DEBUG
+                                        # wipe_test_sets=False,
+                                        transforms=trans,#)
+                                        wipe_test_sets=True)  #DEBUG
         datamodule.setup('fit')
         datamodule.plot(0)
 
@@ -73,7 +85,16 @@ def main():
                             transforms=trans)
         
         datamodule.setup('fit')
+    elif isinstance(model, MLPBinaryClassifier):
+        logger = TensorBoardLogger('lightning_logs', name='MLPBinaryClassifier')
 
+        datamodule = Triplet_DataModule('../../data/idbac_db/preprocessing',
+                            '../../data/idbac_db/raw/ammended_db.csv',
+                            '../../data/idbac_db/processed_data',
+                            num_workers=7,
+                            transforms=trans)
+        
+        datamodule.setup('fit')
 
     else:
         raise ValueError("Model type not recognized")
@@ -81,15 +102,15 @@ def main():
     # Plot the train/test split
     # datamodule.full_dataset.plot_split('./train_test_split.png')
     
-    trainer = L.Trainer(max_epochs=100, log_every_n_steps=10, logger=logger, devices=[0])
+    trainer = L.Trainer(max_epochs=165, log_every_n_steps=10, logger=logger, devices=[0])
     tuner = L.pytorch.tuner.Tuner(trainer)
     
-    lr_find_results = tuner.lr_find(model,
-                                    datamodule,
-                                    min_lr=0.00001,
-                                    max_lr=0.001,
-                                    early_stop_threshold=None)
-    model.lr = lr_find_results.suggestion()
+    # lr_find_results = tuner.lr_find(model,
+    #                                 datamodule,
+    #                                 min_lr=0.00001,
+    #                                 max_lr=0.001,
+    #                                 early_stop_threshold=None)
+    # model.lr = lr_find_results.suggestion()
     print("Best learning rate: ", model.lr)
 
     trainer.fit(model, datamodule)
