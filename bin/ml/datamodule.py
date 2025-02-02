@@ -11,12 +11,14 @@ class Spectrum_DataModule(L.LightningDataModule):
     def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str, num_workers:int=4, wipe_test_sets:bool=True,
                  transforms=None,
                  batch_size:int=32,
-                 inference_set_to_use:str='test'):
+                 inference_set_to_use:str='test',
+                 split_method='genera'):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
         self.root_dir = root_dir
         self.num_workers = num_workers
+        self.split_method = split_method
     
         self.batch_size = batch_size
         self.transform = transforms
@@ -26,21 +28,23 @@ class Spectrum_DataModule(L.LightningDataModule):
         self.test_indices = None
         self.inference_set_to_use=inference_set_to_use
 
-        if Path(self.root_dir)/'train_indices.pt':
+        indices_path = Path(self.root_dir)/f'{self.split_method}'
+
+        if indices_path / 'train_indices.pt':
             if wipe_test_sets:
-                (Path(self.root_dir)/'train_indices.pt').unlink(missing_ok=True)
+                (indices_path / 'train_indices.pt').unlink(missing_ok=True)
             else:
-                self.train_indices = torch.load(Path(self.root_dir)/'train_indices.pt', weights_only=False)
-        if Path(self.root_dir)/'val_indices.pt':
+                self.train_indices = torch.load(indices_path / 'train_indices.pt', weights_only=False)
+        if indices_path / 'val_indices.pt':
             if wipe_test_sets:
-                (Path(self.root_dir)/'val_indices.pt').unlink(missing_ok=True)
+                (indices_path / 'val_indices.pt').unlink(missing_ok=True)
             else:
-                self.val_indices = torch.load(Path(self.root_dir)/'val_indices.pt', weights_only=False)
-        if Path(self.root_dir)/'test_indices.pt':
+                self.val_indices = torch.load(indices_path / 'val_indices.pt', weights_only=False)
+        if indices_path / 'test_indices.pt':
             if wipe_test_sets:
-                (Path(self.root_dir)/'test_indices.pt').unlink(missing_ok=True)
+                (indices_path / 'test_indices.pt').unlink(missing_ok=True)
             else:
-                self.test_indices = torch.load(Path(self.root_dir)/'test_indices.pt', weights_only=False)
+                self.test_indices = torch.load(indices_path / 'test_indices.pt', weights_only=False)
 
     def prepare_data(self):
        pass
@@ -52,10 +56,13 @@ class Spectrum_DataModule(L.LightningDataModule):
             #     full_dataset, [int(len(full_dataset) * 0.8), len(full_dataset) - int(len(full_dataset) * 0.8)], generator=torch.Generator().manual_seed(42)
             # )
             if self.train_indices is None or self.val_indices is None:
-                (self.train_set, self.val_set, _), (train_indices, val_indices, test_indices) = self.full_dataset.split_train_val_test()
-                torch.save(train_indices, Path(self.root_dir)/'train_indices.pt')
-                torch.save(val_indices, Path(self.root_dir)/'val_indices.pt')
-                torch.save(test_indices, Path(self.root_dir)/'test_indices.pt')
+                (self.train_set, self.val_set, _), (train_indices, val_indices, test_indices) = self.full_dataset.split_train_val_test(self.split_method)
+                out_path = Path(self.root_dir)/f'{self.split_method}'
+                out_path.mkdir(parents=True, exist_ok=True)
+                
+                torch.save(train_indices, out_path / 'train_indices.pt')
+                torch.save(val_indices, out_path / 'val_indices.pt')
+                torch.save(test_indices, out_path / 'test_indices.pt')
             else:
                 # DEBUG Remove accessions ['EF178692', 'AB184357', 'AB122711', 'AB184476', 'strain_B017']:
                 indices_to_drop = []

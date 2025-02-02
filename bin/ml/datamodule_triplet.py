@@ -16,12 +16,14 @@ class Triplet_DataModule(L.LightningDataModule):
                  root_dir:str, 
                  transforms=None, 
                  num_workers:int=4,
-                 batch_size:int=32,):
+                 batch_size:int=32,
+                 split_method='genera'):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
         self.root_dir = root_dir
         self.num_workers = num_workers
+        self.split_method = split_method
 
         self.transform = transforms
 
@@ -31,16 +33,18 @@ class Triplet_DataModule(L.LightningDataModule):
         
         self.batch_size = batch_size
 
+        indices_path = Path(self.root_dir)/f'{self.split_method}'
+
         # Get train/val/test indices
         self.train_indices = None
         self.val_indices = None
         self.test_indices = None
-        if Path(self.root_dir)/'train_indices.pt':
-            self.train_indices = torch.load(Path(self.root_dir)/'train_indices.pt', weights_only=False)
-        if Path(self.root_dir)/'val_indices.pt':
-            self.val_indices = torch.load(Path(self.root_dir)/'val_indices.pt', weights_only=False)
-        if Path(self.root_dir)/'test_indices.pt':
-            self.test_indices = torch.load(Path(self.root_dir)/'test_indices.pt', weights_only=False)
+        if indices_path /'train_indices.pt':
+            self.train_indices = torch.load(indices_path /'train_indices.pt', weights_only=False)
+        if indices_path /'val_indices.pt':
+            self.val_indices = torch.load(indices_path /'val_indices.pt', weights_only=False)
+        if indices_path /'test_indices.pt':
+            self.test_indices = torch.load(indices_path /'test_indices.pt', weights_only=False)
 
     def prepare_data(self):
         pass

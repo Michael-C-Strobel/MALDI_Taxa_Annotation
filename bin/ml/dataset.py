@@ -398,11 +398,13 @@ class Paired_MALDI_TOF_DS(Dataset):
         # square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
 
         # Must be sorted to maintain train/test set consistency 
-        self.all_accessions = np.sort(np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values))))
+        # self.all_accessions = np.sort(np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values))))
 
         # assert 'strain_B016' in self.all_accessions
 
-        self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
+        # self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
+
+        self.all_accessions = self.metadata_table.loc[self.metadata_table['accession'].notna(), 'accession'].unique().astype(str)
 
         self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 21)   # Data leakage in the _absolute_ strictest sense
         self.similarities = square_similarities
@@ -575,10 +577,7 @@ class Paired_MALDI_TOF_DS(Dataset):
         print("Preprocessing files...")
         postprocess_files(Path(self.preprocessing_dir), Path(self.root_dir))
 
-    def split_train_val_test(self,
-                             return_indices: bool = False,
-                             ) -> List:
-
+    def _split_dendrogam(self, return_indices):
         # Split based on the ground-truth dendrogram
         sims = self.similarities
         # Convert to distance matrix
@@ -667,6 +666,85 @@ class Paired_MALDI_TOF_DS(Dataset):
         return (self.subset(train_indices), self.subset(val_indices), self.subset(test_indices)), \
                 (train_indices, val_indices, test_indices)
 
+    def _split_genera(self, return_indices):
+        """ Create a train/val/test split based on genera. We'll take the largest genera first 
+        60% of genera with > 5 accessions will be train, 20% val and test.
+
+        The remaining will be added to train.
+
+        Args:
+            return_indices (bool): Whether to return the indices or the actual datasets.
+
+        Returns:
+            Tuple: The train, val, and test datasets or the train, val, and test indices.
+        """
+
+        # Get the genera with more than 5 accessions
+        genera = self.metadata_table['genus'].value_counts()
+        large_genera = genera[genera > 5].index
+        small_genera = genera[genera <= 5].index
+
+        # Get the accessions for each genus
+        train_genera = large_genera[:int(0.4 * len(large_genera))].tolist()
+        test_genera  = large_genera[int(0.4 * len(large_genera)):int(0.8 * len(large_genera))].tolist()
+        val_genera   = large_genera[int(0.8 * len(large_genera)):].tolist()
+        print("train_genera", train_genera)
+        print("val_genera", val_genera)
+        print("test_genera", test_genera)
+
+
+        train_accessions = self.metadata_table[self.metadata_table['genus'].isin(train_genera)]['accession'].values
+        val_accessions = self.metadata_table[self.metadata_table['genus'].isin(val_genera)]['accession'].values
+        test_accessions = self.metadata_table[self.metadata_table['genus'].isin(test_genera)]['accession'].values
+
+        # Assert no overlap
+        assert len(set(train_accessions) & set(val_accessions)) == 0
+        assert len(set(train_accessions) & set(test_accessions)) == 0
+        assert len(set(val_accessions) & set(test_accessions)) == 0
+
+        # Get the accessions for the small genera
+        small_genera_accessions = self.metadata_table[self.metadata_table['genus'].isin(small_genera)]['accession'].values
+        train_accessions = np.concatenate((train_accessions, small_genera_accessions[:len(small_genera_accessions) // 2]))
+
+        # Assert no overlap
+        assert len(set(train_accessions) & set(val_accessions)) == 0
+        assert len(set(train_accessions) & set(test_accessions)) == 0
+        assert len(set(val_accessions) & set(test_accessions)) == 0
+
+        # print("train_accessions", train_accessions)
+        # print("val_accessions", val_accessions)
+        # print("test_accessions", test_accessions)
+
+        # Convert accessions to indices
+        train_indices = [np.where(self.all_accessions == x)[0][0] for x in train_accessions]        # WHY
+        val_indices = [np.where(self.all_accessions == x)[0][0] for x in val_accessions]
+        test_indices = [np.where(self.all_accessions == x)[0][0] for x in test_accessions]
+
+        if return_indices:
+            return train_indices, val_indices, test_indices
+
+        # Need to repeat train_indices num_turns times
+        train_indices = np.repeat(train_indices, self.num_turns)
+        val_indices = np.repeat(val_indices, self.num_turns)
+
+        return (self.subset(train_indices), self.subset(val_indices), self.subset(test_indices)), \
+                (train_indices, val_indices, test_indices)
+
+    def split_train_val_test(self, split_method:str='dendrogram',
+                             return_indices: bool = False,
+                             ) -> List:
+        split_method = str(split_method).lower()
+
+        if not split_method in ['dendrogram', 'genera']:
+            raise ValueError(f"Invalid split method: {split_method}")
+        
+        if split_method == 'dendrogram':
+            return self._split_dendrogam(return_indices=return_indices)
+        
+        if split_method == 'genera':
+            return self._split_genera(return_indices=return_indices)
+
+        
     def subset(self, indices:List):
         # Make a copy, in this way the sliced similarities can be used to identify the subset
         subset_dataset = copy.deepcopy(self)
@@ -770,8 +848,11 @@ class ExhaustiveSampler():
                     strain_b, meta_b = self.data.get_by_strain_name(self.all_strains[j])
                 except Exception as e:
                     continue
-
-                sim = self.data.similarities.loc[meta_a['accession'], meta_b['accession']]
+                
+                try:
+                    sim = self.data.similarities.loc[meta_a['accession'], meta_b['accession']]
+                except Exception:
+                    sim = np.nan
                 # if np.isnan(sim):
                 #     continue
 

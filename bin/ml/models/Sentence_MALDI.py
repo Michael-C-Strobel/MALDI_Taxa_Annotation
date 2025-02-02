@@ -1,4 +1,5 @@
 from torch import optim, nn
+import torch.nn.utils as utils
 import torchmetrics
 import torch.nn.functional as F
 import torch
@@ -27,44 +28,55 @@ class CustromBinaryMetric(torchmetrics.Metric):
         return self.correct / self.total
 
 class Classifier(L.LightningModule):
-    def __init__(self, input_dim, hidden_dim, hidden_layers, output_dim):
+    # def __init__(self, input_dim, hidden_dim, hidden_layers, output_dim):
+    #     super().__init__()
+    #     self.layers = nn.ModuleList()
+        
+    #     # Input layer
+    #     self.layers.append(nn.Linear(input_dim, hidden_dim))
+    #     self.layers.append(nn.ReLU())
+    #     # self.layers.append(nn.Dropout(self.dropout_rate))  # Dropout after input layer
+
+    #     # Hidden layers with dropout
+    #     for _ in range(hidden_layers):
+    #         self.layers.append(nn.Linear(hidden_dim, hidden_dim))
+    #         self.layers.append(nn.ReLU())
+    #         # self.layers.append(nn.Dropout(self.dropout_rate))  # Dropout after each hidden layer
+
+    #     # Output layer for classification
+    #     self.layers.append(nn.Linear(hidden_dim, output_dim))
+
+    def __init__(self, input_dim, hidden_dim, _, output_dim):
         super().__init__()
         self.layers = nn.ModuleList()
         
         # Input layer
-        self.layers.append(nn.Linear(input_dim, hidden_dim))
-        self.layers.append(nn.ReLU())
+        self.layers.append(nn.Linear(input_dim, output_dim))
         # self.layers.append(nn.Dropout(self.dropout_rate))  # Dropout after input layer
-
-        # Hidden layers with dropout
-        for _ in range(hidden_layers):
-            self.layers.append(nn.Linear(hidden_dim, hidden_dim))
-            self.layers.append(nn.ReLU())
-            # self.layers.append(nn.Dropout(self.dropout_rate))  # Dropout after each hidden layer
-
-        # Output layer for classification
-        self.layers.append(nn.Linear(hidden_dim, output_dim))
 
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
         return x
 
-class Embedder(L.LightningModule):
-    def __init__(self,input_dim, hidden_dim, hidden_layers, ):
-        super().__init__() 
+class Embedder(nn.Module):
+    def __init__(self, input_dim, hidden_dim, hidden_layers, dropout_rate, activation=nn.GELU):
+        super().__init__()
+        self.dropout_rate = dropout_rate
         self.layers = nn.ModuleList()
-        
-        # Input layer
-        self.layers.append(nn.Linear(input_dim, hidden_dim))
-        self.layers.append(nn.ReLU())
-        # self.layers.append(nn.Dropout(self.dropout_rate))  # Dropout after input layer
 
-        # Hidden layers with dropout
+        # Input layer with WeightNorm
+        self.layers.append(utils.weight_norm(nn.Linear(input_dim, hidden_dim)))
+        self.layers.append(nn.LayerNorm(hidden_dim))  # LayerNorm added
+        self.layers.append(activation())
+        self.layers.append(nn.Dropout(self.dropout_rate))
+
+        # Hidden layers with WeightNorm + LayerNorm
         for _ in range(hidden_layers):
-            self.layers.append(nn.Linear(hidden_dim, hidden_dim))
-            self.layers.append(nn.ReLU())
-            # self.layers.append(nn.Dropout(self.dropout_rate))  # Dropout after each hidden layer
+            self.layers.append(utils.weight_norm(nn.Linear(hidden_dim, hidden_dim)))
+            self.layers.append(nn.LayerNorm(hidden_dim))  # LayerNorm added
+            self.layers.append(activation())
+            self.layers.append(nn.Dropout(self.dropout_rate))
     
     def forward(self, x):
         for layer in self.layers:
@@ -101,22 +113,26 @@ class Sentence_MALDI(L.LightningModule):
         if self.dropout_rate > 1.0 or self.dropout_rate < 0.0:
             raise ValueError("Dropout rate must be between 0.0 and 1.0")
         
-        self.embedder = Embedder(self.input_dim, self.hidden_dim, self.hidden_layers)
+        self.embedder = Embedder(self.input_dim, self.hidden_dim, self.hidden_layers, self.dropout_rate)
         self.classifier = Classifier(self.hidden_dim*3, self.hidden_dim, 3, self.output_dim)
 
-                # Training metrics
+        # Training metrics
+        task = 'multiclass'
+        if self.output_dim == 2:
+            task = 'binary'
+
         self.train_metrics = torchmetrics.MetricCollection({
-            'accuracy': torchmetrics.Accuracy(num_classes=self.output_dim, task="multiclass"),
-            'precision': torchmetrics.Precision(num_classes=self.output_dim, average='macro', task="multiclass"),
-            'recall': torchmetrics.Recall(num_classes=self.output_dim, average='macro', task="multiclass"),
-            'binary_accuracy': CustromBinaryMetric()
+            'accuracy': torchmetrics.Accuracy(num_classes=self.output_dim, task=task),
+            'precision': torchmetrics.Precision(num_classes=self.output_dim, average='macro', task=task),
+            'recall': torchmetrics.Recall(num_classes=self.output_dim, average='macro', task=task),
+            # 'binary_accuracy': CustromBinaryMetric()
             }, 
             prefix='train_'
         )
         self.val_metrics = torchmetrics.MetricCollection({
-            'accuracy': torchmetrics.Accuracy(num_classes=self.output_dim, task="multiclass"),
-            'precision': torchmetrics.Precision(num_classes=self.output_dim, average='macro', task="multiclass"),
-            'recall': torchmetrics.Recall(num_classes=self.output_dim, average='macro', task="multiclass"),
+            'accuracy': torchmetrics.Accuracy(num_classes=self.output_dim, task=task),
+            'precision': torchmetrics.Precision(num_classes=self.output_dim, average='macro', task=task),
+            'recall': torchmetrics.Recall(num_classes=self.output_dim, average='macro', task=task),
             },
             prefix='val_'
         )
@@ -180,18 +196,25 @@ class Sentence_MALDI(L.LightningModule):
         pos_targets = self.transform_to_classification(pos_similarities)
         neg_targets = torch.ones_like(neg_similarities, device=self.device, dtype=torch.long) * (self.output_dim - 1)
 
-        # Underweight the negative samples (since they are guarenteed 50%, other classes split the remaining 50%)
-        class_weights = torch.ones(self.output_dim, device=self.device)
-        class_weights[-1] = 0.1
-
-        pos_loss = F.cross_entropy(pos_preds, pos_targets, weight=class_weights)
-        neg_loss = F.cross_entropy(neg_preds, neg_targets, weight=class_weights)
+        if self.output_dim != 2:
+                    # Underweight the negative samples (since they are guarenteed 50%, other classes split the remaining 50%)
+            class_weights = torch.ones(self.output_dim, device=self.device)
+            class_weights[-1] = 0.1
+            pos_loss = F.cross_entropy(pos_preds, pos_targets, weight=class_weights)
+            neg_loss = F.cross_entropy(neg_preds, neg_targets, weight=class_weights)
+        else:
+            pos_loss = F.cross_entropy(pos_preds, pos_targets,)
+            neg_loss = F.cross_entropy(neg_preds, neg_targets,)
+        
         
         loss = pos_loss + neg_loss
         preds = torch.cat((pos_preds, neg_preds), dim=0)
         targets = torch.cat((pos_targets, neg_targets), dim=0)
 
-        batch_value = self.train_metrics(preds, targets)
+        print('preds: ', torch.argmax(preds, dim=1))
+        print('targets: ', targets)
+
+        batch_value = self.train_metrics(torch.argmax(preds, dim=1), targets)
         self.log_dict(batch_value, on_epoch=True)
         self.log('train_loss', loss, on_step=True, on_epoch=True)
 
@@ -230,18 +253,22 @@ class Sentence_MALDI(L.LightningModule):
         pos_targets = self.transform_to_classification(pos_similarities)
         neg_targets = torch.ones_like(neg_similarities, device=self.device, dtype=torch.long) * (self.output_dim - 1)
 
-        # Underweight the negative samples (since they are guarenteed 50%, other classes split the remaining 50%)
-        class_weights = torch.ones(self.output_dim, device=self.device)
-        class_weights[-1] = 0.1
+        if self.output_dim != 2:
+            # Underweight the negative samples (since they are guarenteed 50%, other classes split the remaining 50%)
+            class_weights = torch.ones(self.output_dim, device=self.device)
+            class_weights[-1] = 0.1
 
-        pos_loss = F.cross_entropy(pos_preds, pos_targets, weight=class_weights)
-        neg_loss = F.cross_entropy(neg_preds, neg_targets, weight=class_weights)
-        
+            pos_loss = F.cross_entropy(pos_preds, pos_targets, weight=class_weights)
+            neg_loss = F.cross_entropy(neg_preds, neg_targets, weight=class_weights)
+        else:
+            pos_loss = F.cross_entropy(pos_preds, pos_targets,)
+            neg_loss = F.cross_entropy(neg_preds, neg_targets,)
+
         loss = pos_loss + neg_loss
         preds = torch.cat((pos_preds, neg_preds), dim=0)
         targets = torch.cat((pos_targets, neg_targets), dim=0)
 
-        batch_value = self.val_metrics(preds, targets)
+        batch_value = self.val_metrics(torch.argmax(preds, dim=1), targets)
         self.log_dict(batch_value, on_epoch=True)
         self.log('val_loss', loss, on_step=True, on_epoch=True)
 
@@ -262,7 +289,15 @@ class Sentence_MALDI(L.LightningModule):
         embed_a = self.embedder(spectrum_a)
         embed_b = self.embedder(spectrum_b)
 
-        preds = F.cosine_similarity(embed_a, embed_b)
+        # input = torch.cat((embed_a, embed_b, torch.abs(embed_a - embed_b)), dim=1)
+        # preds = F.softmax(self.classifier(input))
+        # # Reverse prediction classes
+        # preds = torch.flip(preds, dims=[1])
+        # # Return probability of same genus
+        # preds = preds[:, -1]
+        # loss = None
+
+        preds = (F.cosine_similarity(embed_a, embed_b) + 1)/2
         if similarity is not None:
             loss = nn.functional.mse_loss(preds, similarity) # Who knows why we're doing this, but it's here
         else:
