@@ -109,6 +109,7 @@ class Sentence_MALDI(L.LightningModule):
         self.hidden_dim = self.hparams['hidden_dim']
         self.hidden_layers = self.hparams['hidden_layers']
         self.dropout_rate = self.hparams.get('dropout', 0.0)  # Default dropout rate is 0.0
+        self.tau = self.hparams.get('tau', 1.0)  # Softmax temperature at train-time
         
         if self.dropout_rate > 1.0 or self.dropout_rate < 0.0:
             raise ValueError("Dropout rate must be between 0.0 and 1.0")
@@ -169,7 +170,7 @@ class Sentence_MALDI(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         # Batch is a list of:
-        # spectra: (anchor, postive, negative)
+        # spectra: (anchor, positive, negative)
         # metadata: (anchor_metadata, positive_metadata, negative_metadata)
         # similarity: (None, pos_sim, neg_sim)
 
@@ -182,47 +183,40 @@ class Sentence_MALDI(L.LightningModule):
         positives = [x[1] for x in spectra]
         negatives = [x[2] for x in spectra]
 
-        anchor_metadata = [x[0] for x in metadata]
-        positive_metadata = [x[1] for x in metadata]
-        negative_metadata = [x[2] for x in metadata]
-        
         pos_similarities = torch.tensor([x[1] for x in similarities], device=self.device)
-        neg_similarities = torch.tensor([x[2] for x in similarities])
+        neg_similarities = torch.tensor([x[2] for x in similarities], device=self.device)
 
         # Forward pass
         pos_preds, neg_preds = self(torch.stack(anchors), torch.stack(positives), torch.stack(negatives))
 
-        # Calculate loss
+        # Apply temperature scaling
+        pos_preds /= self.tau
+        neg_preds /= self.tau
+
+        # Convert similarities to classification targets
         pos_targets = self.transform_to_classification(pos_similarities)
         neg_targets = torch.ones_like(neg_similarities, device=self.device, dtype=torch.long) * (self.output_dim - 1)
 
+        # Compute loss with class weighting
         if self.output_dim != 2:
-                    # Underweight the negative samples (since they are guarenteed 50%, other classes split the remaining 50%)
             class_weights = torch.ones(self.output_dim, device=self.device)
-            class_weights[-1] = 0.1
+            class_weights[-1] = 0.1  # Underweight negative samples
             pos_loss = F.cross_entropy(pos_preds, pos_targets, weight=class_weights)
             neg_loss = F.cross_entropy(neg_preds, neg_targets, weight=class_weights)
         else:
-            pos_loss = F.cross_entropy(pos_preds, pos_targets,)
-            neg_loss = F.cross_entropy(neg_preds, neg_targets,)
-        
-        
+            pos_loss = F.cross_entropy(pos_preds, pos_targets)
+            neg_loss = F.cross_entropy(neg_preds, neg_targets)
+
+        # Final loss
         loss = pos_loss + neg_loss
+
+        # Logging
         preds = torch.cat((pos_preds, neg_preds), dim=0)
         targets = torch.cat((pos_targets, neg_targets), dim=0)
-
-        print('preds: ', torch.argmax(preds, dim=1))
-        print('targets: ', targets)
 
         batch_value = self.train_metrics(torch.argmax(preds, dim=1), targets)
         self.log_dict(batch_value, on_epoch=True)
         self.log('train_loss', loss, on_step=True, on_epoch=True)
-
-        if False:   # Handy for debugging
-            avg_pred_mag = torch.mean(torch.abs(pred_sim))
-            avg_real_mag = torch.mean(torch.abs(similarity))
-            self.log('train_avg_pred_magnitude', avg_pred_mag, on_step=True, on_epoch=True)
-            self.log('train_avg_real_magnitude', avg_real_mag, on_step=True, on_epoch=True)
 
         return loss
     
@@ -290,7 +284,7 @@ class Sentence_MALDI(L.LightningModule):
         embed_b = self.embedder(spectrum_b)
 
         # input = torch.cat((embed_a, embed_b, torch.abs(embed_a - embed_b)), dim=1)
-        # preds = F.softmax(self.classifier(input))
+        # preds = F.softmax(self.classifier(input), dim=1)
         # # Reverse prediction classes
         # preds = torch.flip(preds, dims=[1])
         # # Return probability of same genus

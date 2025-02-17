@@ -29,6 +29,7 @@ def main():
             'hidden_layers': 3,
             'weight_decay': 1e-5,
             'dropout': 0.2,
+            'tau': 1.0,
     }
     mlp_binary_classifier_hyperparameters = {
         'input_dim': 1700,

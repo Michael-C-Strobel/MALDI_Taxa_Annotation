@@ -644,6 +644,8 @@ def compute_clustering_scores(y_true, y_pred, figure_path:Path=None, method:str=
 
         # Add some left, right margin
         plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
+        print("********************************")
+        print("Saving Tree Metrics to ", figure_path)
         plt.savefig(figure_path)
         plt.close(fig)
 
@@ -772,7 +774,7 @@ def main():
 
     if str(args.model_name).lower() == 'cosine':
         model = RawCosine()
-        trans = transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
+        trans = transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
 
     else:
         model_dir = Path('lightning_logs') / str(args.model_name) / 'checkpoints'
@@ -903,11 +905,11 @@ def main():
     # Create a report of the worst predictions
     if len(metadata) > 0:
         prediction_table = create_report(predictions, true_similarity, metadata, metric_path / "worst_predictions", k=5)
-        for k in [1,3,5,7,10]:
-            compute_information_imbalance(prediction_table, metric_path / "information_imbalance"/ f"information_imbalance_{k}_dense.txt", k=k, method='dense')
-            compute_information_imbalance(prediction_table, metric_path / "information_imbalance"/ f"information_imbalance_{k}_min.txt", k=k, method='min')
+        # for k in [1,3,5,7,10]:
+        #     compute_information_imbalance(prediction_table, metric_path / "information_imbalance"/ f"information_imbalance_{k}_dense.txt", k=k, method='dense')
+        #     compute_information_imbalance(prediction_table, metric_path / "information_imbalance"/ f"information_imbalance_{k}_min.txt", k=k, method='min')
 
-        compute_top_in_top_k(prediction_table, metric_path / "top_in_top_k.json", k_range=list(range(1, 15)))
+        # compute_top_in_top_k(prediction_table, metric_path / "top_in_top_k.json", k_range=list(range(1, 15)))
 
         # Compute taxa-dependent clustering scores
         for tax_level in ["genus", "species"]:
@@ -919,6 +921,7 @@ def main():
     f = open(metric_path / "metrics.txt", 'w', encoding='utf-8')
 
     # Fowlkes Mallows Score
+    print("Computing Fowlkes Mallows Score")
     scores = compute_clustering_scores(true_similarity, predictions, metric_path / "dendrograms.png")
 
     if not (metric_path / 'clustering_scores').exists():
