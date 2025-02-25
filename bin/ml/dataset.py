@@ -61,7 +61,7 @@ class single_MALDI_TOF_DS(Dataset):
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
 
         balance = str(balance).lower()
-        if balance not in ['accession', 'class']:
+        if balance not in ['accession', 'genus', 'species']:
             raise ValueError(f"Invalid balance method. Expected one of ['accession', 'class'], got '{balance}'")
         if balance == 'class':
             raise NotImplementedError("Class balancing not yet implemented")

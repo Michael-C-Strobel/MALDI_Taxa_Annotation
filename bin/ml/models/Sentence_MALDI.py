@@ -4,6 +4,7 @@ import torchmetrics
 import torch.nn.functional as F
 import torch
 import lightning as L
+import logging
 
 class CustromBinaryMetric(torchmetrics.Metric):
     """This metric calculates the binary accuracy of a model's same genus/different genus classification.
@@ -87,7 +88,7 @@ class Sentence_MALDI(L.LightningModule):
     """ This is an MLP (for now) implementation that loosely follows the SBERT setup. See:
     Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks, Figure 1 For More Details.
     """
-    def __init__(self, hyperparameters):
+    def __init__(self, hyperparameters, pretrained_embedder=None):
         super().__init__()
 
         for key in hyperparameters.keys():
@@ -114,7 +115,10 @@ class Sentence_MALDI(L.LightningModule):
         if self.dropout_rate > 1.0 or self.dropout_rate < 0.0:
             raise ValueError("Dropout rate must be between 0.0 and 1.0")
         
-        self.embedder = Embedder(self.input_dim, self.hidden_dim, self.hidden_layers, self.dropout_rate)
+        if not pretrained_embedder:
+            self.embedder = Embedder(self.input_dim, self.hidden_dim, self.hidden_layers, self.dropout_rate)
+        else:
+            self.embedder = pretrained_embedder
         self.classifier = Classifier(self.hidden_dim*3, self.hidden_dim, 3, self.output_dim)
 
         # Training metrics
@@ -165,7 +169,7 @@ class Sentence_MALDI(L.LightningModule):
         pos_preds = self.classifier(pos_inputs)
         neg_preds = self.classifier(neg_inputs)
 
-        return pos_preds, neg_preds
+        return pos_preds, neg_preds, (anchors, positives, negatives)
         
 
     def training_step(self, batch, batch_idx):
@@ -187,7 +191,8 @@ class Sentence_MALDI(L.LightningModule):
         neg_similarities = torch.tensor([x[2] for x in similarities], device=self.device)
 
         # Forward pass
-        pos_preds, neg_preds = self(torch.stack(anchors), torch.stack(positives), torch.stack(negatives))
+        pos_preds, neg_preds, embeds = self.forward(torch.stack(anchors), torch.stack(positives), torch.stack(negatives))
+        anchor_embeds, positive_embeds, negative_embeds = embeds
 
         # Apply temperature scaling
         pos_preds /= self.tau
@@ -203,12 +208,17 @@ class Sentence_MALDI(L.LightningModule):
             class_weights[-1] = 0.1  # Underweight negative samples
             pos_loss = F.cross_entropy(pos_preds, pos_targets, weight=class_weights)
             neg_loss = F.cross_entropy(neg_preds, neg_targets, weight=class_weights)
+            # pos_cosine_embedding_loss = 0.0
+            # neg_cosine_embedding_loss = 0.0
+            logging.warning(f"Cosine embedding is not used in training")
         else:
             pos_loss = F.cross_entropy(pos_preds, pos_targets)
             neg_loss = F.cross_entropy(neg_preds, neg_targets)
+            # pos_cosine_embedding_loss = F.cosine_embedding_loss(anchor_embeds, positive_embeds, torch.ones(positive_embeds.shape[0], device=self.device))
+            # neg_cosine_embedding_loss = F.cosine_embedding_loss(anchor_embeds, negative_embeds, -torch.ones(negative_embeds.shape[0], device=self.device))
 
         # Final loss
-        loss = pos_loss + neg_loss
+        loss = pos_loss + neg_loss #+ (0.05 * pos_cosine_embedding_loss) + (0.05 * neg_cosine_embedding_loss)
 
         # Logging
         preds = torch.cat((pos_preds, neg_preds), dim=0)
@@ -241,7 +251,7 @@ class Sentence_MALDI(L.LightningModule):
         neg_similarities = torch.tensor([x[2] for x in similarities])
 
         # Forward pass
-        pos_preds, neg_preds = self(torch.stack(anchors), torch.stack(positives), torch.stack(negatives))
+        pos_preds, neg_preds, _ = self(torch.stack(anchors), torch.stack(positives), torch.stack(negatives))
 
         # Calculate loss
         pos_targets = self.transform_to_classification(pos_similarities)

@@ -18,6 +18,7 @@ import os
 from models.mlp import MLP
 from models.autoencoder import Autoencoder
 from models.transformer_embedding_prediction_head import TransformerPredictionHead
+from models.binary_transformer_embedding_prediction_head import BinaryTransformerPredictionHead
 from models.cosine import RawCosine
 from models.Sentence_MALDI import Sentence_MALDI
 from models.mlp_binary_classifier import MLPBinaryClassifier
@@ -792,9 +793,11 @@ def main():
         trans=None
         # Load the model
         if 'mlp_model' in args.model_name.lower():
+            print("Performing inference on MLP")
             model = MLP.load_from_checkpoint(model_path)
             trans =  transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
         elif 'autoencoder' in args.model_name.lower():
+            print("Performing inference on Autoencoder")
             hyperparameters = { # Temporary fix until I figure out how to deal with this
                     'input_dim': 1800,
                     'output_dim': 1800,
@@ -807,7 +810,8 @@ def main():
             trans = transforms.Compose([BinSpectrum(10, 2_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
             model = Autoencoder(hyperparameters)
             model.load_converted_from_checkpoint(model_path)
-        elif 'transformer_embedding_prediction_model' in args.model_name.lower():
+        elif 'transformer_embedding_prediction_model' == args.model_name.lower().split('.')[0]:
+            print("Performing inference on TransformerPredictionHead")
             hyperparameters = {
                 'hidden_dim': 300,
                 'latent_dim': 300,
@@ -825,13 +829,24 @@ def main():
             # model = TransformerPredictionHead(hyperparameters)
             model = TransformerPredictionHead.load_from_checkpoint(model_path)
         elif 'Sentence_MALDI' in args.model_name:
+            print("Performing inference on Sentence_MALDI")
             model = Sentence_MALDI.load_from_checkpoint(model_path)
 
-            trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
+            trans =  transforms.Compose([BinSpectrum(10, 3_000, 10_000), SquareRootTransform(), NormalizeIntensity()])
         elif 'MLPBinaryClassifier' in args.model_name:
+            print("Performing inference on MLPBinaryClassifier")
             model = MLPBinaryClassifier.load_from_checkpoint(model_path)
 
             trans = transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
+
+        elif 'binary_transformer_embedding' in args.model_name:
+            print("Performing inference on BinaryTransformerPredictionHead")
+            model = BinaryTransformerPredictionHead.load_from_checkpoint(model_path)
+
+            trans = transforms.Compose([SelectMassRange(2_000, 20_000),
+                                    NormalizeIntensity(),
+                                    SelectTopKPeaks(150),
+                                    PadToLength(150),])
         else:
             raise ValueError(f"Unknown model name {args.model_name}")
         
