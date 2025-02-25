@@ -832,7 +832,7 @@ def main():
             print("Performing inference on Sentence_MALDI")
             model = Sentence_MALDI.load_from_checkpoint(model_path)
 
-            trans =  transforms.Compose([BinSpectrum(10, 3_000, 10_000), SquareRootTransform(), NormalizeIntensity()])
+            trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
         elif 'MLPBinaryClassifier' in args.model_name:
             print("Performing inference on MLPBinaryClassifier")
             model = MLPBinaryClassifier.load_from_checkpoint(model_path)

@@ -29,7 +29,8 @@ class Triplet_DataModule(L.LightningDataModule):
 
         self.full_dataset = single_MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False,
                                                 transform=self.transform,
-                                                require_genus=True, )
+                                                require_genus=True, 
+                                                triplets=True)
         
         self.batch_size = batch_size
 
@@ -66,8 +67,7 @@ class Triplet_DataModule(L.LightningDataModule):
             self.predict_set = self.full_dataset.subset(self.test_indices)
 
     def collate_fn(self, batch):
-        # Note that the collate_fn is not parallelized, so this is less efficent than a __getitem__ implementation
-        triplets = [self.full_dataset.generate_triplets(spectrum, metadata) for (spectrum, metadata) in batch]
+        triplets = [x for x in batch]
         return triplets
 
 

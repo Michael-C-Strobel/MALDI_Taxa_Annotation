@@ -55,7 +55,8 @@ class single_MALDI_TOF_DS(Dataset):
                 process:bool=True,
                 transform:callable=None,
                 balance:str='accession',
-                require_genus:bool=False):
+                require_genus:bool=False,
+                triplets:bool=False,):
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
@@ -84,6 +85,7 @@ class single_MALDI_TOF_DS(Dataset):
         self.transform = transform
 
         self.num_turns = 2
+        self.triplets = triplets
 
         similarities = Path(self.root_dir) / 'similarities.feather'
         self.similarities = None
@@ -170,7 +172,11 @@ class single_MALDI_TOF_DS(Dataset):
             'database_id': database_id,
         }
 
-        return spectrum, metadata
+        if not self.triplets:
+            return spectrum, metadata
+        else:
+            triplets = self.generate_triplets(spectrum, metadata)
+            return triplets 
     
     def get_one_hot_encoded_classes(self):
         """
@@ -314,6 +320,10 @@ class single_MALDI_TOF_DS(Dataset):
 
         # Remove any accessions whose spectra were removed
         subset_dataset.similarities = subset_dataset.similarities.loc[accessions, accessions]
+        assert subset_dataset.similarities.shape[0] < self.similarities.shape[0], "Expected subset similarities to be smaller"
+        assert subset_dataset.similarities.shape[1] < self.similarities.shape[1], "Expected subset similarities to be smaller"
+        subset_dataset.metadata_table = subset_dataset.metadata_table.loc[subset_dataset.metadata_table['accession'].isin(accessions)]
+        assert subset_dataset.metadata_table.shape[0] < self.metadata_table.shape[0], "Expected subset metadata to be smaller"
 
         return Subset(subset_dataset, indices)
         
