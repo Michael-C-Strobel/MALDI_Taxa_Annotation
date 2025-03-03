@@ -56,7 +56,7 @@ class single_MALDI_TOF_DS(Dataset):
                 transform:callable=None,
                 balance:str='accession',
                 require_genus:bool=False,
-                triplets:bool=False,):
+                sampling_mode:str=None,):
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
@@ -85,7 +85,16 @@ class single_MALDI_TOF_DS(Dataset):
         self.transform = transform
 
         self.num_turns = 2
-        self.triplets = triplets
+        self.triplets = False
+        self.nce = False
+        if sampling_mode is not None:
+            sampling_mode = str(sampling_mode).lower().strip()
+            if sampling_mode == 'triplets':
+                self.triplets = True
+            elif sampling_mode == 'nce':
+                self.nce = True
+            else:
+                raise ValueError(f"Invalid sampling mode. Expected one of ['triplets', 'nce'], got '{sampling_mode}'")
 
         similarities = Path(self.root_dir) / 'similarities.feather'
         self.similarities = None
@@ -123,13 +132,14 @@ class single_MALDI_TOF_DS(Dataset):
         self.all_accessions = self.metadata_table.loc[self.metadata_table['accession'].notna(), 'accession'].unique().astype(str)
         
         if self.similarities is not None:
+            print("Filtering accessions based on similarities")
             self.all_accessions = np.intersect1d(self.all_accessions, self.similarities.index.values.astype(str))
             self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
 
         # DEBUG, TEMPORARY
         # Remove any accessions whose spectra were removed
-        removed = ['strain_B032', 'nan']
-        self.all_accessions = np.array([x for x in self.all_accessions if not (str(x) in removed)])
+        # removed = ['strain_B032', 'nan']
+        # self.all_accessions = np.array([x for x in self.all_accessions if not (str(x) in removed)])
 
         self.n_genus = len(self.metadata_table['genus'].unique())
 
@@ -161,7 +171,7 @@ class single_MALDI_TOF_DS(Dataset):
 
         if self.transform:
             try:
-                spectrum = self.transform(spectrum)
+                spectrum = torch.tensor(self.transform(spectrum))
             except Exception as e:
                 raise RuntimeError(f"Error transforming spectrum for strain {strain_name} with accession {accession}") from e
 
@@ -172,11 +182,15 @@ class single_MALDI_TOF_DS(Dataset):
             'database_id': database_id,
         }
 
-        if not self.triplets:
-            return spectrum, metadata
-        else:
+        if self.triplets:
             triplets = self.generate_triplets(spectrum, metadata)
             return triplets 
+        elif self.nce:
+            pair = self.generate_pair(spectrum, metadata)
+            return pair
+        else:
+            return spectrum, metadata
+            
     
     def get_one_hot_encoded_classes(self):
         """
@@ -185,7 +199,53 @@ class single_MALDI_TOF_DS(Dataset):
         def one_hot_encode(classes:List):
             return torch.Tensor([self.one_hot_encoder[str(x)] for x in classes]).to(torch.long)  # str() important to cover nan
         return one_hot_encode
-         
+    
+    def _genus_pair(self, metadata:dict):
+        """ Generates a positive pair based on genus.
+        
+        Args:
+            metadata (dict): The metadata dictionary.
+            
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: The positive pair.
+            Tuple[dict, dict]: The positive metadata.
+        """
+
+        anchor_strain_name = metadata['Strain name']
+        anchor_accession = metadata['accession']
+        anchor_class = metadata['class']
+
+        # Positive pair
+        positive_mask = (self.metadata_table['genus'] == anchor_class)
+        
+        # Try to get a non-identity pair
+        strain_mask = (self.metadata_table['Strain name'] != anchor_strain_name)
+        if sum(positive_mask & strain_mask) > 0:
+            positive_mask = positive_mask & strain_mask
+
+        # TODO: filter for distances, if we ever want to require them
+
+        if len(self.metadata_table[positive_mask]) < 1:
+            raise ValueError(f"Could not find a match for {anchor_accession}, this shuould never happen")
+
+        positive_row = self.metadata_table[positive_mask].sample(1).to_dict(orient='records')[0]
+        positive_metadata = {
+            'accession': positive_row['accession'],
+            'Strain name': positive_row['Strain name'],
+            'class': positive_row['genus'],
+            'database_id': positive_row['database_id'],
+        }
+        pos_sim = self.similarities.loc[anchor_accession, positive_metadata['accession']]
+        positive_spectrum = torch.load(Path(self.root_dir) / 'spectra' / f"{positive_metadata['Strain name']}.pt", weights_only=True).to(torch.float32)
+
+        if self.transform:
+            try:
+                positive_spectrum = torch.tensor(self.transform(positive_spectrum))
+            except Exception as e:
+                raise RuntimeError(f"Error transforming positive spectrum for strain {positive_metadata['Strain name']} with accession {positive_metadata['accession']}") from e
+            
+        return positive_spectrum, positive_metadata, pos_sim
+
     def _genus_triplets(self, metadata:dict):
         """ Generates positive and negative triplets based on genus.
 
@@ -291,6 +351,24 @@ class single_MALDI_TOF_DS(Dataset):
 
 
         return (positive_spectrum, negative_spectrum), (positive_metadata, negative_metadata), (pos_sim, neg_sim)
+    
+    def generate_pair(self, spectrum:torch.Tensor, metadata:dict):
+        """ Generates a positive pair for a CLIP-like batch for a given metadata input.
+
+        Args:
+            spectrum (torch.Tensor): The spectrum tensor.
+            metadata (dict): The metadata dictionary.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: The positive pair.
+            Tuple[dict, dict]: The positive metadata.
+            None: Similarity TODO
+        """
+        positive_spectrum, positive_metadata, similarity = self._genus_pair(metadata)
+        
+        return (spectrum, positive_spectrum), (metadata, positive_metadata), (similarity,)
+
+
 
     def generate_triplets(self, spectrum:torch.Tensor, metadata:dict, strategy:str='genus'):
         """ Generates the positive and negative triplets for a given metadata input and strategy.
@@ -311,12 +389,10 @@ class single_MALDI_TOF_DS(Dataset):
 
         return (torch.tensor(spectrum), positive_spectrum, negative_spectrum), (metadata, positive_metadata, negative_metadata), (None, pos_sim, neg_sim)
     
-    def subset(self, indices:List):
+    def subset(self, accessions:List):
         #  Make a copy, in this way the sliced similarities can be used to identify the subset
+        indices = [i for i, x in enumerate(self.all_accessions) if x in accessions]
         subset_dataset = copy.deepcopy(self)
-        # Match indices to accessions
-        mapped_indices = [idx % len(self.all_accessions) for idx in indices]    # TODO: This is untennable. Need to switch to unique IDS
-        accessions = np.unique(self.all_accessions[mapped_indices])
 
         # Remove any accessions whose spectra were removed
         subset_dataset.similarities = subset_dataset.similarities.loc[accessions, accessions]
@@ -354,8 +430,8 @@ class Paired_MALDI_TOF_DS(Dataset):
         self.metadata_table = metadata_table
         self.transform = transform
 
-        self.num_turns = 2
-        
+        self.num_turns = 1 # Not implemented in subset so locked at 1
+
         if not process:
             preprocessing_dir_stat = Path(self.preprocessing_dir).stat()
             most_recent_m_time = get_most_recent_modified_time()
@@ -420,6 +496,11 @@ class Paired_MALDI_TOF_DS(Dataset):
         self.similarities = square_similarities
         self.sliced_similarities = self._preslice_similarities(temp_similarities)
 
+        if self.similarities is not None:
+            print("Filtering accessions based on similarities")
+            self.all_accessions = np.intersect1d(self.all_accessions, self.similarities.index.values.astype(str))
+            self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
+
         # Initialize the linkage and clustered accessions
         self.linkage = None
         self.train_test_sim = None
@@ -436,7 +517,7 @@ class Paired_MALDI_TOF_DS(Dataset):
         rand_int = np.random.randint(0, self.sim_bins.shape[0] - 1)
         accession_b = None
         # while accession_b is None or accession_b in ['EF178692', 'AB184357', 'AB122711', 'AB184476', 'strain_B017', 'AB122711']:  # SS preprocessing
-        while accession_b is None or accession_b in ['strain_B032',]:            
+        while accession_b is None: #or accession_b in ['strain_B032',]:            
             strain_name_b, accession_b, similarity = self.find_match_in_range(accession_a, strain_name_a, rand_int)
         spectrum_a = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_a}.pt', weights_only=True).to(torch.float32)
         spectrum_b = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name_b}.pt', weights_only=True).to(torch.float32)
@@ -537,7 +618,9 @@ class Paired_MALDI_TOF_DS(Dataset):
         Returns:
             Tuple[str, str, float]: The strain name, accession, and similarity of the matched strain.
         """
-        relevant_df = self.sliced_similarities[accession]
+        print('find_match_in_range')
+        print('accession', accession)
+        relevant_df = self.sliced_similarities[str(accession)]
 
         lb = self.sim_bins[bin_index]
         ub = self.sim_bins[bin_index + 1]
@@ -577,7 +660,7 @@ class Paired_MALDI_TOF_DS(Dataset):
 
         grouped = sims.groupby('query_genbank')
         for key, item in grouped:
-            out_dict[key] = item.set_index('pident').sort_index()   # Now we can slice by pident (e.g., df.loc[78:98])
+            out_dict[str(key)] = item.set_index('pident').sort_index()   # Now we can slice by pident (e.g., df.loc[78:98])
 
         return out_dict
     
@@ -600,7 +683,7 @@ class Paired_MALDI_TOF_DS(Dataset):
 
         # Fill nans with zeros (no ideal, but we're working with what we've got here)
         # DEBUG
-        distance_matrix.fillna(100.0, inplace=True)
+        # distance_matrix.fillna(100.0, inplace=True)
 
         # Convert to condensed distance matrix
         condensed = scipy.spatial.distance.squareform(distance_matrix.to_numpy(), force='tovector', checks=True)
@@ -670,11 +753,13 @@ class Paired_MALDI_TOF_DS(Dataset):
             return train_indices, val_indices, test_indices
         
         # Need to repeat train_indices num_turns times
-        train_indices = np.repeat(train_indices, self.num_turns)
-        val_indices = np.repeat(val_indices, self.num_turns)
+        # train_indices = np.repeat(train_indices, self.num_turns)
+        # val_indices = np.repeat(val_indices, self.num_turns)
+        train_accessions = np.repeat(train_accessions, self.num_turns)
+        val_accessions = np.repeat(val_accessions, self.num_turns)
 
-        return (self.subset(train_indices), self.subset(val_indices), self.subset(test_indices)), \
-                (train_indices, val_indices, test_indices)
+        return (self.subset(train_accessions), self.subset(val_accessions), self.subset(test_accessions)), \
+                (train_accessions, val_accessions, test_accessions)
 
     def _split_genera(self, return_indices):
         """ Create a train/val/test split based on genera. We'll take the largest genera first 
@@ -726,19 +811,24 @@ class Paired_MALDI_TOF_DS(Dataset):
         # print("test_accessions", test_accessions)
 
         # Convert accessions to indices
-        train_indices = [np.where(self.all_accessions == x)[0][0] for x in train_accessions]        # WHY
-        val_indices = [np.where(self.all_accessions == x)[0][0] for x in val_accessions]
-        test_indices = [np.where(self.all_accessions == x)[0][0] for x in test_accessions]
+        # train_indices = [np.where(self.all_accessions == x)[0][0] for x in train_accessions]        # WHY
+        # val_indices = [np.where(self.all_accessions == x)[0][0] for x in val_accessions]
+        # test_indices = [np.where(self.all_accessions == x)[0][0] for x in test_accessions]
+
+        # if return_indices:
+            # return train_indices, val_indices, test_indices
 
         if return_indices:
-            return train_indices, val_indices, test_indices
+            raise NotImplementedError("Returning indices is not implemented for genera splits")
 
         # Need to repeat train_indices num_turns times
-        train_indices = np.repeat(train_indices, self.num_turns)
-        val_indices = np.repeat(val_indices, self.num_turns)
+        train_accessions = np.repeat(train_accessions, self.num_turns).tolist()
+        val_accessions = np.repeat(val_accessions, self.num_turns).tolist()
 
-        return (self.subset(train_indices), self.subset(val_indices), self.subset(test_indices)), \
-                (train_indices, val_indices, test_indices)
+        print("train_accessions", train_accessions)
+
+        return (self.subset(train_accessions), self.subset(val_accessions), self.subset(test_accessions)), \
+                (train_accessions, val_accessions, test_accessions)
 
     def split_train_val_test(self, split_method:str='dendrogram',
                              return_indices: bool = False,
@@ -755,12 +845,13 @@ class Paired_MALDI_TOF_DS(Dataset):
             return self._split_genera(return_indices=return_indices)
 
         
-    def subset(self, indices:List):
+    def subset(self, accessions:List):
         # Make a copy, in this way the sliced similarities can be used to identify the subset
         subset_dataset = copy.deepcopy(self)
+        indices = [i for i, x in enumerate(self.all_accessions) if x in accessions]
         # Match indices to accessions
-        mapped_indices = [idx % len(self.all_accessions) for idx in indices]    # TODO: This is untennable. Need to switch to unique IDS
-        accessions = self.all_accessions[mapped_indices]
+        # mapped_indices = [idx % len(self.all_accessions) for idx in indices]    # TODO: This is untennable. Need to switch to unique IDS
+        # accessions = self.all_accessions[mapped_indices]
 
         # Remove any accessions whose spectra were removed
         subset_dataset.sliced_similarities = {k: v.loc[v['subject_genbank'].isin(accessions)] for k, v in self.sliced_similarities.items() if str(k) in accessions}       # OVERLAPS FOR EACH SUBSET

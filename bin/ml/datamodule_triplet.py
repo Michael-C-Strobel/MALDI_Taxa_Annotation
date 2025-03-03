@@ -30,7 +30,7 @@ class Triplet_DataModule(L.LightningDataModule):
         self.full_dataset = single_MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False,
                                                 transform=self.transform,
                                                 require_genus=True, 
-                                                triplets=True)
+                                                sampling_mode='triplets')
         
         self.batch_size = batch_size
 

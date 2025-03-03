@@ -3,6 +3,7 @@ from pathlib import Path
 from torch import Tensor
 import numpy as np
 import sys
+import logging
 
 def mirror_plot_1d(spectrum_a, spectrum_b, output_path, tolerance, **kwargs):
     fig = plt.figure(figsize=(10, 6))
@@ -146,7 +147,9 @@ def shannon_entropy(spectrum: np.array, padding_value:float=-1, bin_size:float=1
     spectrum = np.array(spectrum)
 
     if len(spectrum.shape) == 1 or min(spectrum[:, 1]) == 0:
-        print("Spectrum is likely already binned. Entropy calculation will be incorrect.", file=sys.stderr)
+        if not hasattr(shannon_entropy, "_warned"):
+            shannon_entropy._warned = True
+            logging.warning("Spectrum is likely already binned. Entropy calculation will be incorrect.")
         binned_spectrum = spectrum[:]
     else:
         spectrum = spectrum[spectrum[:, 0] != padding_value] # Remove padding

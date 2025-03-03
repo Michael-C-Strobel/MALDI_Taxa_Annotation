@@ -84,6 +84,41 @@ class Embedder(nn.Module):
             x = layer(x)
         return x
 
+def clip_contrastive_loss(image_embeds, text_embeds, temperature=0.07):
+    """
+    Compute the contrastive loss between image and text embeddings.
+
+    Parameters:
+    - image_embeds (torch.Tensor): A tensor of shape (batch_size, embed_size) containing image embeddings.
+    - text_embeds (torch.Tensor): A tensor of shape (batch_size, embed_size) containing text embeddings.
+    - temperature (float): A temperature scaling factor for the similarity computation.
+
+    Returns:
+    - loss (torch.Tensor): The computed contrastive loss value.
+    """
+    # Normalize embeddings to unit length
+    image_embeds = F.normalize(image_embeds, p=2, dim=-1)
+    text_embeds = F.normalize(text_embeds, p=2, dim=-1)
+    
+    # Compute cosine similarity between all image-text pairs
+    similarity_matrix = torch.matmul(image_embeds, text_embeds.T)  # (batch_size, batch_size)
+
+    # Apply temperature scaling
+    similarity_matrix /= temperature
+    
+    # Create labels: for each image, the corresponding text is the positive pair
+    labels = torch.arange(image_embeds.size(0), device=image_embeds.device)
+    
+    # Compute cross-entropy loss using the similarity matrix
+    # We concatenate the positive pairs for image-text and text-image
+    loss_image_to_text = F.cross_entropy(similarity_matrix, labels)
+    loss_text_to_image = F.cross_entropy(similarity_matrix.T, labels)
+    
+    # Final loss is the sum of both directions (image -> text and text -> image)
+    loss = (loss_image_to_text + loss_text_to_image) / 2.0
+    
+    return loss
+
 class Sentence_MALDI(L.LightningModule):
     """ This is an MLP (for now) implementation that loosely follows the SBERT setup. See:
     Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks, Figure 1 For More Details.

@@ -7,6 +7,7 @@ import lightning as L
 from torchvision import transforms
 from custom_transforms import *
 import numpy as np
+from scipy.stats import mode as mode_fn
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -22,6 +23,7 @@ from models.binary_transformer_embedding_prediction_head import BinaryTransforme
 from models.cosine import RawCosine
 from models.Sentence_MALDI import Sentence_MALDI
 from models.mlp_binary_classifier import MLPBinaryClassifier
+from models.CLIP_MALDI import CLIP_MALDI
 
 from datamodule import Spectrum_DataModule
 from utils import mirror_plot, shannon_entropy, estimate_convexity
@@ -547,13 +549,41 @@ def compute_clustering_scores(y_true, y_pred, figure_path:Path=None, method:str=
 
     nan_trues = np.isnan(y_true)
     if sum(nan_trues) > 0:
-        print("Warning: NaNs in true similarity matrix")
-        return {
-        'fowlkes_mallows': None,
-        'rand_index': None,
-        'nmi': None,
-        'ami': None,
-    }
+        print("Warning: NaNs in true similarity matrix, dropping nans")
+        # return {
+        #     'fowlkes_mallows': None,
+        #     'rand_index': None,
+        #     'nmi': None,
+        #     'ami': None,
+        # }
+        # Let's remove any cells that have more than the mode number of nans
+        # Note that this is a heuristic approahch, and can't be guarenteed to work in all cases (it assumes a few sequences cause _all_ problems)
+        # Convert back to square matrix
+        y_true = squareform(y_true, force='tomatrix')
+        # Calculate the mode of the number of nans
+        mode = mode_fn(np.sum(np.isnan(y_true).astype(int), axis=0))
+        # Remove rows and columns with more than the mode number of nans
+        mode = int(mode[0])
+        print("Mode is ", mode)
+        row_wise = np.sum(np.isnan(y_true).astype(int), axis=0) <= mode
+        col_wise = np.sum(np.isnan(y_true).astype(int), axis=1) <= mode
+        good_indices = row_wise & col_wise
+        print("A total of ", len(good_indices), " indices are good")
+        print(f"Nan Total: {np.sum(np.isnan(y_true))}")
+        print("Original shape", y_true.shape)
+        y_true = y_true[np.ix_(good_indices, good_indices)]
+        print("New shape", y_true.shape)
+        print(y_true)
+        # Assert still square
+        assert y_true.shape[0] == y_true.shape[1]
+        # Convert back to condensed form
+        y_true = squareform(y_true, force='tovector')
+
+        # Do the same for the predicted matrix
+        y_pred = squareform(y_pred, force='tomatrix')
+        y_pred = y_pred[np.ix_(good_indices, good_indices)]
+        assert y_pred.shape[0] == y_pred.shape[1]
+        y_pred = squareform(y_pred, force='tovector')
 
     # Cluster
     y_true = 1 - np.array(y_true)
@@ -847,6 +877,11 @@ def main():
                                     NormalizeIntensity(),
                                     SelectTopKPeaks(150),
                                     PadToLength(150),])
+        elif args.model_name.split('/',1)[0] == "CLIP_MLP":
+            print("Performing inference on CLIP_MLP")
+            model = CLIP_MALDI.load_from_checkpoint(model_path)
+
+            trans = transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
         else:
             raise ValueError(f"Unknown model name {args.model_name}")
         
@@ -889,6 +924,8 @@ def main():
                     k: v[i] for k, v in output['metadata'].items()
                 })
 
+    print("true_similarity", true_similarity)
+
     # Save the predictions
     predictions = np.array(predictions)
     true_similarity = np.array(true_similarity)
@@ -911,11 +948,22 @@ def main():
     # Save metadata (list of dicts)
     with open(metric_path / "prediction_metadata.json", "w", encoding="utf-8") as f:
         # Change all tensors to lists for json serialization
-        for i in range(len(metadata)):
+        for i in tqdm(range(len(metadata)), desc="Processing metadata"):
             for k, v in metadata[i].items():
                 if isinstance(v, np.ndarray):
                     metadata[i][k] = v.tolist()
-        # json.dump(metadata, f, indent=4)
+                if isinstance(v, torch.Tensor):
+                    try:
+                        metadata[i][k] = v.item()
+                    except:
+                        metadata[i][k] = ''
+
+                # Check if object is serializable, if not print it
+                try:
+                    json.dumps(metadata[i][k])
+                except:
+                    print(f"Could not serialize {metadata[i][k]}")
+        json.dump(metadata, f, indent=4)
 
     # Create a report of the worst predictions
     if len(metadata) > 0:
@@ -928,6 +976,7 @@ def main():
 
         # Compute taxa-dependent clustering scores
         for tax_level in ["genus", "species"]:
+            print(f"Computing clustering scores for {tax_level}")
             compute_taxa_clustering_scores(prediction_table, metric_path / f"clustering_scores_{tax_level}.json", metadata_table, tax_level=tax_level, plot=True)
 
         # Computer per-genus clustering scores

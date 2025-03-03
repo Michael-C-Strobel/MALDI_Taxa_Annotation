@@ -1,9 +1,11 @@
 from models.mlp import MLP
 from models.mlp_classifier import MLPClassifier
 from models.Sentence_MALDI import Sentence_MALDI
+from models.CLIP_MALDI import CLIP_MALDI
 from models.mlp_binary_classifier import MLPBinaryClassifier
 from datamodule import Spectrum_DataModule, SingleSpectrum_DataModule
 from datamodule_triplet import Triplet_DataModule
+from clip_datamodule import CLIP_DataModule
 from lightning.pytorch.loggers import TensorBoardLogger
 import lightning as L
 import torch
@@ -40,11 +42,21 @@ def main():
         'dropout': 0.2,
         'lr': 5e-6,
     }
+    clip_maldi_hyperparameters = {
+            'input_dim': 1700,
+            'output_bin_edges': torch.Tensor([1.0]),
+            'hidden_dim': 300,
+            'hidden_layers': 3,
+            'weight_decay': 1e-5,
+            'dropout': 0.2,
+            'tau': 0.07, # Default from paper (0.07)
+    }
 
-    # model = MLP(hyperparameters)
+    model = MLP(hyperparameters)
     # model = MLPClassifier(hyperparameters)
-    model = Sentence_MALDI(Sentence_MALDI_hyperparameters)
+    # model = Sentence_MALDI(Sentence_MALDI_hyperparameters)
     # model = MLPBinaryClassifier(mlp_binary_classifier_hyperparameters)
+    # model = CLIP_MALDI(clip_maldi_hyperparameters)
     
     torch.set_float32_matmul_precision('medium')    # medium | high
     
@@ -95,6 +107,18 @@ def main():
                             num_workers=7,
                             transforms=trans)
         
+        datamodule.setup('fit')
+
+    elif isinstance(model, CLIP_MALDI):
+        logger = TensorBoardLogger('lightning_logs', name='CLIP_MLP')
+
+        datamodule = CLIP_DataModule('../../data/idbac_db/preprocessing',
+                            '../../data/idbac_db/raw/ammended_db.csv',
+                            '../../data/idbac_db/processed_data',
+                            num_workers=7,
+                            transforms=trans,
+                            batch_size=32)
+
         datamodule.setup('fit')
 
     else:

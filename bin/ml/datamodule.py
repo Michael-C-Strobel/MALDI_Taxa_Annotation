@@ -23,28 +23,28 @@ class Spectrum_DataModule(L.LightningDataModule):
         self.batch_size = batch_size
         self.transform = transforms
 
-        self.train_indices = None
-        self.val_indices = None
-        self.test_indices = None
+        self.train_accessions = None
+        self.val_accessions = None
+        self.test_accessions = None
         self.inference_set_to_use=inference_set_to_use
 
-        indices_path = Path(self.root_dir)/f'{self.split_method}'
+        accessions_path = Path(self.root_dir)/f'{self.split_method}'
 
-        if indices_path / 'train_indices.pt':
+        if accessions_path / 'train_accessions.pt':
             if wipe_test_sets:
-                (indices_path / 'train_indices.pt').unlink(missing_ok=True)
+                (accessions_path / 'train_accessions.pt').unlink(missing_ok=True)
             else:
-                self.train_indices = torch.load(indices_path / 'train_indices.pt', weights_only=False)
-        if indices_path / 'val_indices.pt':
+                self.train_accessions = torch.load(accessions_path / 'train_accessions.pt', weights_only=False)
+        if accessions_path / 'val_accessions.pt':
             if wipe_test_sets:
-                (indices_path / 'val_indices.pt').unlink(missing_ok=True)
+                (accessions_path / 'val_accessions.pt').unlink(missing_ok=True)
             else:
-                self.val_indices = torch.load(indices_path / 'val_indices.pt', weights_only=False)
-        if indices_path / 'test_indices.pt':
+                self.val_accessions = torch.load(accessions_path / 'val_accessions.pt', weights_only=False)
+        if accessions_path / 'test_accessions.pt':
             if wipe_test_sets:
-                (indices_path / 'test_indices.pt').unlink(missing_ok=True)
+                (accessions_path / 'test_accessions.pt').unlink(missing_ok=True)
             else:
-                self.test_indices = torch.load(indices_path / 'test_indices.pt', weights_only=False)
+                self.test_accessions = torch.load(accessions_path / 'test_accessions.pt', weights_only=False)
 
     def prepare_data(self):
        pass
@@ -55,35 +55,38 @@ class Spectrum_DataModule(L.LightningDataModule):
             # self.train_set, self.val_set = random_split(
             #     full_dataset, [int(len(full_dataset) * 0.8), len(full_dataset) - int(len(full_dataset) * 0.8)], generator=torch.Generator().manual_seed(42)
             # )
-            if self.train_indices is None or self.val_indices is None:
-                (self.train_set, self.val_set, _), (train_indices, val_indices, test_indices) = self.full_dataset.split_train_val_test(self.split_method)
+            if self.train_accessions is None or self.val_accessions is None:
+                (self.train_set, self.val_set, _), (train_accessions, val_accessions, test_accessions) = self.full_dataset.split_train_val_test(self.split_method)
                 out_path = Path(self.root_dir)/f'{self.split_method}'
                 out_path.mkdir(parents=True, exist_ok=True)
                 
-                torch.save(train_indices, out_path / 'train_indices.pt')
-                torch.save(val_indices, out_path / 'val_indices.pt')
-                torch.save(test_indices, out_path / 'test_indices.pt')
+                torch.save(train_accessions, out_path / 'train_accessions.pt')
+                torch.save(val_accessions, out_path / 'val_accessions.pt')
+                torch.save(test_accessions, out_path / 'test_accessions.pt')
             else:
                 # DEBUG Remove accessions ['EF178692', 'AB184357', 'AB122711', 'AB184476', 'strain_B017']:
                 indices_to_drop = []
 
                 # For SS: ['EF178692', 'AB184357', 'AB122711', 'AB184476', 'strain_B017', 'AB122711']
 
-                for x in ['strain_B032',]:
-                    indices_to_drop.append(list(self.full_dataset.all_accessions).index(x))
-                new_train_indices = [i for i in self.train_indices if i not in indices_to_drop]
-                new_val_indices = [i for i in self.val_indices if i not in indices_to_drop]
+                # for x in ['strain_B032',]:
+                #     indices_to_drop.append(list(self.full_dataset.all_accessions).index(x))
+                # new_train_indices = [i for i in self.train_indices if i not in indices_to_drop]
+                # new_val_indices = [i for i in self.val_indices if i not in indices_to_drop]
 
                 
 
-                print("Number of train indices dropped: ", len(self.train_indices) - len(new_train_indices))
-                print("Number of val indices dropped: ", len(self.val_indices) - len(new_val_indices))
+                # print("Number of train indices dropped: ", len(self.train_indices) - len(new_train_indices))
+                # print("Number of val indices dropped: ", len(self.val_indices) - len(new_val_indices))
 
                 # self.train_set = Subset(self.full_dataset, new_train_indices) #self.train_indices)                                                              # THIS IS A BUG, THIS WILL CAUSE DATA LEAKAGE FOR CROSS-SET PAIRS
                 # self.val_set = Subset(self.full_dataset, new_val_indices) #self.val_indices)
 
-                self.train_set = self.full_dataset.subset(new_train_indices)
-                self.val_set = self.full_dataset.subset(new_val_indices)
+                # self.train_set = self.full_dataset.subset(new_train_indices)
+                # self.val_set = self.full_dataset.subset(new_val_indices)
+
+                self.train_set = self.full_dataset.subset(self.train_accessions)
+                self.val_set = self.full_dataset.subset(self.val_accessions)
 
             print(f"Training Set Size {len(self.train_set)/self.full_dataset.num_turns}")
             print(f"Validation Set Size {len(self.val_set)/self.full_dataset.num_turns}")

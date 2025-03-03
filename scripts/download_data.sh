@@ -8,4 +8,6 @@ conda activate ./conda_env
 
 cd bin
 
+mkdir -p ../data/idbac_db/raw
+
 python3 download_db.py --json_output "../data/idbac_db/raw/db.json"  --csv_output "../data/idbac_db/raw/db.csv" 
