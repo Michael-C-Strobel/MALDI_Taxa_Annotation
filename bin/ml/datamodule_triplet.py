@@ -34,29 +34,29 @@ class Triplet_DataModule(L.LightningDataModule):
         
         self.batch_size = batch_size
 
-        indices_path = Path(self.root_dir)/f'{self.split_method}'
+        accessions_path = Path(self.root_dir)/f'{self.split_method}'
 
-        # Get train/val/test indices
-        self.train_indices = None
-        self.val_indices = None
-        self.test_indices = None
-        if indices_path /'train_indices.pt':
-            self.train_indices = torch.load(indices_path /'train_indices.pt', weights_only=False)
-        if indices_path /'val_indices.pt':
-            self.val_indices = torch.load(indices_path /'val_indices.pt', weights_only=False)
-        if indices_path /'test_indices.pt':
-            self.test_indices = torch.load(indices_path /'test_indices.pt', weights_only=False)
+        # Get train/val/test accessions
+        self.train_accessions = None
+        self.val_accessions = None
+        self.test_accessions = None
+        if accessions_path /'train_accessions.pt':
+            self.train_accessions = torch.load(accessions_path /'train_accessions.pt', weights_only=False)
+        if accessions_path /'val_accessions.pt':
+            self.val_accessions = torch.load(accessions_path /'val_accessions.pt', weights_only=False)
+        if accessions_path /'test_accessions.pt':
+            self.test_accessions = torch.load(accessions_path /'test_accessions.pt', weights_only=False)
 
     def prepare_data(self):
         pass
 
     def setup(self, stage:str):
         if stage == 'fit':
-           if self.train_indices is None or self.val_indices is None:
-               raise ValueError("Expected train_indices and val_indices to be set")
+           if self.train_accessions is None or self.val_accessions is None:
+               raise ValueError("Expected train_accessions and val_accessions to be set")
            
-           self.train_set = self.full_dataset.subset(self.train_indices)
-           self.val_set   = self.full_dataset.subset(self.val_indices)
+           self.train_set = self.full_dataset.subset(self.train_accessions)
+           self.val_set   = self.full_dataset.subset(self.val_accessions)
 
            print("Train set size: ", len(self.train_set))
            print("Val set size: ", len(self.val_set))
@@ -64,7 +64,7 @@ class Triplet_DataModule(L.LightningDataModule):
            raise NotImplementedError("Test set not implemented yet")
         
         elif stage == 'all':
-            self.predict_set = self.full_dataset.subset(self.test_indices)
+            self.predict_set = self.full_dataset.subset(self.test_accessions)
 
     def collate_fn(self, batch):
         triplets = [x for x in batch]
@@ -77,7 +77,8 @@ class Triplet_DataModule(L.LightningDataModule):
                             batch_size=self.batch_size, 
                             shuffle=True,
                             num_workers=self.num_workers,
-                            collate_fn=self.collate_fn
+                            collate_fn=self.collate_fn,
+                            drop_last=True
                         )
     
     def val_dataloader(self):

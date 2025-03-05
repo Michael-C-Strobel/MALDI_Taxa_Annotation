@@ -9,6 +9,10 @@ from clip_datamodule import CLIP_DataModule
 from lightning.pytorch.loggers import TensorBoardLogger
 import lightning as L
 import torch
+from lightning.pytorch.callbacks import EarlyStopping
+from lightning.pytorch.tuner import Tuner
+from lightning.pytorch import Trainer
+
 
 from torchvision import transforms
 from custom_transforms import *
@@ -52,15 +56,19 @@ def main():
             'tau': 0.07, # Default from paper (0.07)
     }
 
-    model = MLP(hyperparameters)
+    # model = MLP(hyperparameters)  
     # model = MLPClassifier(hyperparameters)
     # model = Sentence_MALDI(Sentence_MALDI_hyperparameters)
     # model = MLPBinaryClassifier(mlp_binary_classifier_hyperparameters)
     # model = CLIP_MALDI(clip_maldi_hyperparameters)
+    model = CLIP_MALDI(clip_maldi_hyperparameters, )
     
     torch.set_float32_matmul_precision('medium')    # medium | high
     
-    trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
+    trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity(), NoiseInjection(noise_factor=7e-2), NormalizeIntensity()])
+    # trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
+    # trans =  transforms.Compose([SquareRootTransform(), NormalizeIntensity(),SelectTopKPeaks(150),
+    #                                 PadToLength(150)])
 
     if isinstance(model, MLP):
         logger = TensorBoardLogger('lightning_logs', name='MLP_model')
@@ -69,9 +77,10 @@ def main():
                                         '../../data/idbac_db/raw/ammended_db.csv',
                                         '../../data/idbac_db/processed_data',
                                         num_workers=7,
-                                        # wipe_test_sets=False,
-                                        transforms=trans,#)
-                                        wipe_test_sets=True)  #DEBUG
+                                        wipe_test_sets=False,
+                                        transforms=trans,
+                                        split_method='species')
+                                        # wipe_test_sets=True)  #DEBUG
         datamodule.setup('fit')
         datamodule.plot(0)
 
@@ -111,13 +120,15 @@ def main():
 
     elif isinstance(model, CLIP_MALDI):
         logger = TensorBoardLogger('lightning_logs', name='CLIP_MLP')
+        # logger = None
 
         datamodule = CLIP_DataModule('../../data/idbac_db/preprocessing',
                             '../../data/idbac_db/raw/ammended_db.csv',
                             '../../data/idbac_db/processed_data',
                             num_workers=7,
                             transforms=trans,
-                            batch_size=32)
+                            batch_size=32,
+                            split_method='species')
 
         datamodule.setup('fit')
 
@@ -126,9 +137,28 @@ def main():
 
     # Plot the train/test split
     # datamodule.full_dataset.plot_split('./train_test_split.png')
+
+    early_stop_callback = EarlyStopping(
+                            monitor="val_loss",  # Metric to monitor
+                            patience=5,          # Number of epochs with no improvement before stopping
+                            verbose=True,
+                            mode="min"           # "min" because lower validation loss is better
+                        )
     
-    trainer = L.Trainer(max_epochs=165, log_every_n_steps=10, logger=logger, devices=[0])
-    tuner = L.pytorch.tuner.Tuner(trainer)
+    early_stop_callback = EarlyStopping(
+        monitor="val_loss",
+        patience=40,
+        verbose=True,
+        min_delta=0.00,)
+
+    trainer = Trainer(
+        max_epochs=330, 
+        log_every_n_steps=5, 
+        logger=logger, 
+        devices=[0],
+        # callbacks=[early_stop_callback]
+    )
+
     
     # lr_find_results = tuner.lr_find(model,
     #                                 datamodule,

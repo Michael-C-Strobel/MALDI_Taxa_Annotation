@@ -92,11 +92,11 @@ class Spectrum_DataModule(L.LightningDataModule):
             print(f"Validation Set Size {len(self.val_set)/self.full_dataset.num_turns}")
         if stage == 'test':
             if self.inference_set_to_use == 'test':
-                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.test_indices)
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.test_accessions)
             elif self.inference_set_to_use == 'val':
-                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.val_indices)
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.val_accessions)
             elif self.inference_set_to_use == 'train':
-                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.train_indices)
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.train_accessions)
             else:
                 raise ValueError(f"Unknown inference set to use: {self.inference_set_to_use}")
         if stage == 'all':

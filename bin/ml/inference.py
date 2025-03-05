@@ -561,7 +561,7 @@ def compute_clustering_scores(y_true, y_pred, figure_path:Path=None, method:str=
         # Convert back to square matrix
         y_true = squareform(y_true, force='tomatrix')
         # Calculate the mode of the number of nans
-        mode = mode_fn(np.sum(np.isnan(y_true).astype(int), axis=0))
+        # mode = mode_fn(np.sum(np.isnan(y_true).astype(int), axis=0))
         # Remove rows and columns with more than the mode number of nans
         mode = int(mode[0])
         print("Mode is ", mode)
@@ -719,8 +719,8 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
             subdir_path.mkdir(parents=True, exist_ok=True)
 
         # Save the spectra
-        spectrum_a = metadata[idx]['spectrum_a']
-        spectrum_b = metadata[idx]['spectrum_b']
+        spectrum_a = torch.tensor(metadata[idx]['spectrum_a'])
+        spectrum_b = torch.tensor(metadata[idx]['spectrum_b'])
         accession_a = metadata[idx]['accession_a']
         accession_b = metadata[idx]['accession_b']
         np.save(subdir_path / f"spectrum_a.npy", spectrum_a)
@@ -742,8 +742,8 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
             output_metadata['predicted_similarity'] = predictions[idx].item()
             output_metadata['index'] = idx.item()
             output_metadata['error'] = np.abs(predictions[idx].item() - true_similarity[idx].item())
-            output_metadata['num_peaks_in_a'] = metadata[idx]['num_peaks_in_a'].item()
-            output_metadata['num_peaks_in_b'] = metadata[idx]['num_peaks_in_b'].item()
+            output_metadata['num_peaks_in_a'] = metadata[idx]['num_peaks_in_a']#.item()
+            output_metadata['num_peaks_in_b'] = metadata[idx]['num_peaks_in_b']#.item()
             # if len(spectrum_a.shape) == 2:
             output_metadata['shannon_entropy_a'] = shannon_entropy(spectrum_a)
             output_metadata['shannon_entropy_b'] = shannon_entropy(spectrum_b)
@@ -780,8 +780,8 @@ def create_report(predictions:List[float], true_similarity:List[float], metadata
         'strain_b': [meta['strain_b'] for meta in metadata],
         'accession_a': [meta['accession_a'] for meta in metadata],
         'accession_b': [meta['accession_b'] for meta in metadata],
-        'num_peaks_in_a': [meta['num_peaks_in_a'].item() for meta in metadata],
-        'num_peaks_in_b': [meta['num_peaks_in_b'].item() for meta in metadata],
+        'num_peaks_in_a': [meta['num_peaks_in_a'] for meta in metadata],
+        'num_peaks_in_b': [meta['num_peaks_in_b'] for meta in metadata],
         'shannon_entropy_a': shannon_entropy_a,
         'shannon_entropy_b': shannon_entropy_b,
         'convexity_a': convexity_a,
@@ -891,7 +891,8 @@ def main():
                                 num_workers=7, 
                                 wipe_test_sets=False,
                                 inference_set_to_use=args.inference_set,
-                                transforms=trans)
+                                transforms=trans,
+                                split_method='species')
     
     metadata_table = '../../data/idbac_db/raw/ammended_db.csv'
     metadata_table = pd.read_csv(metadata_table)
@@ -953,10 +954,7 @@ def main():
                 if isinstance(v, np.ndarray):
                     metadata[i][k] = v.tolist()
                 if isinstance(v, torch.Tensor):
-                    try:
-                        metadata[i][k] = v.item()
-                    except:
-                        metadata[i][k] = ''
+                    metadata[i][k] = v.tolist()
 
                 # Check if object is serializable, if not print it
                 try:
@@ -985,15 +983,15 @@ def main():
     f = open(metric_path / "metrics.txt", 'w', encoding='utf-8')
 
     # Fowlkes Mallows Score
-    print("Computing Fowlkes Mallows Score")
-    scores = compute_clustering_scores(true_similarity, predictions, metric_path / "dendrograms.png")
+    # print("Computing Fowlkes Mallows Score")
+    # scores = compute_clustering_scores(true_similarity, predictions, metric_path / "dendrograms.png")
 
-    if not (metric_path / 'clustering_scores').exists():
-        (metric_path / 'clustering_scores').mkdir(parents=True, exist_ok=True)
-    np.save(metric_path / 'clustering_scores' / "fowlkes_mallows_scores.npy", scores['fowlkes_mallows'])
-    np.save(metric_path / 'clustering_scores' / "rand_index_scores.npy", scores['rand_index'])
-    np.save(metric_path / 'clustering_scores' / "nmi_scores.npy", scores['nmi'])
-    np.save(metric_path / 'clustering_scores' / "ami_scores.npy", scores['ami'])
+    # if not (metric_path / 'clustering_scores').exists():
+    #     (metric_path / 'clustering_scores').mkdir(parents=True, exist_ok=True)
+    # np.save(metric_path / 'clustering_scores' / "fowlkes_mallows_scores.npy", scores['fowlkes_mallows'])
+    # np.save(metric_path / 'clustering_scores' / "rand_index_scores.npy", scores['rand_index'])
+    # np.save(metric_path / 'clustering_scores' / "nmi_scores.npy", scores['nmi'])
+    # np.save(metric_path / 'clustering_scores' / "ami_scores.npy", scores['ami'])
 
     # Correlation of predictions with true values
     correlation = np.corrcoef(predictions, true_similarity)[0, 1]

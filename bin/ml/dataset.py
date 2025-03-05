@@ -106,12 +106,19 @@ class single_MALDI_TOF_DS(Dataset):
             square_similarities = temp_similarities.pivot_table(index='query_genbank', columns='subject_genbank', values='pident')
             # Set Diag to 100
             np.fill_diagonal(square_similarities.values, 100)
-            
             # Ensure actually square
             if square_similarities.shape[0] != square_similarities.shape[1]:
                 raise ValueError(f"Similarities matrix is not square: {square_similarities.shape}")
             self.similarities = square_similarities
-
+            # Drop duplicate rows/cols (keeping first)
+            print("Removing duplicates from similarities")
+            print("Original Shape:", self.similarities.shape)
+            self.similarities = self.similarities.loc[~self.similarities.index.duplicated(keep='first')]
+            self.similarities = self.similarities.loc[:, ~self.similarities.columns.duplicated(keep='first')]
+            print("New Shape:", self.similarities.shape)
+            # Check for dupes one last time
+            assert not self.similarities.index.duplicated().any()
+            assert not self.similarities.columns.duplicated().any()
 
         if not process:
             preprocessing_dir_stat = Path(self.preprocessing_dir).stat()
@@ -133,8 +140,8 @@ class single_MALDI_TOF_DS(Dataset):
         
         if self.similarities is not None:
             print("Filtering accessions based on similarities")
-            self.all_accessions = np.intersect1d(self.all_accessions, self.similarities.index.values.astype(str))
-            self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
+            # self.all_accessions = np.intersect1d(self.all_accessions, self.similarities.index.values.astype(str))
+            # self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
 
         # DEBUG, TEMPORARY
         # Remove any accessions whose spectra were removed
@@ -235,7 +242,10 @@ class single_MALDI_TOF_DS(Dataset):
             'class': positive_row['genus'],
             'database_id': positive_row['database_id'],
         }
-        pos_sim = self.similarities.loc[anchor_accession, positive_metadata['accession']]
+        try:
+            pos_sim = self.similarities.loc[anchor_accession, positive_metadata['accession']]
+        except KeyError as ke:
+            pos_sim = np.nan
         positive_spectrum = torch.load(Path(self.root_dir) / 'spectra' / f"{positive_metadata['Strain name']}.pt", weights_only=True).to(torch.float32)
 
         if self.transform:
@@ -265,7 +275,6 @@ class single_MALDI_TOF_DS(Dataset):
 
         # Positive triplet
         positive_mask = (self.metadata_table['genus'] == anchor_class)
-
         # Valid distance
         relevant_dists = self.similarities.loc[anchor_accession, :].notna()
         # print("na distances found", (len(relevant_dists) - sum(relevant_dists)))
@@ -292,7 +301,6 @@ class single_MALDI_TOF_DS(Dataset):
 
 
             # Get location where this happens
-            print("anchor_accession", anchor_accession)
             missing_accessions = []
             for accession in all_possible_accessions:
                 if np.isnan(self.similarities.at[anchor_accession, accession]):
@@ -387,25 +395,33 @@ class single_MALDI_TOF_DS(Dataset):
         else:
             raise ValueError(f"Unknown strategy: {strategy}")
 
-        return (torch.tensor(spectrum), positive_spectrum, negative_spectrum), (metadata, positive_metadata, negative_metadata), (None, pos_sim, neg_sim)
+        return (spectrum, positive_spectrum, negative_spectrum), (metadata, positive_metadata, negative_metadata), (None, pos_sim, neg_sim)
     
     def subset(self, accessions:List):
         #  Make a copy, in this way the sliced similarities can be used to identify the subset
         indices = [i for i, x in enumerate(self.all_accessions) if x in accessions]
         subset_dataset = copy.deepcopy(self)
 
+        accessions = np.unique(accessions)
+
+        print("Debug: only incluiding accessions in subset that actually exist")
+        print("Original accessions", len(accessions))
+        print("Missing accessions", set(accessions) - set(self.all_accessions))
+        accessions = np.intersect1d(accessions, self.all_accessions)
+        print("New accessions", len(accessions))
+
         # Remove any accessions whose spectra were removed
-        subset_dataset.similarities = subset_dataset.similarities.loc[accessions, accessions]
-        assert subset_dataset.similarities.shape[0] < self.similarities.shape[0], "Expected subset similarities to be smaller"
-        assert subset_dataset.similarities.shape[1] < self.similarities.shape[1], "Expected subset similarities to be smaller"
+        # subset_dataset.similarities = subset_dataset.similarities.loc[accessions, accessions]
+        # assert subset_dataset.similarities.shape[0] < self.similarities.shape[0], "Expected subset similarities to be smaller"
+        # assert subset_dataset.similarities.shape[1] < self.similarities.shape[1], "Expected subset similarities to be smaller"
         subset_dataset.metadata_table = subset_dataset.metadata_table.loc[subset_dataset.metadata_table['accession'].isin(accessions)]
-        assert subset_dataset.metadata_table.shape[0] < self.metadata_table.shape[0], "Expected subset metadata to be smaller"
+        # assert subset_dataset.metadata_table.shape[0] < self.metadata_table.shape[0], "Expected subset metadata to be smaller"
 
         return Subset(subset_dataset, indices)
         
 
     def preprocess(self,):
-        return
+        # return
         if not (Path(self.root_dir) / 'spectra/').exists():
             (Path(self.root_dir) / 'spectra/').mkdir(parents=True, exist_ok=True)
         print("Preprocessing files...")
@@ -498,8 +514,8 @@ class Paired_MALDI_TOF_DS(Dataset):
 
         if self.similarities is not None:
             print("Filtering accessions based on similarities")
-            self.all_accessions = np.intersect1d(self.all_accessions, self.similarities.index.values.astype(str))
-            self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
+            # self.all_accessions = np.intersect1d(self.all_accessions, self.similarities.index.values.astype(str))
+            # self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
 
         # Initialize the linkage and clustered accessions
         self.linkage = None
@@ -761,7 +777,7 @@ class Paired_MALDI_TOF_DS(Dataset):
         return (self.subset(train_accessions), self.subset(val_accessions), self.subset(test_accessions)), \
                 (train_accessions, val_accessions, test_accessions)
 
-    def _split_genera(self, return_indices):
+    def _split_taxa(self, return_indices, level='genus'):
         """ Create a train/val/test split based on genera. We'll take the largest genera first 
         60% of genera with > 5 accessions will be train, 20% val and test.
 
@@ -773,13 +789,14 @@ class Paired_MALDI_TOF_DS(Dataset):
         Returns:
             Tuple: The train, val, and test datasets or the train, val, and test indices.
         """
+        assert level in ['genus', 'species'], f"Invalid level: {level}"
 
         # Get the genera with more than 5 accessions
-        genera = self.metadata_table['genus'].value_counts()
+        genera = self.metadata_table[level].value_counts()
         large_genera = genera[genera > 5].index
         small_genera = genera[genera <= 5].index
 
-        # Get the accessions for each genus
+        # Get the accessions for each taxa
         train_genera = large_genera[:int(0.4 * len(large_genera))].tolist()
         test_genera  = large_genera[int(0.4 * len(large_genera)):int(0.8 * len(large_genera))].tolist()
         val_genera   = large_genera[int(0.8 * len(large_genera)):].tolist()
@@ -788,9 +805,9 @@ class Paired_MALDI_TOF_DS(Dataset):
         print("test_genera", test_genera)
 
 
-        train_accessions = self.metadata_table[self.metadata_table['genus'].isin(train_genera)]['accession'].values
-        val_accessions = self.metadata_table[self.metadata_table['genus'].isin(val_genera)]['accession'].values
-        test_accessions = self.metadata_table[self.metadata_table['genus'].isin(test_genera)]['accession'].values
+        train_accessions = self.metadata_table[self.metadata_table[level].isin(train_genera)]['accession'].values
+        val_accessions = self.metadata_table[self.metadata_table[level].isin(val_genera)]['accession'].values
+        test_accessions = self.metadata_table[self.metadata_table[level].isin(test_genera)]['accession'].values
 
         # Assert no overlap
         assert len(set(train_accessions) & set(val_accessions)) == 0
@@ -798,25 +815,13 @@ class Paired_MALDI_TOF_DS(Dataset):
         assert len(set(val_accessions) & set(test_accessions)) == 0
 
         # Get the accessions for the small genera
-        small_genera_accessions = self.metadata_table[self.metadata_table['genus'].isin(small_genera)]['accession'].values
-        train_accessions = np.concatenate((train_accessions, small_genera_accessions[:len(small_genera_accessions) // 2]))
+        small_genera_accessions = self.metadata_table[self.metadata_table[level].isin(small_genera)]['accession'].values
+        train_accessions = np.concatenate((train_accessions, small_genera_accessions[:len(small_genera_accessions) // 2]))  # Wot
 
         # Assert no overlap
         assert len(set(train_accessions) & set(val_accessions)) == 0
         assert len(set(train_accessions) & set(test_accessions)) == 0
         assert len(set(val_accessions) & set(test_accessions)) == 0
-
-        # print("train_accessions", train_accessions)
-        # print("val_accessions", val_accessions)
-        # print("test_accessions", test_accessions)
-
-        # Convert accessions to indices
-        # train_indices = [np.where(self.all_accessions == x)[0][0] for x in train_accessions]        # WHY
-        # val_indices = [np.where(self.all_accessions == x)[0][0] for x in val_accessions]
-        # test_indices = [np.where(self.all_accessions == x)[0][0] for x in test_accessions]
-
-        # if return_indices:
-            # return train_indices, val_indices, test_indices
 
         if return_indices:
             raise NotImplementedError("Returning indices is not implemented for genera splits")
@@ -829,21 +834,62 @@ class Paired_MALDI_TOF_DS(Dataset):
 
         return (self.subset(train_accessions), self.subset(val_accessions), self.subset(test_accessions)), \
                 (train_accessions, val_accessions, test_accessions)
+    
+    def _even_taxa_split(self, return_indices, level='genus'):
+        """For each species, add 80% to the training set, 10% to the validation set, and 10% to the test set.
+        Singular species will be added to the training set.
+        """
+        if return_indices:
+            raise NotImplementedError("Returning indices is not implemented for genera splits")
+        
+        train_accessions = list()
+        val_accessions = list()
+        test_accessions = list()
+
+        for species in self.metadata_table[level].unique():
+            species_accessions = self.metadata_table[self.metadata_table[level] == species]['accession'].unique().tolist()
+            if len(species_accessions) <= 3:
+                train_accessions += species_accessions  # Add all to train
+            else:
+                train_end = int(np.floor(0.7 * len(species_accessions)))
+                val_end = int(np.floor(0.85 * len(species_accessions)))
+                print(train_end, val_end)
+                if len(set(species_accessions[:train_end]) & set(species_accessions[train_end:val_end])) > 0:
+                    print(set(species_accessions[:train_end]) & set(species_accessions[train_end:val_end]))
+                    raise ValueError("Overlap between train and val")
+                train_accessions += species_accessions[:train_end]
+                val_accessions += species_accessions[train_end:val_end]
+                test_accessions += species_accessions[val_end:]
+
+        # Assert no overlap
+        assert len(set(train_accessions) & set(val_accessions)) == 0, f"Expected no overlap but got {set(train_accessions) & set(val_accessions)}"
+        assert len(set(train_accessions) & set(test_accessions)) == 0, f"Expected no overlap but got {set(train_accessions) & set(test_accessions)}"
+        assert len(set(val_accessions) & set(test_accessions)) == 0, f"Expected no overlap but got {set(val_accessions) & set(test_accessions)}"
+
+
+        return (self.subset(train_accessions), self.subset(val_accessions), self.subset(test_accessions)), \
+                (train_accessions, val_accessions, test_accessions)
+
 
     def split_train_val_test(self, split_method:str='dendrogram',
                              return_indices: bool = False,
                              ) -> List:
         split_method = str(split_method).lower()
 
-        if not split_method in ['dendrogram', 'genera']:
+        if not split_method in ['dendrogram', 'genera', 'species', 'species_even']:
             raise ValueError(f"Invalid split method: {split_method}")
         
         if split_method == 'dendrogram':
             return self._split_dendrogam(return_indices=return_indices)
         
         if split_method == 'genera':
-            return self._split_genera(return_indices=return_indices)
-
+            return self._split_taxa(return_indices=return_indices, level='genus')
+        
+        if split_method == 'species':
+            return self._split_taxa(return_indices=return_indices, level='species')
+        
+        if split_method == 'species_even':
+            return self._even_taxa_split(return_indices=return_indices, level='species')
         
     def subset(self, accessions:List):
         # Make a copy, in this way the sliced similarities can be used to identify the subset
@@ -921,7 +967,7 @@ class ExhaustiveMALDI_TOF_DS(IterableDataset):
         return spectrum_a, spectrum_b, similarity, metadata
 
 class ExhaustiveSampler():
-    def __init__(self, data: Paired_MALDI_TOF_DS, indices: torch.Tensor):
+    def __init__(self, data: Paired_MALDI_TOF_DS, accessions: torch.Tensor):
         self.data = data
 
         worker_total_num = torch.utils.data.get_worker_info()
@@ -931,9 +977,9 @@ class ExhaustiveSampler():
                 raise ValueError("ExhaustiveSampler does not support multi-processing")
         
         # Get unique
-        indices = np.unique(indices)
+        accessions = np.unique(accessions)
 
-        self.accessions = self.data.all_accessions[indices]
+        self.accessions = accessions
         self.metadata = self.data.metadata_table.loc[self.data.metadata_table['accession'].isin(self.accessions)]
         print("Found a total of", len(self.metadata), "strains.")
         print("Found a total of", len(self.accessions), "accessions.")

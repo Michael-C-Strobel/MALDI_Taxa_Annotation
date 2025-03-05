@@ -240,6 +240,20 @@ class PadToLength(object):
         #     print(f"Padding {self.length - current_length} elements to the sequence.")
 
         return np.pad(sequence, pad_width, constant_values=self.padding_value)
+    
+class NoiseInjection(object):
+    """
+    Args:
+        noise_factor (float): The factor to multiply the noise by.
+    """
+    def __init__(self, noise_factor=0.05):
+        self.noise_factor = noise_factor
+
+    def __call__(self, spectrum):
+        spectrum = np.array(spectrum)
+        noise = np.random.uniform(0, self.noise_factor, spectrum.shape)
+        spectrum += noise
+        return spectrum
 
 class topf(object):
     """Applies the topf transformation described in TODO (see package documentation).

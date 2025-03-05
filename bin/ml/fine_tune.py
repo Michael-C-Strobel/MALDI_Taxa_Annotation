@@ -36,11 +36,11 @@ def main():
     binary_transformer_prediction_head_hyperparameters = {
         'hidden_dim': 300,
         'latent_dim': 300,
-        'hidden_layers': 3,
+        'hidden_layers': 0,
         'dropout': 0.2,
         'lr': 5e-6,
         'weight_decay': 1e-5,
-        'freeze_encoder': False,
+        'freeze_encoder': True,
         'output_bin_edges': torch.Tensor([1.0]),
         'encoder_path': './lightning_logs/maldi_transformer_model/version_204/checkpoints/epoch=9899-step=198000.ckpt'
     }
@@ -116,7 +116,7 @@ def main():
     # Plot the train/test split
     # datamodule.full_dataset.plot_split('./train_test_split.png')
 
-    trainer = L.Trainer(max_epochs=50, log_every_n_steps=10, logger=logger, devices=1)
+    trainer = L.Trainer(max_epochs=150, log_every_n_steps=10, logger=logger, devices=1)
     tuner = L.pytorch.tuner.Tuner(trainer)
     
     # lr_find_results = tuner.lr_find(model,
