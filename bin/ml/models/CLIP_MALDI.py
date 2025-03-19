@@ -89,12 +89,20 @@ class SimpleSelfAttention(nn.Module):
         self.output_head = nn.Linear(dim, output_head_dim)
 
     def forward(self, spectrum):
+        if self.reduce == 'cls':
+            # Prepend a CLS token
+            cls_token_val = torch.tensor([-9], device=spectrum.device)
+            assert cls_token_val.item() != self.padding_value, "CLS token value is the same as padding value"
+            cls_tokens = torch.ones(spectrum.shape[0], 1, spectrum.shape[2], device=spectrum.device) * cls_token_val
+            spectrum = torch.cat([cls_tokens, spectrum], dim=1)
+
         if self.padding_value is not None:
             padding = (spectrum[:,:,0] == self.padding_value).bool()    # True indicates padding
             # print(f"Found a total of {torch.sum(padding)} padding values, {torch.sum(padding)/padding.numel() }%")
         else:
             padding = None
-        z = spectrum[:,:,1]
+
+        z = spectrum[:,:,1] # B x L x [mz, intensity]
 
         if torch.isnan(z).any():
             raise ValueError("Nan values in z")
@@ -127,7 +135,7 @@ class SimpleSelfAttention(nn.Module):
         # if torch.isnan(z).any():
         #     raise ValueError("Nan values in z")
 
-        if self.reduce == "mean":
+        if self.reduce == "sum":
             return self.output_head(z.sum(1))
         elif self.reduce == "max":
             return self.output_head(z.max(1).values)
@@ -135,44 +143,6 @@ class SimpleSelfAttention(nn.Module):
             return self.output_head(z[:, 0, :])
         elif self.reduce == "none":
             return z, padding
-
-# def clip_contrastive_loss(anchor_embeds, pair_embeds, anchor_class, temperature=0.07):
-#     """
-#     Compute the contrastive loss between image and text embeddings.
-
-#     Parameters:
-#     - anchor_embeds (torch.Tensor): A tensor of shape (batch_size, embed_size) containing image embeddings.
-#     - pair_embeds (torch.Tensor): A tensor of shape (batch_size, embed_size) containing text embeddings.
-#     - temperature (float): A temperature scaling factor for the similarity computation.
-
-#     Returns:
-#     - loss (torch.Tensor): The computed contrastive loss value.
-#     """
-#     # Normalize embeddings to unit length
-#     anchor_embeds = F.normalize(anchor_embeds, p=2, dim=-1)
-#     pair_embeds = F.normalize(pair_embeds, p=2, dim=-1)
-    
-#     # Compute cosine similarity between all image-text pairs
-#     similarity_matrix = torch.matmul(anchor_embeds, pair_embeds.T)  # (batch_size, batch_size)
-
-#     # Apply temperature scaling
-#     similarity_matrix /= temperature
-
-#     # Clip logits to prevent numerical instability
-#     similarity_matrix = torch.clamp(similarity_matrix, min=-100, max=100)
-    
-#     # Create labels: for each image, the corresponding text is the positive pair
-#     labels = torch.arange(anchor_embeds.size(0), device=anchor_embeds.device)
-    
-#     # Compute cross-entropy loss using the similarity matrix
-#     # We concatenate the positive pairs for image-text and text-image
-#     loss_image_to_text = F.cross_entropy(similarity_matrix, labels)
-#     loss_text_to_image = F.cross_entropy(similarity_matrix.T, labels)
-    
-#     # Final loss is the sum of both directions (image -> text and text -> image)
-#     loss = (loss_image_to_text + loss_text_to_image) / 2.0
-    
-#     return loss
 
 def clip_contrastive_loss(anchor_embeds, pair_embeds, anchor_class, temperature=0.07):
     """
@@ -239,13 +209,21 @@ class CLIP_MALDI(L.LightningModule):
         self.hidden_layers = self.hparams['hidden_layers']
         self.dropout_rate = self.hparams.get('dropout', 0.0)  # Default dropout rate is 0.0
         self.tau = self.hparams.get('tau', 1.0)  # Softmax temperature at train-time
-        
+        self.padding_value = self.hparams.get('padding_value', None)
+
         if self.dropout_rate > 1.0 or self.dropout_rate < 0.0:
             raise ValueError("Dropout rate must be between 0.0 and 1.0")
         
         if not pretrained_embedder:
             # self.embedder = Embedder(self.input_dim, self.hidden_dim, self.hidden_layers, self.dropout_rate)
-            self.embedder = SimpleSelfAttention(self.input_dim, self.hidden_dim, self.hidden_dim, n_heads=10, dropout_rate=self.dropout_rate)
+            self.transformer_reduction = 'max'
+            self.embedder = SimpleSelfAttention(2,  # depth
+                                                self.hidden_dim,
+                                                n_heads=10,
+                                                dropout=self.dropout_rate,
+                                                output_head_dim=128,
+                                                padding_value=self.padding_value,
+                                                reduce=self.transformer_reduction)
         else:
             self.embedder = pretrained_embedder
 

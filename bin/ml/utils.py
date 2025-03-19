@@ -197,7 +197,10 @@ def estimate_convexity(spectrum: np.array, rescale:bool=False) -> tuple:
         spectrum = spectrum.numpy()
 
     if not isinstance(spectrum, np.ndarray):
-        raise ValueError(f"Expected a numpy array, instead got {type(spectrum)}.")
+        try:
+            spectrum = np.array(spectrum)
+        except Exception as e:
+            raise ValueError(f"Expected a numpy array, instead got {type(spectrum)}.")
     
     if len(spectrum.shape) != 2:
         raise ValueError("Expected a 2D array with m/z and intensity values.")

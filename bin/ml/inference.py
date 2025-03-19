@@ -882,6 +882,16 @@ def main():
             model = CLIP_MALDI.load_from_checkpoint(model_path)
 
             trans = transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
+        elif args.model_name.split('/',1)[0] == "CLIP_Transformer":
+            print("Performing inference on CLIP_Transformer")
+            model = CLIP_MALDI.load_from_checkpoint(model_path)
+
+            trans =  transforms.Compose([
+                                    SquareRootTransform(),
+                                    NormalizeIntensity(),
+                                    SelectTopKPeaks(150),
+                                    PadToLength(150, padding_value=-1.0),
+                                    ])
         else:
             raise ValueError(f"Unknown model name {args.model_name}")
         
@@ -893,6 +903,7 @@ def main():
                                 inference_set_to_use=args.inference_set,
                                 transforms=trans,
                                 split_method='species')
+                                # split_method='genera')
     
     metadata_table = '../../data/idbac_db/raw/ammended_db.csv'
     metadata_table = pd.read_csv(metadata_table)

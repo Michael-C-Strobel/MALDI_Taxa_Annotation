@@ -54,6 +54,8 @@ def main():
             'weight_decay': 1e-5,
             'dropout': 0.2,
             'tau': 0.07, # Default from paper (0.07)
+            'padding_value': -1.0,
+            'encoder': 'transformer', # 'transformer' | 'mlp'
     }
 
     # model = MLP(hyperparameters)  
@@ -65,10 +67,8 @@ def main():
     
     torch.set_float32_matmul_precision('medium')    # medium | high
     
-    trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity(), NoiseInjection(noise_factor=7e-2), NormalizeIntensity()])
+    # trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity(), NoiseInjection(noise_factor=7e-2), NormalizeIntensity()])
     # trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
-    # trans =  transforms.Compose([SquareRootTransform(), NormalizeIntensity(),SelectTopKPeaks(150),
-    #                                 PadToLength(150)])
 
     if isinstance(model, MLP):
         logger = TensorBoardLogger('lightning_logs', name='MLP_model')
@@ -117,10 +117,37 @@ def main():
                             transforms=trans)
         
         datamodule.setup('fit')
+    elif isinstance(model, CLIP_MALDI) and \
+        clip_maldi_hyperparameters['encoder'] == 'transformer':
+        trans =  transforms.Compose([
+                                        SquareRootTransform(),
+                                        NormalizeIntensity(),
+                                        SelectTopKPeaks(150),
+                                        PadToLength(150, padding_value=-1.0),
+                                     ])
+        logger = TensorBoardLogger('lightning_logs', name='CLIP_Transformer')
+
+        datamodule = CLIP_DataModule('../../data/idbac_db/preprocessing',
+                    '../../data/idbac_db/raw/ammended_db.csv',
+                    '../../data/idbac_db/processed_data',
+                    num_workers=7,
+                    transforms=trans,
+                    batch_size=32,
+                    split_method='species')
+                    # split_method='genera')
+        
+        datamodule.setup('fit')
+
 
     elif isinstance(model, CLIP_MALDI):
         logger = TensorBoardLogger('lightning_logs', name='CLIP_MLP')
-        # logger = None
+        trans =  transforms.Compose([
+                                        BinSpectrum(10, 3_000, 20_000),
+                                        SquareRootTransform(),
+                                        NormalizeIntensity(),
+                                        NoiseInjection(noise_factor=7e-2),
+                                        NormalizeIntensity(),
+                                    ])
 
         datamodule = CLIP_DataModule('../../data/idbac_db/preprocessing',
                             '../../data/idbac_db/raw/ammended_db.csv',
