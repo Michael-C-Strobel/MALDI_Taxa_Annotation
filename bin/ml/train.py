@@ -54,8 +54,10 @@ def main():
             'weight_decay': 1e-5,
             'dropout': 0.2,
             'tau': 0.07, # Default from paper (0.07)
-            'padding_value': -1.0,
+            'padding_value': -10.0,
             'encoder': 'transformer', # 'transformer' | 'mlp'
+            'ss_task': 'recon',
+            'rcon_head_dim': 1700,
     }
 
     # model = MLP(hyperparameters)  
@@ -133,8 +135,8 @@ def main():
                     num_workers=7,
                     transforms=trans,
                     batch_size=32,
-                    split_method='species')
-                    # split_method='genera')
+                    # split_method='species')
+                    split_method='genera')
         
         datamodule.setup('fit')
 

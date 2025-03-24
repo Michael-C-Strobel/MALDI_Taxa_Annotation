@@ -902,8 +902,8 @@ def main():
                                 wipe_test_sets=False,
                                 inference_set_to_use=args.inference_set,
                                 transforms=trans,
-                                split_method='species')
-                                # split_method='genera')
+                                # split_method='species')
+                                split_method='genera')
     
     metadata_table = '../../data/idbac_db/raw/ammended_db.csv'
     metadata_table = pd.read_csv(metadata_table)
@@ -915,7 +915,7 @@ def main():
     logger = TensorBoardLogger('lightning_logs', name=str(args.model_name)+'/prediction')
 
     # Get the predictions
-    trainer = L.Trainer(logger=logger, devices=[0])
+    trainer = L.Trainer(logger=logger, devices=[0], inference_mode=False)   # Inference mode false to allow gradients
 
     # Use the Trainer to run predictions
     outputs = trainer.predict(model, datamodule=datamodule, return_predictions=True)
@@ -926,8 +926,8 @@ def main():
     metadata = []
 
     for output in outputs:
-        predictions.extend(output['predictions'].cpu().numpy())  # Assuming you want numpy arrays
-        true_similarity.extend(output['similarity'].cpu().numpy())
+        predictions.extend(output['predictions'].detach().cpu().numpy())  # Assuming you want numpy arrays
+        true_similarity.extend(output['similarity'].detach().cpu().numpy())
         # output['metadata'] is a dict of lists
         # want to convert it to a list of dicts
         if 'metadata' in output:

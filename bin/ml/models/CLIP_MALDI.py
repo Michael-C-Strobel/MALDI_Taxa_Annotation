@@ -63,12 +63,14 @@ class SimpleSelfAttention(nn.Module):
         dropout=0.2,
         reduce="none",
         output_head_dim=64,
-        padding_value=None
+        padding_value=None,
+        prepend_cls=False,
     ):
         super().__init__()
 
         self.embed = nn.Linear(1, dim)
         self.padding_value = padding_value
+        self.prepend_cls = prepend_cls
 
         # This is particularly unfaithful to the source code
         self.transformer = nn.TransformerEncoder(
@@ -89,12 +91,14 @@ class SimpleSelfAttention(nn.Module):
         self.output_head = nn.Linear(dim, output_head_dim)
 
     def forward(self, spectrum):
-        if self.reduce == 'cls':
+        cls_appended = False
+        if self.reduce == 'cls' or self.prepend_cls is not None:
             # Prepend a CLS token
-            cls_token_val = torch.tensor([-9], device=spectrum.device)
+            cls_token_val = torch.tensor([-2], device=spectrum.device)
             assert cls_token_val.item() != self.padding_value, "CLS token value is the same as padding value"
             cls_tokens = torch.ones(spectrum.shape[0], 1, spectrum.shape[2], device=spectrum.device) * cls_token_val
             spectrum = torch.cat([cls_tokens, spectrum], dim=1)
+            cls_appended = True
 
         if self.padding_value is not None:
             padding = (spectrum[:,:,0] == self.padding_value).bool()    # True indicates padding
@@ -131,18 +135,26 @@ class SimpleSelfAttention(nn.Module):
         if torch.isnan(z)[~padding].any():
             raise ValueError("Nan values in z that aren't in padding")
 
-
-        # if torch.isnan(z).any():
-        #     raise ValueError("Nan values in z")
-
         if self.reduce == "sum":
-            return self.output_head(z.sum(1))
+            if cls_appended:
+                z_org = z[:, 1:, :]
+            else:
+                z_org = z
+            return self.output_head(z_org.sum(1)), z, padding
         elif self.reduce == "max":
-            return self.output_head(z.max(1).values)
+            if cls_appended:
+                z_org = z[:, 1:, :]
+            else:
+                z_org = z
+            return self.output_head(z_org.max(1).values), z, padding
         elif self.reduce == "cls":
-            return self.output_head(z[:, 0, :])
+            return self.output_head(z[:, 0, :]), z, padding
         elif self.reduce == "none":
-            return z, padding
+            if cls_appended:
+                z_org = z[:, 1:, :]
+            else:
+                z_org = z
+            return z_org, z, padding
 
 def clip_contrastive_loss(anchor_embeds, pair_embeds, anchor_class, temperature=0.07):
     """
@@ -182,7 +194,108 @@ def clip_contrastive_loss(anchor_embeds, pair_embeds, anchor_class, temperature=
     
     return loss.mean()
 
+def reconstruction_loss(recon, target, padding_value=None):
+    """
+    Compute MSE loss on reconstruction, on 10 randomly sampled positive (peak intensity > 0.02) and negative
+    (peak intensity < 0.02) peaks.
 
+    Parameters:
+    - recon (torch.Tensor): (batch_size, num_bins) reconstructed spectra.
+    - target (torch.Tensor): (batch_size, num_bins) target spectra.
+
+    Returns:
+    - torch.Tensor: Reconstruction loss.
+    """
+
+    # Get Random 10 positive and negative peaks
+    pos_mask = target > 0.05
+    neg_mask = target < 0.02
+
+    if padding_value is not None:
+        non_padding_mask = target != padding_value
+        pos_mask = pos_mask & non_padding_mask
+        neg_mask = neg_mask & non_padding_mask
+
+    pos_indices = torch.nonzero(pos_mask, as_tuple=True)
+    neg_indices = torch.nonzero(neg_mask, as_tuple=True)
+
+    pos_indices = torch.stack([pos_indices[0], pos_indices[1]], dim=1)
+    neg_indices = torch.stack([neg_indices[0], neg_indices[1]], dim=1)
+
+    # Sample 10 random indices
+    pos_indices = pos_indices[torch.randperm(pos_indices.size(0))[:10]]
+    neg_indices = neg_indices[torch.randperm(neg_indices.size(0))[:10]]
+
+    # Compute MSE loss
+    # pos_loss = nn.functional.mse_loss(recon[pos_indices[:, 0], pos_indices[:, 1]], target[pos_indices[:, 0], pos_indices[:, 1]])
+    # neg_loss = nn.functional.mse_loss(recon[neg_indices[:, 0], neg_indices[:, 1]], target[neg_indices[:, 0], neg_indices[:, 1]])
+
+    # Compute Binary Cross Entropy
+    binarized_target = (target > 0.02).float()
+
+    pos_loss = nn.functional.binary_cross_entropy(recon[pos_indices[:, 0], pos_indices[:, 1]], binarized_target[pos_indices[:, 0], pos_indices[:, 1]])
+    neg_loss = nn.functional.binary_cross_entropy(recon[neg_indices[:, 0], neg_indices[:, 1]], binarized_target[neg_indices[:, 0], neg_indices[:, 1]])
+
+    return (pos_loss + neg_loss) / 2
+    
+
+class BinSpectrum(torch.nn.Module):
+    """Bin the input spectrum into m/z bins of fixed width and apply L2 normalization. 
+    Intensity values within each bin are summed.
+    
+    Args:
+        bin_width (float): The width of each bin.
+        min_mz (float): The minimum m/z value.
+        max_mz (float): The maximum m/z value.
+        
+    Returns:
+        Tensor: The binned and L2-normalized spectrum.
+    """
+    
+    def __init__(self, bin_width: float, min_mz: float, max_mz: float):
+        super().__init__()
+        self.bin_width = bin_width
+        self.min_mz = min_mz
+        self.max_mz = max_mz
+        self.num_bins = int((max_mz - min_mz) / bin_width)
+
+    def forward(self, spectrum: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            spectrum (Tensor): A tensor of shape (batch_size, seq_len, 2) where the last dimension contains 
+                                m/z values (index 0) and intensity values (index 1).
+        
+        Returns:
+            Tensor: A 2D tensor of shape (batch_size, num_bins) where each row corresponds to the 
+                    binned and L2-normalized intensity of a spectrum in the batch.
+        """
+        batch_size, seq_len, _ = spectrum.shape
+        
+        # Initialize the output tensor for binned spectra
+        binned_spectra = torch.zeros(batch_size, self.num_bins, dtype=torch.float32, device=spectrum.device)
+
+        # Loop over the batch
+        for i in range(batch_size):
+            # Extract m/z and intensity for the current spectrum
+            mz_values = spectrum[i, :, 0]
+            intensity_values = spectrum[i, :, 1]
+
+            # Compute bin indices for each m/z value
+            bin_indices = ((mz_values - self.min_mz) / self.bin_width).long()
+
+            # Ensure indices are within the valid bin range
+            bin_indices = torch.clamp(bin_indices, min=0, max=self.num_bins - 1)
+
+            # Sum intensities into bins using scatter_add_
+            binned_spectra[i].scatter_add_(0, bin_indices, intensity_values)
+
+            # Apply L2 normalization (only if nonzero to avoid NaN)
+            norm = torch.linalg.norm(binned_spectra[i], ord=2)
+            if norm > 0:
+                binned_spectra[i] /= norm
+
+        return binned_spectra
+        
 class CLIP_MALDI(L.LightningModule):
     """ 
     """
@@ -210,6 +323,15 @@ class CLIP_MALDI(L.LightningModule):
         self.dropout_rate = self.hparams.get('dropout', 0.0)  # Default dropout rate is 0.0
         self.tau = self.hparams.get('tau', 1.0)  # Softmax temperature at train-time
         self.padding_value = self.hparams.get('padding_value', None)
+        self.ss_task = self.hparams.get('ss_task', 'recon')
+        self.rcon_head_dim = self.hparams.get('rcon_head_dim', None)
+
+        if self.ss_task == 'recon':
+            assert self.rcon_head_dim is not None, "Reconstruction head dimension must be specified for reconstruction task"
+        else:
+            assert self.rcon_head_dim is None, "Reconstruction head dimension must not be specified for non-reconstruction task"
+
+
 
         if self.dropout_rate > 1.0 or self.dropout_rate < 0.0:
             raise ValueError("Dropout rate must be between 0.0 and 1.0")
@@ -223,7 +345,15 @@ class CLIP_MALDI(L.LightningModule):
                                                 dropout=self.dropout_rate,
                                                 output_head_dim=128,
                                                 padding_value=self.padding_value,
-                                                reduce=self.transformer_reduction)
+                                                reduce=self.transformer_reduction,
+                                                prepend_cls=True)
+            if self.ss_task == 'recon':
+                if self.rcon_head_dim != 1700: 
+                    raise NotImplementedError("Reconstruction head dimension must be 1700")
+                self.rcon_target_generator = BinSpectrum(10.0, 3_000.0, 20_000.0)
+                # Linear Decoder Head
+                self.rcon_head = nn.Linear(self.hidden_dim, self.rcon_head_dim)
+
         else:
             self.embedder = pretrained_embedder
 
@@ -264,11 +394,25 @@ class CLIP_MALDI(L.LightningModule):
         # Add a dimension to match the shape (batch_size, 1)
         return classifications
 
-    def forward(self, anchors, positives):
-        anchors = self.embedder(anchors)
-        pos_embeds = self.embedder(positives)
+    def forward(self, anchors, positives, MLM_mask=None):
+        anchors_embeds, achor_raw_embeds, _ = self.embedder(anchors)
+        pos_embeds, pos_raw_embeds, _ = self.embedder(positives)
 
-        return anchors, pos_embeds
+        anchor_rcon = None
+        pos_rcon = None
+
+        if self.ss_task == 'recon':
+            assert self.embedder.prepend_cls == True, "Prepend CLS token must be enabled for reconstruction task"
+            anchor_rcon = self.rcon_head(achor_raw_embeds[:, 0, :]) # TODO
+            pos_rcon = self.rcon_head(pos_raw_embeds[:, 0, :])      # For now, this is always using the CLS token, maybe using a different aggregation is better?
+
+            anchor_rcon = F.sigmoid(anchor_rcon)
+            pos_rcon = F.sigmoid(pos_rcon)
+
+        if self.ss_task == 'MLM':
+            raise NotImplementedError()
+
+        return (anchors_embeds, pos_embeds), (anchor_rcon, pos_rcon)
         
 
     def training_step(self, batch, batch_idx):
@@ -288,15 +432,29 @@ class CLIP_MALDI(L.LightningModule):
 
 
         # Forward pass
-        anchor_embeds, positive_embeds = self.forward(torch.stack(anchors), torch.stack(positives))
+        (anchor_embeds, positive_embeds), (anchor_rcon, pos_rcon) = self.forward(torch.stack(anchors), torch.stack(positives))
 
-        loss = clip_contrastive_loss(anchor_embeds, positive_embeds, anchor_class, temperature=self.tau)
+        # Bin anchor and positive spectra to get rcon targets
+        if self.rcon_head_dim is not None:
+            anchor_rcon_target  = self.rcon_target_generator(torch.stack(anchors))
+            pos_rcon_target     = self.rcon_target_generator(torch.stack(positives))
+
+            clip_loss = clip_contrastive_loss(anchor_embeds, positive_embeds, anchor_class, temperature=self.tau)
+            rcon_loss = (reconstruction_loss(anchor_rcon, anchor_rcon_target, self.padding_value) + reconstruction_loss(pos_rcon, pos_rcon_target, self.padding_value))/2
+
+            loss = clip_loss  + (3 * rcon_loss)
+        else:
+            clip_loss = clip_contrastive_loss(anchor_embeds, positive_embeds, anchor_class, temperature=self.tau)
+            rcon_loss = None
+            loss = clip_loss
 
         # Logging
 
         # batch_value = self.train_metrics(torch.argmax(preds, dim=1), targets)
         # self.log_dict(batch_value, on_epoch=True)
         self.log('train_loss', loss, on_step=True, on_epoch=True)
+        self.log('train_clip_loss', clip_loss, on_step=True, on_epoch=True)
+        self.log('train_rcon_loss', rcon_loss, on_step=True, on_epoch=True)
 
         return loss
     
@@ -313,15 +471,38 @@ class CLIP_MALDI(L.LightningModule):
         anchors = [x[0] for x in spectra]
         positives = [x[1] for x in spectra]
 
+        if self.ss_task == "MLM":
+            # Randomly set peask to -1 based on intensity value
+            anchors, anchor_masks, anchor_targets = self.mask_spectra(anchors)
+            positives, pos_masks, pos_targets = self.mask_spectra(positives)
+
         # Forward pass
-        anchor_embeds, positive_embeds = self.forward(torch.stack(anchors), torch.stack(positives))
+        (anchor_embeds, positive_embeds), (anchor_rcon, pos_rcon) = self.forward(torch.stack(anchors), torch.stack(positives))
 
-        loss = clip_contrastive_loss(anchor_embeds, positive_embeds, anchor_class, temperature=self.tau)
+        clip_loss = clip_contrastive_loss(anchor_embeds, positive_embeds, anchor_class, temperature=self.tau)
+        self.log('val_loss', clip_loss, on_step=True, on_epoch=True)
 
-        # Logging
-        self.log('val_loss', loss, on_step=True, on_epoch=True)
 
-        return loss
+        # Bin anchor and positive spectra to get rcon targets
+        if self.ss_task == 'recon':
+            anchor_rcon_target  = self.rcon_target_generator(torch.stack(anchors))
+            pos_rcon_target     = self.rcon_target_generator(torch.stack(positives))
+
+            rcon_loss = (reconstruction_loss(anchor_rcon, anchor_rcon_target, self.padding_value) + reconstruction_loss(pos_rcon, pos_rcon_target, self.padding_value))/2
+
+            self.log('val_rcon_loss', rcon_loss, on_step=True, on_epoch=True)
+
+        # Masked Language Loss
+        if self.ss_task == "MLM":
+            # Compute masked language model loss
+            anchor_masked_loss  = nn.functional.cross_entropy(anchor_embeds[anchor_masks], anchor_targets[anchor_masks])
+            pos_masked_loss     = nn.functional.cross_entropy(positive_embeds[pos_masks], pos_targets[pos_masks])
+
+            masked_loss = (anchor_masked_loss + pos_masked_loss)
+            self.log('val_masked_loss', masked_loss, on_step=True, on_epoch=True)
+            
+
+        return clip_loss
     
     def test_step(self, batch, batch_idx):
         raise NotImplementedError("Test step not implemented")
@@ -332,11 +513,78 @@ class CLIP_MALDI(L.LightningModule):
         loss = nn.functional.mse_loss(preds, similarity)
         return {'predictions': preds, 'similarity': similarity, 'loss': loss}
 
-    def predict_step(self, batch, batch_idx, dataloader_idx=None):
+    def on_predict_start(self):
+        torch.set_grad_enabled(True)
+    #     self.embedder.train()
+
+    #     for layer in self.modules():
+    #         if isinstance(layer, torch.nn.BatchNorm1d) or isinstance(layer, torch.nn.BatchNorm2d):
+    #             print("Freezing BatchNorm")
+    #             layer.track_running_stats = False
+    #             layer.weight.requires_grad = False
+    #             layer.bias.requires_grad = False
+
+    #     for layer in self.modules():
+    #         if isinstance(layer, torch.nn.LayerNorm):
+    #             print("Freezing LayerNorm")
+    #             layer.weight.requires_grad = False
+    #             layer.bias.requires_grad = False
+
+    def TTT_helper(self, spectrum):
+        if self.TTT_steps == 0:
+            embed, raw_embed, _ = self.embedder(spectrum)
+        else:
+            temp_weights = self.state_dict()
+
+            opt = optim.SGD(self.embedder.parameters(), lr=1e-4, momentum=0.0, weight_decay=0.0)
+
+            for _ in range(self.TTT_steps):
+                # Forward pass
+                embed, raw_embed, _ = self.embedder(spectrum)
+                rcon = F.sigmoid(self.rcon_head(raw_embed[:, 0, :]))
+
+                with torch.no_grad():
+                    target = self.rcon_target_generator(spectrum)
+
+                reconstruction_loss_val = reconstruction_loss(rcon, target, self.padding_value)
+
+                # Backpropagation
+                opt.zero_grad()
+                reconstruction_loss_val.backward()
+                opt.step()
+
+            # Reload model weights
+            self.load_state_dict(temp_weights)
+
+        return embed
+
+    def TTT_step(self, batch):
+        
         spectrum_a, spectrum_b, similarity, metadata = batch
 
-        embed_a = self.embedder(spectrum_a)
-        embed_b = self.embedder(spectrum_b)
+        spectrum_a_embeds = [self.TTT_helper(spectrum.unsqueeze(0)) for spectrum in spectrum_a]
+        spectrum_b_embeds = [self.TTT_helper(spectrum.unsqueeze(0)) for spectrum in spectrum_b]
+
+        spectrum_a_embeds = torch.cat(spectrum_a_embeds, dim=0)
+        spectrum_b_embeds = torch.cat(spectrum_b_embeds, dim=0)
+
+        return spectrum_a_embeds, spectrum_b_embeds
+
+    def predict_step(self, batch, batch_idx, dataloader_idx=None):
+        self.TTT_steps = 2
+
+        spectrum_a, spectrum_b, similarity, metadata = batch
+
+        embed_a = None
+        embed_b = None
+
+
+        if self.TTT_steps == 0:
+            embed_a, rcon_a, _ = self.embedder(spectrum_a)
+            embed_b, rcon_b, _ = self.embedder(spectrum_b)
+
+        else:
+            embed_a, embed_b = self.TTT_step(batch)
 
         # input = torch.cat((embed_a, embed_b, torch.abs(embed_a - embed_b)), dim=1)
         # preds = F.softmax(self.classifier(input), dim=1)
@@ -352,10 +600,48 @@ class CLIP_MALDI(L.LightningModule):
         else:
             loss = None
 
-        return {'predictions': preds, 'similarity': similarity, 'loss': loss, 'metadata': metadata}
+        return {'predictions': preds.detach(), 'similarity': similarity.detach(), 'loss': loss.detach(), 'metadata': metadata}
 
     def on_validation_epoch_end(self):
         self.val_metrics.reset()
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+
+    def mask_spectra(self, spectra, target_bins=(50, 2000, 10), masked_mz_val=-1.0):
+        """
+        Randomly masks peaks in the input spectra relative weight by their intensity values.
+
+        Args:
+            spectra (List[Tensor]): A list of input spectra.
+
+        Returns:
+            List[Tensor]: A list of masked spectra.
+        """
+
+        # Assert all spectrum shapes are the same
+        assert all([spectrum.shape[1] == spectra[0].shape[1] for spectrum in spectra]), "Spectra shapes must be the same"
+
+        assert self.ss_task == "MLM", "Masked Language Model task must be enabled"
+
+        assert self.padding_value is not None, "Padding value must be specified for MLM task"
+        assert self.padding_value != masked_mz_val, "Padding value and masked mz value must be different"
+        
+        masked_spectra = []
+        masks = []
+        targets = torch.ones_like((len(spectra), spectra[0][:, :, 0]))
+
+        for i, spectrum in enumerate(spectra):
+            # Randomly mask peaks based on intensity values
+            mask = torch.rand_like(spectrum[:, :, 1]) < spectrum[:, :, 1]
+
+            # Generate labels for the masked peaks
+            targets[i][mask] = spectrum[i][mask]
+
+            masked_spectrum = spectrum.clone()
+            masked_spectrum[:, :, 0][mask] = masked_mz_val
+
+            masked_spectra.append(masked_spectrum)
+            masks.append(mask)
+
+        return masked_spectra, masks, targets

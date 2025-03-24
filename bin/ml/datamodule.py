@@ -90,7 +90,7 @@ class Spectrum_DataModule(L.LightningDataModule):
 
             print(f"Training Set Size {len(self.train_set)/self.full_dataset.num_turns}")
             print(f"Validation Set Size {len(self.val_set)/self.full_dataset.num_turns}")
-        if stage == 'test':
+        if stage == 'test' or stage == 'predict':
             if self.inference_set_to_use == 'test':
                 self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.test_accessions)
             elif self.inference_set_to_use == 'val':
