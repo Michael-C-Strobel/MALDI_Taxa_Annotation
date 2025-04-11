@@ -800,7 +800,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", type=str, default=None)
     parser.add_argument("--metric_path", type=str, default="metrics")
-    parser.add_argument("--inference_set", type=str, default="test", choices=["test", "val", "train"])
+    parser.add_argument("--inference_set", type=str, default="test", choices=["test", "val", "train", "all"])
     args = parser.parse_args()
 
     if str(args.model_name).lower() == 'cosine':
@@ -902,8 +902,9 @@ def main():
                                 wipe_test_sets=False,
                                 inference_set_to_use=args.inference_set,
                                 transforms=trans,
-                                # split_method='species')
-                                split_method='genera')
+                                batch_size=1,
+                                split_method='species')
+                                # split_method='genera')
     
     metadata_table = '../../data/idbac_db/raw/ammended_db.csv'
     metadata_table = pd.read_csv(metadata_table)

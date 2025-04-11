@@ -65,12 +65,14 @@ class SimpleSelfAttention(nn.Module):
         output_head_dim=64,
         padding_value=None,
         prepend_cls=False,
+        no_attn_mask=False
     ):
         super().__init__()
 
         self.embed = nn.Linear(1, dim)
         self.padding_value = padding_value
         self.prepend_cls = prepend_cls
+        self.no_attn_mask = no_attn_mask
 
         # This is particularly unfaithful to the source code
         self.transformer = nn.TransformerEncoder(
@@ -125,15 +127,17 @@ class SimpleSelfAttention(nn.Module):
                 raise ValueError("Nan values in z that aren't in padding")
         z = self.positional_encoding(z, pos=spectrum[:,:,0])    # Use m/z values as positions
 
-        if torch.isnan(z)[~padding].any():
-            raise ValueError("Nan values in z that aren't in padding")
+        if padding is not None:
+            if torch.isnan(z)[~padding].any():
+                raise ValueError("Nan values in z that aren't in padding")
 
         z = self.transformer(z, src_key_padding_mask=padding) # Somehow, we don't actually allow padding?
 
         if torch.isnan(z).all():
             raise ValueError("All values in z are NaN")
-        if torch.isnan(z)[~padding].any():
-            raise ValueError("Nan values in z that aren't in padding")
+        if padding is not None:
+            if torch.isnan(z)[~padding].any():
+                raise ValueError("Nan values in z that aren't in padding")
 
         if self.reduce == "sum":
             if cls_appended:
@@ -141,6 +145,12 @@ class SimpleSelfAttention(nn.Module):
             else:
                 z_org = z
             return self.output_head(z_org.sum(1)), z, padding
+        elif self.reduce == "mean":
+            if cls_appended:
+                z_org = z[:, 1:, :]
+            else:
+                z_org = z
+            return self.output_head(z_org.mean(1)), z, padding
         elif self.reduce == "max":
             if cls_appended:
                 z_org = z[:, 1:, :]
@@ -155,6 +165,72 @@ class SimpleSelfAttention(nn.Module):
             else:
                 z_org = z
             return z_org, z, padding
+        else:
+            raise ValueError("Invalid reduction method")
+
+    def _apply_reduction(self, z, padding, cls_appended):
+        """ Apply the chosen reduction method while properly handling padding. """
+        if cls_appended:
+            z = z[:, 1:, :]  # Remove CLS token from sequence
+
+        if padding is not None:
+            mask = ~padding.squeeze(-1)  # Convert to True for valid tokens
+
+        if self.reduce == "sum":
+            return self.output_head(z.sum(dim=1)), z, padding
+
+        elif self.reduce == "mean":
+            if padding is not None:
+                valid_counts = mask.sum(dim=1, keepdim=True).clamp(min=1)  # Avoid division by zero
+                return self.output_head((z * mask.unsqueeze(-1)).sum(dim=1) / valid_counts), z, padding
+            return self.output_head(z.mean(dim=1)), z, padding
+
+        elif self.reduce == "max":
+            if padding is not None:
+                z[~mask] = float('-inf')  # Mask out padding before max
+            return self.output_head(z.max(dim=1).values), z, padding
+
+        elif self.reduce == "cls":
+            return self.output_head(z[:, 0, :]), z, padding
+
+        elif self.reduce == "none":
+            return z, z, padding
+
+        else:
+            raise ValueError("Invalid reduction method")
+
+    def _apply_reduction(self, z, padding, cls_appended):
+        """ Apply the chosen reduction method while properly handling padding. """
+        if cls_appended and self.reduce != "cls":
+            z = z[:, 1:, :]  # Remove CLS token from sequence
+            if padding is not None:
+                padding = padding[:, 1:]  # Remove CLS padding mask as well
+
+        if padding is not None:
+            mask = ~padding.squeeze(-1)  # Convert to True for valid tokens, shape [B, L]
+
+        if self.reduce == "sum":
+            return self.output_head(z.sum(dim=1)), z, padding
+
+        elif self.reduce == "mean":
+            if padding is not None:
+                valid_counts = mask.sum(dim=1, keepdim=True).clamp(min=1)  # Avoid division by zero
+                return self.output_head((z * mask.unsqueeze(-1)).sum(dim=1) / valid_counts), z, padding
+            return self.output_head(z.mean(dim=1)), z, padding
+
+        elif self.reduce == "max":
+            if padding is not None:
+                z = z.masked_fill(~mask.unsqueeze(-1), float('-inf'))  # Use masked_fill to avoid shape mismatches
+            return self.output_head(z.max(dim=1).values), z, padding
+
+        elif self.reduce == "cls":
+            return self.output_head(z[:, 0, :]), z, padding
+
+        elif self.reduce == "none":
+            return z, z, padding
+
+        else:
+            raise ValueError("Invalid reduction method")
 
 def clip_contrastive_loss(anchor_embeds, pair_embeds, anchor_class, temperature=0.07):
     """
@@ -323,13 +399,13 @@ class CLIP_MALDI(L.LightningModule):
         self.dropout_rate = self.hparams.get('dropout', 0.0)  # Default dropout rate is 0.0
         self.tau = self.hparams.get('tau', 1.0)  # Softmax temperature at train-time
         self.padding_value = self.hparams.get('padding_value', None)
-        self.ss_task = self.hparams.get('ss_task', 'recon')
+        self.ss_task = self.hparams.get('ss_task', None)
         self.rcon_head_dim = self.hparams.get('rcon_head_dim', None)
 
         if self.ss_task == 'recon':
-            assert self.rcon_head_dim is not None, "Reconstruction head dimension must be specified for reconstruction task"
+            assert self.rcon_head_dim is None, "Reconstruction head dimension must be specified for reconstruction task"
         else:
-            assert self.rcon_head_dim is None, "Reconstruction head dimension must not be specified for non-reconstruction task"
+            self.rcon_head_dim = None
 
 
 
@@ -443,6 +519,10 @@ class CLIP_MALDI(L.LightningModule):
             rcon_loss = (reconstruction_loss(anchor_rcon, anchor_rcon_target, self.padding_value) + reconstruction_loss(pos_rcon, pos_rcon_target, self.padding_value))/2
 
             loss = clip_loss  + (3 * rcon_loss)
+
+            self.log('train_clip_loss', clip_loss, on_step=True, on_epoch=True)
+            self.log('train_rcon_loss', rcon_loss, on_step=True, on_epoch=True)
+
         else:
             clip_loss = clip_contrastive_loss(anchor_embeds, positive_embeds, anchor_class, temperature=self.tau)
             rcon_loss = None
@@ -453,8 +533,6 @@ class CLIP_MALDI(L.LightningModule):
         # batch_value = self.train_metrics(torch.argmax(preds, dim=1), targets)
         # self.log_dict(batch_value, on_epoch=True)
         self.log('train_loss', loss, on_step=True, on_epoch=True)
-        self.log('train_clip_loss', clip_loss, on_step=True, on_epoch=True)
-        self.log('train_rcon_loss', rcon_loss, on_step=True, on_epoch=True)
 
         return loss
     
@@ -571,7 +649,7 @@ class CLIP_MALDI(L.LightningModule):
         return spectrum_a_embeds, spectrum_b_embeds
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        self.TTT_steps = 2
+        self.TTT_steps = 0
 
         spectrum_a, spectrum_b, similarity, metadata = batch
 

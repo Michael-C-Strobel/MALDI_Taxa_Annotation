@@ -54,9 +54,9 @@ def main():
             'weight_decay': 1e-5,
             'dropout': 0.2,
             'tau': 0.07, # Default from paper (0.07)
-            'padding_value': -10.0,
+            'padding_value': None, #-10.0,
             'encoder': 'transformer', # 'transformer' | 'mlp'
-            'ss_task': 'recon',
+            'ss_task': None,    # 'recon' | 'mlm' (not implemented yet)
             'rcon_head_dim': 1700,
     }
 
@@ -125,7 +125,7 @@ def main():
                                         SquareRootTransform(),
                                         NormalizeIntensity(),
                                         SelectTopKPeaks(150),
-                                        PadToLength(150, padding_value=-1.0),
+                                        PadToLength(150, padding_value=-1.0),#clip_maldi_hyperparameters['padding_value']),
                                      ])
         logger = TensorBoardLogger('lightning_logs', name='CLIP_Transformer')
 
@@ -135,8 +135,8 @@ def main():
                     num_workers=7,
                     transforms=trans,
                     batch_size=32,
-                    # split_method='species')
-                    split_method='genera')
+                    split_method='species')
+                    # split_method='genera')
         
         datamodule.setup('fit')
 

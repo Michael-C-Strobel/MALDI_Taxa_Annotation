@@ -97,6 +97,8 @@ class Spectrum_DataModule(L.LightningDataModule):
                 self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.val_accessions)
             elif self.inference_set_to_use == 'train':
                 self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.train_accessions)
+            elif self.inference_set_to_use == 'all':
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.full_dataset.all_accessions)
             else:
                 raise ValueError(f"Unknown inference set to use: {self.inference_set_to_use}")
         if stage == 'all':
