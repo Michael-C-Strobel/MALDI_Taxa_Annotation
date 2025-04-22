@@ -12,7 +12,8 @@ class Spectrum_DataModule(L.LightningDataModule):
                  transforms=None,
                  batch_size:int=32,
                  inference_set_to_use:str='test',
-                 split_method='genera'):
+                 split_method='genera',
+                 process:bool=False):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
@@ -27,6 +28,8 @@ class Spectrum_DataModule(L.LightningDataModule):
         self.val_accessions = None
         self.test_accessions = None
         self.inference_set_to_use=inference_set_to_use
+
+        self.process = process
 
         accessions_path = Path(self.root_dir)/f'{self.split_method}'
 
@@ -50,7 +53,7 @@ class Spectrum_DataModule(L.LightningDataModule):
        pass
     
     def setup(self, stage:str):
-        self.full_dataset = Paired_MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False, transform=self.transform)
+        self.full_dataset = Paired_MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=self.process, transform=self.transform)
         if stage == 'fit':
             # self.train_set, self.val_set = random_split(
             #     full_dataset, [int(len(full_dataset) * 0.8), len(full_dataset) - int(len(full_dataset) * 0.8)], generator=torch.Generator().manual_seed(42)
@@ -132,29 +135,113 @@ class Spectrum_DataModule(L.LightningDataModule):
         plt.savefig(f'{dataset}_{index}.png')
 
 class SingleSpectrum_DataModule(L.LightningDataModule):
-    def __init__(self, preprocessing_dir:str, metadata_table:str, root_dir:str, transforms=None, num_workers:int=4,
-                 batch_size:int=32):
+    def __init__(self, preprocessing_dir:str, 
+                 metadata_table:str,
+                 root_dir:str,
+                 transforms=None,
+                 num_workers:int=4,
+                 batch_size:int=32,
+                 split_method:str='sepcies',
+                 inference_set_to_use:str='train',
+                 cast_to_classification:bool=False,
+                 targets:str='genera',
+    ):
+        """"
+        
+        """
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
         self.root_dir = root_dir
         self.num_workers = num_workers
+        self.split_method = split_method
+        self.inference_set_to_use = inference_set_to_use
+        self.cast_to_classification = cast_to_classification
+        self.targets = targets
+        if not self.targets in ['genera', 'species']:
+            raise ValueError(f"Expected targets to be 'genera' or 'species', but got {self.targets}")
 
         self.transform = transforms
+    
+        self.train_accessions = None
+        self.val_accessions = None
+        self.test_accessions = None
+        
 
-        self.full_dataset = single_MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False,
-                                                transform=self.transform)
+        wipe_test_sets=False # Hardcoded 
+
+        accessions_path = Path(self.root_dir)/f'{self.split_method}'
+
+        if accessions_path / 'train_accessions.pt':
+            if wipe_test_sets:
+                (accessions_path / 'train_accessions.pt').unlink(missing_ok=True)
+            else:
+                self.train_accessions = torch.load(accessions_path / 'train_accessions.pt', weights_only=False)
+        if accessions_path / 'val_accessions.pt':
+            if wipe_test_sets:
+                (accessions_path / 'val_accessions.pt').unlink(missing_ok=True)
+            else:
+                self.val_accessions = torch.load(accessions_path / 'val_accessions.pt', weights_only=False)
+        if accessions_path / 'test_accessions.pt':
+            if wipe_test_sets:
+                (accessions_path / 'test_accessions.pt').unlink(missing_ok=True)
+            else:
+                self.test_accessions = torch.load(accessions_path / 'test_accessions.pt', weights_only=False)
         
         self.batch_size = batch_size
+        self.train_test_stats = None
 
     def prepare_data(self):
        pass
 
     def setup(self, stage:str):
-        pass
+        self.full_dataset = single_MALDI_TOF_DS(self.preprocessing_dir,
+                                                self.metadata_table,
+                                                self.root_dir,
+                                                process=False,
+                                                transform=self.transform,
+                                                cast_to_classification=self.cast_to_classification,
+                                                targets=self.targets,
+                                                )
+        if stage == 'fit':
+            # self.train_set, self.val_set = random_split(
+            #     full_dataset, [int(len(full_dataset) * 0.8), len(full_dataset) - int(len(full_dataset) * 0.8)], generator=torch.Generator().manual_seed(42)
+            # )
+            if self.train_accessions is None or self.val_accessions is None:
+                raise ValueError("Training and validation accessions must be provided.")
+            else:
+                self.train_set = self.full_dataset.subset(self.train_accessions)
+                self.val_set = self.full_dataset.subset(self.val_accessions)
+        elif stage == 'test' or stage == 'predict':
+            if self.inference_set_to_use == "test":
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.test_accessions, paired=False)
+            elif self.inference_set_to_use == "val":
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.val_accessions, paired=False)
+            elif self.inference_set_to_use == "train": 
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.train_accessions, paired=False)
+            elif self.inference_set_to_use == "all": 
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.full_dataset.all_accessions, paired=False)
+        elif stage == 'all':
+            self.predict_set = self.full_dataset
+        else:
+            raise ValueError(f"Unknown stage: {stage}")
 
     def train_dataloader(self):
-        return DataLoader(self.full_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
+        return DataLoader(self.train_set, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
+    def val_dataloader(self):
+        return DataLoader(self.val_set, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
+    def predict_dataloader(self):
+        return DataLoader(self.predict_set, batch_size=self.batch_size, shuffle=False, num_workers=1)
+    
+    @property
+    def calculate_transformed_train_stats(self,):
+        if self.train_test_stats is None:
+            # Iterate over dataset and calculate
+            self.train_test_stats = self.full_dataset.calculate_transformed_stats(self.train_accessions)
+            return self.train_test_stats
+        else:
+            return self.train_test_stats
+
     
 
 def test_dataloader():

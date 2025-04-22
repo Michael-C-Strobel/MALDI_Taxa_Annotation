@@ -11,6 +11,7 @@ from torch.utils.data import Subset, Sampler, IterableDataset
 import scipy
 import pytest
 import copy
+from tqdm import tqdm
 
 import time
 
@@ -55,11 +56,14 @@ class single_MALDI_TOF_DS(Dataset):
                 process:bool=True,
                 transform:callable=None,
                 balance:str='accession',
-                require_genus:bool=False,
-                sampling_mode:str=None,):
+                sampling_mode:str=None,
+                cast_to_classification:bool=False,
+                num_turns:int=1,
+                targets:str='genera'):
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+        self.cast_to_classification = cast_to_classification
 
         balance = str(balance).lower()
         if balance not in ['accession', 'genus', 'species']:
@@ -68,23 +72,37 @@ class single_MALDI_TOF_DS(Dataset):
             raise NotImplementedError("Class balancing not yet implemented")
         self.balance = balance
 
+        if targets not in ['genera', 'species']:
+            raise ValueError(f"Expected targets to be 'genera' or 'species', but got {targets}")
+        
+        if targets == 'species':
+            self.target_col = 'species'
+        else:
+            self.target_col = 'genus'
+
+
         all_spectra_names = [x.stem for x in self.all_spectra]
 
         metadata_table = pd.read_csv(metadata_table)
+        metadata_table.dropna(subset=[self.target_col], inplace=True)
+
+        if self.cast_to_classification:
+            # Sort unique values in 'genus' column, annotate with number
+            self.class_to_int = {genus: i for i, genus in enumerate(sorted(metadata_table[self.target_col].unique()))}
+
         if 'accession' not in metadata_table.columns:
             metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
         else:
-            metadata_table['accession'] = metadata_table['accession'].str.strip()
+            metadata_table['accession'] = metadata_table['accession'].astype(str).str.strip()
+        metadata_table['accession'] = metadata_table['accession'].astype(str)
         metadata_table = metadata_table.loc[metadata_table['Strain name'].isin(all_spectra_names)]
         metadata_table = metadata_table.drop_duplicates(subset='Strain name')   # Some strains occur twice due to multuple csv files
 
         self.metadata_table = metadata_table
-        if require_genus:
-            self.metadata_table = self.metadata_table.loc[self.metadata_table['genus'].notna()]
 
         self.transform = transform
 
-        self.num_turns = 2
+        self.num_turns = num_turns
         self.triplets = False
         self.nce = False
         if sampling_mode is not None:
@@ -95,6 +113,10 @@ class single_MALDI_TOF_DS(Dataset):
                 self.nce = True
             else:
                 raise ValueError(f"Invalid sampling mode. Expected one of ['triplets', 'nce'], got '{sampling_mode}'")
+
+        if (cast_to_classification and self.triplets) or \
+            (cast_to_classification and self.nce):
+            raise ValueError("Cannot use triplet or nce sampling with cast_to_classification")
 
         similarities = Path(self.root_dir) / 'similarities.feather'
         self.similarities = None
@@ -121,22 +143,23 @@ class single_MALDI_TOF_DS(Dataset):
             assert not self.similarities.columns.duplicated().any()
 
         if not process:
-            preprocessing_dir_stat = Path(self.preprocessing_dir).stat()
-            most_recent_m_time = get_most_recent_modified_time()
+            pass
+            # preprocessing_dir_stat = Path(self.preprocessing_dir).stat()
+            # most_recent_m_time = get_most_recent_modified_time()
 
-            if Path(self.root_dir).exists():
-                root_dir_stat = Path(self.root_dir).stat()
-            else:
-                root_dir_stat = None
+            # if Path(self.root_dir).exists():
+            #     root_dir_stat = Path(self.root_dir).stat()
+            # else:
+            #     root_dir_stat = None
 
-            if preprocessing_dir_stat.st_mtime > root_dir_stat.st_mtime or \
-                most_recent_m_time > root_dir_stat.st_mtime or \
-                not Path(self.root_dir).exists():
-                    self.preprocess()
+            # if not Path(self.root_dir).exists() or \
+            #     preprocessing_dir_stat.st_mtime > root_dir_stat.st_mtime or \
+            #     most_recent_m_time > root_dir_stat.st_mtime:
+            #         self.preprocess()
         else:
             self.preprocess()
 
-        self.all_accessions = self.metadata_table.loc[self.metadata_table['accession'].notna(), 'accession'].unique().astype(str)
+        self.all_accessions = self.metadata_table.loc[self.metadata_table['accession'].str.lower() != 'nan', 'accession'].unique().astype(str)
         
         if self.similarities is not None:
             print("Filtering accessions based on similarities")
@@ -148,14 +171,15 @@ class single_MALDI_TOF_DS(Dataset):
         # removed = ['strain_B032', 'nan']
         # self.all_accessions = np.array([x for x in self.all_accessions if not (str(x) in removed)])
 
-        self.n_genus = len(self.metadata_table['genus'].unique())
+        self.n_classes = len(self.metadata_table[self.target_col].unique())
 
-        labels, uniques = pd.factorize(self.metadata_table['genus'].sort_values().unique())
-        # Create the class indices dictionary
-        one_hot_encoder = dict(zip(uniques, range(1, len(uniques) + 1)))  # Starting from 1
-        # Add 'nan' as class 0
-        one_hot_encoder['nan'] = 0
-        self.one_hot_encoder = one_hot_encoder
+        # Dead code, most probably
+        # labels, uniques = pd.factorize(self.metadata_table[self.target_col].sort_values().unique())
+        # # Create the class indices dictionary
+        # one_hot_encoder = dict(zip(uniques, range(1, len(uniques) + 1)))  # Starting from 1
+        # # Add 'nan' as class 0
+        # one_hot_encoder['nan'] = 0
+        # self.one_hot_encoder = one_hot_encoder
 
     def sample_strain_from_accession(self, accession):
         choices = self.metadata_table[self.metadata_table['accession'] == accession]
@@ -178,14 +202,14 @@ class single_MALDI_TOF_DS(Dataset):
 
         if self.transform:
             try:
-                spectrum = torch.tensor(self.transform(spectrum))
+                spectrum = self.transform(spectrum)
             except Exception as e:
                 raise RuntimeError(f"Error transforming spectrum for strain {strain_name} with accession {accession}") from e
 
         metadata = {
             'accession': accession,
             'Strain name': strain_name,
-            'class': str(self.metadata_table[self.metadata_table['database_id'] == database_id]['genus'].values[0]),
+            'class': str(self.metadata_table[self.metadata_table['database_id'] == database_id][self.target_col].values[0]),
             'database_id': database_id,
         }
 
@@ -195,14 +219,42 @@ class single_MALDI_TOF_DS(Dataset):
         elif self.nce:
             pair = self.generate_pair(spectrum, metadata)
             return pair
+        elif self.cast_to_classification:
+            return spectrum, self.class_to_int[metadata['class']]
         else:
             return spectrum, metadata
             
-    
+    def get_by_strain_name(self, strain_name):
+        accession = self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]
+        spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
+        
+        metadata = {}
+
+        num_peaks = None
+        if len(spectrum.shape) == 2:
+            num_peaks = spectrum.shape[0]
+        elif len(spectrum.shape) == 1:
+            num_peaks = (spectrum > 0).sum().item()
+
+        metadata.update({
+            'accession': accession,
+            'strain_name': strain_name,
+            'num_peaks': num_peaks,
+        })
+
+        if self.transform:
+            try:
+                spectrum = self.transform(spectrum)
+            except Exception as e:
+                raise RuntimeError(f"Error transforming spectrum for strain {strain_name} with accession {accession}") from e
+
+        return spectrum, metadata
+
     def get_one_hot_encoded_classes(self):
         """
         
         """
+        raise NotImplementedError("One hot encoding has been deprecated at the dataset level.")
         def one_hot_encode(classes:List):
             return torch.Tensor([self.one_hot_encoder[str(x)] for x in classes]).to(torch.long)  # str() important to cover nan
         return one_hot_encode
@@ -243,14 +295,17 @@ class single_MALDI_TOF_DS(Dataset):
             'database_id': positive_row['database_id'],
         }
         try:
-            pos_sim = self.similarities.loc[anchor_accession, positive_metadata['accession']]
+            if self.similarities is not None: 
+                pos_sim = self.similarities.loc[anchor_accession, positive_metadata['accession']]
+            else:
+                pos_sim = np.nan
         except KeyError as ke:
             pos_sim = np.nan
         positive_spectrum = torch.load(Path(self.root_dir) / 'spectra' / f"{positive_metadata['Strain name']}.pt", weights_only=True).to(torch.float32)
 
         if self.transform:
             try:
-                positive_spectrum = torch.tensor(self.transform(positive_spectrum))
+                positive_spectrum = self.transform(positive_spectrum)
             except Exception as e:
                 raise RuntimeError(f"Error transforming positive spectrum for strain {positive_metadata['Strain name']} with accession {positive_metadata['accession']}") from e
             
@@ -402,7 +457,7 @@ class single_MALDI_TOF_DS(Dataset):
         indices = [i for i, x in enumerate(self.all_accessions) if x in accessions]
         subset_dataset = copy.deepcopy(self)
 
-        accessions = np.unique(accessions)
+        relevant_accessions = [x for x in self.all_accessions if x in accessions]
 
         print("Debug: only incluiding accessions in subset that actually exist")
         print("Original accessions", len(accessions))
@@ -415,7 +470,10 @@ class single_MALDI_TOF_DS(Dataset):
         # assert subset_dataset.similarities.shape[0] < self.similarities.shape[0], "Expected subset similarities to be smaller"
         # assert subset_dataset.similarities.shape[1] < self.similarities.shape[1], "Expected subset similarities to be smaller"
         subset_dataset.metadata_table = subset_dataset.metadata_table.loc[subset_dataset.metadata_table['accession'].isin(accessions)]
+        subset_dataset.relevant_accessions = relevant_accessions
         # assert subset_dataset.metadata_table.shape[0] < self.metadata_table.shape[0], "Expected subset metadata to be smaller"
+
+        indices = np.repeat(indices, self.num_turns)
 
         return Subset(subset_dataset, indices)
         
@@ -425,8 +483,56 @@ class single_MALDI_TOF_DS(Dataset):
         if not (Path(self.root_dir) / 'spectra/').exists():
             (Path(self.root_dir) / 'spectra/').mkdir(parents=True, exist_ok=True)
         print("Preprocessing files...")
-        for strain_name, spectrum_as_tensor in convert_spectra_to_tensor(Path(self.preprocessing_dir) / 'baseline_corrected.json'):
+        for strain_name, spectrum_as_tensor in tqdm(convert_spectra_to_tensor(Path(self.preprocessing_dir) / 'baseline_corrected.json')):
             torch.save(spectrum_as_tensor, Path(self.root_dir) / f'spectra/{strain_name}.pt')
+
+    def calculate_transformed_stats(self, train_accessions)->Dict[str, float]:
+        """ Use Welford's online algorithm to compute the mean and variance of the transformed spectra,
+        in a memory efficient way.
+
+        Returns:
+            Dict[str, float]: The mean and variance of the transformed spectra.
+        """
+
+        # Collect all strain_names from the accessions
+        strain_names = self.metadata_table.loc[self.metadata_table['accession'].isin(train_accessions), 'Strain name'].values
+
+        mean = None
+        M2 = None
+        count = 0
+        length = None
+
+        relevant_paths = [Path(self.root_dir) / 'spectra' / f"{strain_name}.pt" for strain_name in strain_names]
+
+        for f in relevant_paths:
+            spectrum = torch.load(f)
+            transformed_spectrum = torch.tensor(self.transform(spectrum))
+
+            if length is not None:
+                assert length == transformed_spectrum.shape[0], f"Length mismatch: {length} vs {transformed_spectrum.shape[0]}"
+            else:
+                length = transformed_spectrum.shape[0]
+
+            # Flatten to [num_samples, feature_dim]
+            batch = transformed_spectrum.view(-1, transformed_spectrum.shape[-1])
+            batch_n = batch.shape[0]
+            batch_mean = batch.mean(dim=0)
+            batch_var = batch.var(dim=0, unbiased=False)
+
+            if mean is None:
+                mean = batch_mean
+                M2 = batch_var * batch_n
+            else:
+                delta = batch_mean - mean
+                total = count + batch_n
+                mean += delta * batch_n / total
+                M2 += batch_var * batch_n + delta**2 * count * batch_n / total
+
+            count += batch_n
+
+        variance = M2 / count
+        std = torch.sqrt(variance)
+        return {'mean': mean, 'std': std,}
 
 class Paired_MALDI_TOF_DS(Dataset):
     def __init__(self, preprocessing_dir:str,
@@ -440,7 +546,9 @@ class Paired_MALDI_TOF_DS(Dataset):
         all_spectra_names = [x.stem for x in self.all_spectra]
 
         metadata_table = pd.read_csv(metadata_table)
-        metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
+        if 'Genbank accession' in metadata_table.columns and \
+            'accession' not in metadata_table.columns:
+            metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
         metadata_table = metadata_table.loc[metadata_table['Strain name'].isin(all_spectra_names)]
 
         self.metadata_table = metadata_table
@@ -449,68 +557,75 @@ class Paired_MALDI_TOF_DS(Dataset):
         self.num_turns = 1 # Not implemented in subset so locked at 1
 
         if not process:
-            preprocessing_dir_stat = Path(self.preprocessing_dir).stat()
-            most_recent_m_time = get_most_recent_modified_time()
+            pass
+            # preprocessing_dir_stat = Path(self.preprocessing_dir).stat()
+            # most_recent_m_time = get_most_recent_modified_time()
 
-            if Path(self.root_dir).exists():
-                root_dir_stat = Path(self.root_dir).stat()
-            else:
-                root_dir_stat = None
+            # if Path(self.root_dir).exists():
+            #     root_dir_stat = Path(self.root_dir).stat()
+            # else:
+            #     root_dir_stat = None
 
-            if preprocessing_dir_stat.st_mtime > root_dir_stat.st_mtime or \
-                most_recent_m_time > root_dir_stat.st_mtime or \
-                not Path(self.root_dir).exists():
-                    self.preprocess()
+            # if preprocessing_dir_stat.st_mtime > root_dir_stat.st_mtime or \
+            #     most_recent_m_time > root_dir_stat.st_mtime or \
+            #     not Path(self.root_dir).exists():
+            #         self.preprocess()
         else:
             self.preprocess()
 
         similarities = Path(self.root_dir) / 'similarities.feather'
-        temp_similarities = pd.read_feather(similarities)
-        post_filtration_accessions = self.metadata_table.accession.unique()
+        if not similarities.exists():
+            temp_similarities = pd.DataFrame()
+            self.similarities = None
+            self.sim_bins = None
+            self.sliced_similarities = None
+        else:
+            temp_similarities = pd.read_feather(similarities)
+            post_filtration_accessions = self.metadata_table.accession.unique()
 
-        assert 'strain_B016' in temp_similarities['query_genbank'].values
+            assert 'strain_B016' in temp_similarities['query_genbank'].values
 
-
-        # Remove any accessiosn whose spectra were removed
-        temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(post_filtration_accessions) & \
+            # Remove any accessiosn whose spectra were removed
+            temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(post_filtration_accessions) & \
                                                   temp_similarities['subject_genbank'].isin(post_filtration_accessions)]
 
-        # assert 'strain_B016' in temp_similarities['query_genbank'].values
+            # assert 'strain_B016' in temp_similarities['query_genbank'].values
 
-        # Remove all accessions with poor BLASTN results
-        square_similarities = temp_similarities.pivot_table(index='query_genbank', columns='subject_genbank', values='pident')
-        # Ensure actually square
-        if square_similarities.shape[0] != square_similarities.shape[1]:
-            raise ValueError(f"Similarities matrix is not square: {square_similarities.shape}")
+            # Remove all accessions with poor BLASTN results
+            square_similarities = temp_similarities.pivot_table(index='query_genbank', columns='subject_genbank', values='pident')
+            # Ensure actually square
+            if square_similarities.shape[0] != square_similarities.shape[1]:
+                raise ValueError(f"Similarities matrix is not square: {square_similarities.shape}")
 
-        # This implicitly assumes, you have more good than bad results, which is risky
-        is_na = square_similarities.isna().sum(axis=1)
-        # na_mode = is_na.mode().item()
-        na_mode = is_na.median().item()
-        not_na_accessions   = np.unique(is_na.loc[is_na <= na_mode].index.values)
-        na_accessions       = np.unique(is_na.loc[is_na > na_mode].index.values)
-        print(f"Found {len(na_accessions)} accessions with limited number of BLASTN results. Removing them.")
-        print(f"Found {len(not_na_accessions)} accessions with sufficient BLASTN results.")
-        # DEBUG
-        # temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(not_na_accessions) & \
-        #                                             temp_similarities['subject_genbank'].isin(not_na_accessions)]
-        print(f"Left with {len(temp_similarities)} pairs.")
-        # Recalculate the square similarities
-        # DEBUG
-        # square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
+            # This implicitly assumes, you have more good than bad results, which is risky
+            is_na = square_similarities.isna().sum(axis=1)
+            # na_mode = is_na.mode().item()
+            na_mode = is_na.median().item()
+            not_na_accessions   = np.unique(is_na.loc[is_na <= na_mode].index.values)
+            na_accessions       = np.unique(is_na.loc[is_na > na_mode].index.values)
+            print(f"Found {len(na_accessions)} accessions with limited number of BLASTN results. Removing them.")
+            print(f"Found {len(not_na_accessions)} accessions with sufficient BLASTN results.")
+            # DEBUG
+            # temp_similarities = temp_similarities.loc[temp_similarities['query_genbank'].isin(not_na_accessions) & \
+            #                                             temp_similarities['subject_genbank'].isin(not_na_accessions)]
+            print(f"Left with {len(temp_similarities)} pairs.")
+            # Recalculate the square similarities
+            # DEBUG
+            # square_similarities = square_similarities.loc[not_na_accessions, not_na_accessions]
 
-        # Must be sorted to maintain train/test set consistency 
-        # self.all_accessions = np.sort(np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values))))
+            # Must be sorted to maintain train/test set consistency 
+            # self.all_accessions = np.sort(np.unique(np.concatenate((temp_similarities['query_genbank'].values, temp_similarities['subject_genbank'].values))))
 
-        # assert 'strain_B016' in self.all_accessions
+            # assert 'strain_B016' in self.all_accessions
 
-        # self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
+            # self.metadata_table = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)]
+            self.similarities = square_similarities
+            self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 21)   # Data leakage in the _absolute_ strictest sense
+            self.sliced_similarities = self._preslice_similarities(temp_similarities)
+
 
         self.all_accessions = self.metadata_table.loc[self.metadata_table['accession'].notna(), 'accession'].unique().astype(str)
-
-        self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 21)   # Data leakage in the _absolute_ strictest sense
-        self.similarities = square_similarities
-        self.sliced_similarities = self._preslice_similarities(temp_similarities)
+        print(f"Found {len(self.all_accessions)} accessions in the metadata table.")
 
         if self.similarities is not None:
             print("Filtering accessions based on similarities")
@@ -745,9 +860,9 @@ class Paired_MALDI_TOF_DS(Dataset):
 
         # print("clustered_accessions", clustered_accessions)
 
-        train_accessions = clustered_accessions.loc[clustered_accessions.cluster == train_cluster_id, 'accession'].values
-        val_accessions = clustered_accessions.loc[clustered_accessions.cluster == val_cluster_id, 'accession'].values
-        test_accessions = clustered_accessions.loc[clustered_accessions.cluster == test_cluster_id, 'accession'].values
+        train_accessions = clustered_accessions.loc[clustered_accessions.cluster == train_cluster_id, 'accession'].astype(str).values
+        val_accessions = clustered_accessions.loc[clustered_accessions.cluster == val_cluster_id, 'accession'].astype(str).values
+        test_accessions = clustered_accessions.loc[clustered_accessions.cluster == test_cluster_id, 'accession'].astype(str).values
 
         # print('train_accessions', train_accessions)
         # print('val_accessions', val_accessions)
@@ -791,8 +906,12 @@ class Paired_MALDI_TOF_DS(Dataset):
         """
         assert level in ['genus', 'species'], f"Invalid level: {level}"
 
+        _metadata_table = self.metadata_table.copy()
+        # Remove nan accessions
+        _metadata_table = _metadata_table.loc[_metadata_table['accession'].notna()]
+
         # Get the genera with more than 5 accessions
-        genera = self.metadata_table[level].value_counts()
+        genera = _metadata_table[level].value_counts()
         large_genera = genera[genera > 5].index
         small_genera = genera[genera <= 5].index
 
@@ -805,17 +924,17 @@ class Paired_MALDI_TOF_DS(Dataset):
         print("test_genera", test_genera)
 
 
-        train_accessions = self.metadata_table[self.metadata_table[level].isin(train_genera)]['accession'].values
-        val_accessions = self.metadata_table[self.metadata_table[level].isin(val_genera)]['accession'].values
-        test_accessions = self.metadata_table[self.metadata_table[level].isin(test_genera)]['accession'].values
+        train_accessions = _metadata_table[_metadata_table[level].isin(train_genera)]['accession'].astype(str).values
+        val_accessions = _metadata_table[_metadata_table[level].isin(val_genera)]['accession'].astype(str).values
+        test_accessions = _metadata_table[_metadata_table[level].isin(test_genera)]['accession'].astype(str).values
 
         # Assert no overlap
-        assert len(set(train_accessions) & set(val_accessions)) == 0
-        assert len(set(train_accessions) & set(test_accessions)) == 0
-        assert len(set(val_accessions) & set(test_accessions)) == 0
+        assert len(set(train_accessions) & set(val_accessions)) == 0, f"Expected no overlap but found {set(train_accessions) & set(val_accessions)} in common between train and validation"
+        assert len(set(train_accessions) & set(test_accessions)) == 0, f"Expected no overlap but found {set(train_accessions) & set(test_accessions)} in common between train and test"
+        assert len(set(val_accessions) & set(test_accessions)) == 0, f"Expected no overlap but found {set(val_accessions) & set(test_accessions)} in common between validation and test"
 
         # Get the accessions for the small genera
-        small_genera_accessions = self.metadata_table[self.metadata_table[level].isin(small_genera)]['accession'].values
+        small_genera_accessions = _metadata_table[_metadata_table[level].isin(small_genera)]['accession'].values
         train_accessions = np.concatenate((train_accessions, small_genera_accessions[:len(small_genera_accessions) // 2]))  # Wot
 
         # Assert no overlap
@@ -900,7 +1019,11 @@ class Paired_MALDI_TOF_DS(Dataset):
         # accessions = self.all_accessions[mapped_indices]
 
         # Remove any accessions whose spectra were removed
-        subset_dataset.sliced_similarities = {k: v.loc[v['subject_genbank'].isin(accessions)] for k, v in self.sliced_similarities.items() if str(k) in accessions}       # OVERLAPS FOR EACH SUBSET
+        if self.sliced_similarities is not None:
+            subset_dataset.sliced_similarities = {k: v.loc[v['subject_genbank'].isin(accessions)] for k, v in self.sliced_similarities.items() if str(k) in accessions}       # OVERLAPS FOR EACH SUBSET
+
+        print(f"Subset dataset has {len(accessions)} accessions")
+        print(f"Subset dataset has {len(indices)} indices")
 
         # The same thing but long-winded and good for debugging:
         # updated_sliced_similarities = {}
@@ -951,8 +1074,11 @@ class Paired_MALDI_TOF_DS(Dataset):
         plt.savefig(Path(output_path) / 'dendrogram.png', dpi=300)
 
 class ExhaustiveMALDI_TOF_DS(IterableDataset):
-    def __init__(self, ds, indices):
-        self.sampler = ExhaustiveSampler(ds, indices)
+    def __init__(self, ds, indices, paired=True):
+        if paired:
+            self.sampler = ExhaustiveSampler(ds, indices)
+        else:
+            self.sampler = ExhaustiveSingleSampler(ds, indices)
         # self.len = len(self.sampler)
     
     def __iter__(self):
@@ -1038,6 +1164,57 @@ class ExhaustiveSampler():
     #     return x * (x + 1) // 2
         
     
+class ExhaustiveSingleSampler():
+    def __init__(self, data: single_MALDI_TOF_DS, accessions: torch.Tensor):
+        self.data = data
+
+        worker_total_num = torch.utils.data.get_worker_info()
+        if worker_total_num is not None:
+            worker_total_num = worker_total_num.num_workers
+            if worker_total_num > 1:
+                raise ValueError("ExhaustiveSampler does not support multi-processing")
+            
+        # Get unique
+        accessions = np.unique(accessions)
+
+        self.accessions = accessions
+        self.metadata = self.data.metadata_table.loc[self.data.metadata_table['accession'].isin(self.accessions)]
+        print("Found a total of", len(self.metadata), "strains.")
+        print("Found a total of", len(self.accessions), "accessions.")
+        self.all_strains = self.metadata['Strain name'].values
+        self.num_strains = len(self.all_strains)
+        self._iterator = None
+
+    def _iter_strains(self):
+        for i in range(self.num_strains):
+            try:
+                strain, metadata = self.data.get_by_strain_name(self.all_strains[i])
+            except Exception as e:
+                continue
+            
+            metadata = {
+                'accession': metadata['accession'],
+                'strain_name': self.all_strains[i],
+                'spectrum': np.array(strain),
+                'num_peaks': metadata['num_peaks'],
+            }
+
+            yield strain, metadata
+
+    def __iter__(self):
+        """Iterates overall all unique combinations of spectra.
+        
+        Returns:
+            Iterable: An iterator over all possible combinations of spectra.
+        """
+        self._iterator = self._iter_strains()
+        return self
+    
+    def __next__(self):
+        if self._iterator is None:
+            self.__iter__()
+        return next(self._iterator)
+
 
 @pytest.fixture
 def ds():

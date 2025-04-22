@@ -389,6 +389,7 @@ class CLIP_MALDI(L.LightningModule):
             print(f"Using learning rate: {self.lr}")
         if 'weight_decay' in self.hparams:
             print(f"Using weight decay: {self.weight_decay}")
+        self.warmup_steps = self.hparams.get('warmup_steps', 0)
 
         # Model
         self.input_dim = self.hparams['input_dim']
@@ -401,7 +402,6 @@ class CLIP_MALDI(L.LightningModule):
         self.padding_value = self.hparams.get('padding_value', None)
         self.ss_task = self.hparams.get('ss_task', None)
         self.rcon_head_dim = self.hparams.get('rcon_head_dim', None)
-
         if self.ss_task == 'recon':
             assert self.rcon_head_dim is None, "Reconstruction head dimension must be specified for reconstruction task"
         else:
@@ -470,7 +470,7 @@ class CLIP_MALDI(L.LightningModule):
         # Add a dimension to match the shape (batch_size, 1)
         return classifications
 
-    def forward(self, anchors, positives, MLM_mask=None):
+    def forward(self, anchors, positives):
         anchors_embeds, achor_raw_embeds, _ = self.embedder(anchors)
         pos_embeds, pos_raw_embeds, _ = self.embedder(positives)
 
@@ -497,18 +497,27 @@ class CLIP_MALDI(L.LightningModule):
         # metadata: (anchor_metadata, positive_metadata)
         # similarity: (sim,)
 
-        spectra = [x[0] for x in batch]
-        metadata = [x[1] for x in batch]
-        anchor_class = [x[0]['class'] for x in metadata]
-        similarities = [x[2] for x in batch]
+        # spectra = [x[0] for x in batch]
+        # metadata = [x[1] for x in batch]
+        # anchor_class = [x[0]['class'] for x in metadata]
+        # similarities = [x[2] for x in batch]
 
-        # Unpack the batch
-        anchors = [x[0] for x in spectra]
-        positives = [x[1] for x in spectra]
+        # # Unpack the batch
+        # anchors = [x[0] for x in spectra]
+        # positives = [x[1] for x in spectra]
 
+
+        spectra = batch[0]
+        # metadata = batch[1]
+        anchor_class = batch[1][0]['class']
+        similarities = batch[2]
+        anchors = spectra[0]
+        positives = spectra[1]
+        
 
         # Forward pass
-        (anchor_embeds, positive_embeds), (anchor_rcon, pos_rcon) = self.forward(torch.stack(anchors), torch.stack(positives))
+        # (anchor_embeds, positive_embeds), (anchor_rcon, pos_rcon) = self.forward(torch.stack(anchors), torch.stack(positives))
+        (anchor_embeds, positive_embeds), (anchor_rcon, pos_rcon) = self.forward(anchors, positives)
 
         # Bin anchor and positive spectra to get rcon targets
         if self.rcon_head_dim is not None:
@@ -540,14 +549,23 @@ class CLIP_MALDI(L.LightningModule):
         self.train_metrics.reset()
 
     def validation_step(self, batch, batch_idx):
-        spectra = [x[0] for x in batch]
-        metadata = [x[1] for x in batch]
-        anchor_class = [x[0]['class'] for x in metadata]
-        similarities = [x[2] for x in batch]
+        # spectra = [x[0] for x in batch]
+        # metadata = [x[1] for x in batch]
+        # anchor_class = [x[0]['class'] for x in metadata]
+        # similarities = [x[2] for x in batch]
 
-        # Unpack the batch
-        anchors = [x[0] for x in spectra]
-        positives = [x[1] for x in spectra]
+        # # Unpack the batch
+        # anchors = [x[0] for x in spectra]
+        # positives = [x[1] for x in spectra]
+
+
+        spectra = batch[0]
+        # metadata = batch[1]
+        anchor_class = batch[1][0]['class']
+        similarities = batch[2]
+        anchors = spectra[0]
+        positives = spectra[1]
+
 
         if self.ss_task == "MLM":
             # Randomly set peask to -1 based on intensity value
@@ -555,7 +573,8 @@ class CLIP_MALDI(L.LightningModule):
             positives, pos_masks, pos_targets = self.mask_spectra(positives)
 
         # Forward pass
-        (anchor_embeds, positive_embeds), (anchor_rcon, pos_rcon) = self.forward(torch.stack(anchors), torch.stack(positives))
+        # (anchor_embeds, positive_embeds), (anchor_rcon, pos_rcon) = self.forward(torch.stack(anchors), torch.stack(positives))
+        (anchor_embeds, positive_embeds), (anchor_rcon, pos_rcon) = self.forward(anchors, positives)
 
         clip_loss = clip_contrastive_loss(anchor_embeds, positive_embeds, anchor_class, temperature=self.tau)
         self.log('val_loss', clip_loss, on_step=True, on_epoch=True)
@@ -684,7 +703,20 @@ class CLIP_MALDI(L.LightningModule):
         self.val_metrics.reset()
 
     def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        optimizer = optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        
+        def lr_lambda(current_step):
+            if current_step < self.warmup_steps:
+                return float(current_step) / float(max(1, self.warmup_steps))
+            return 1.0  # keep lr constant after warmup
+
+        scheduler = {
+            'scheduler': optim.lr_scheduler.LambdaLR(optimizer, lr_lambda),
+            'interval': 'step',  # update lr every step
+            'frequency': 1
+        }
+
+        return [optimizer], [scheduler]
 
     def mask_spectra(self, spectra, target_bins=(50, 2000, 10), masked_mz_val=-1.0):
         """

@@ -903,8 +903,8 @@ def main():
                                 inference_set_to_use=args.inference_set,
                                 transforms=trans,
                                 batch_size=1,
-                                split_method='species')
-                                # split_method='genera')
+                                # split_method='species')
+                                split_method='genera')
     
     metadata_table = '../../data/idbac_db/raw/ammended_db.csv'
     metadata_table = pd.read_csv(metadata_table)

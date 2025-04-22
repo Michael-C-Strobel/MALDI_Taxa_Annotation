@@ -3,6 +3,60 @@ from pathlib import Path
 import pandas as pd
 from typing import List
 from glob import glob
+from ete3 import NCBITaxa
+
+
+def enrich_with_ncbi_taxonomy(metadata: pd.DataFrame) -> pd.DataFrame:
+    """
+    Use ete3 to convert species names to taxonomy IDs, add them as the 'accession' column.
+    Additionally, add 'genus' annotations to the metadata.
+    Args:
+        metadata (pd.DataFrame): DataFrame containing metadata with species names
+    Returns:
+        pd.DataFrame: DataFrame with enriched metadata including taxonomy IDs and genus
+    """
+    ncbi = NCBITaxa()
+    
+    # Get unique species names
+    unique_species = metadata['species'].unique()
+    
+    # Create a mapping of species to taxonomy IDs
+    species_to_taxid = ncbi.get_name_translator(unique_species)
+    for key, value in species_to_taxid.items():
+        # Get the first taxonomy ID for each species
+        species_to_taxid[key] = value[0]
+
+    # Canonicalize species names
+    all_taxids = species_to_taxid.values()
+    tax_id_to_species = {}
+    for taxid in all_taxids:
+        # Get the species name for each taxonomy ID
+        tax_id_to_species[taxid] = ncbi.get_taxid_translator([taxid])[taxid]
+
+
+    # Slightly overkill, we could just take the first word, but this is robust
+    species_to_genus = {}
+    for species, taxid in species_to_taxid.items():
+        # Get the lineage for each species
+        lineage = ncbi.get_lineage(taxid)
+        value = ncbi.get_taxid_translator(lineage)
+        rank = ncbi.get_rank(lineage)
+        # Figure out which key has a value 'genus'
+        for k, v in rank.items():
+            if v == 'genus':
+                species_to_genus[species] = value[k]
+                break
+
+    # Map the taxonomy IDs to the metadata DataFrame
+    metadata['accession'] = metadata['species'].map(species_to_taxid)
+
+    # Canonicalize the species names
+    metadata['species'] = metadata['accession'].map(tax_id_to_species)
+    
+    # Add genus annotations
+    metadata['genus'] = metadata['species'].map(species_to_genus)
+
+    return metadata
 
 def generate_metadata_file(input_paths:List[Path], output_file:Path)->None:
     """
@@ -24,10 +78,14 @@ def generate_metadata_file(input_paths:List[Path], output_file:Path)->None:
             metadata = pd.concat([metadata, pd.read_csv(input_path)])
 
     # Create required columns
-    metadata['accession'] = metadata['species'] # species name
-    metadata['Strain name'] = metadata['code']  # strain name
+    metadata['Strain name'] = metadata['code']
+    metadata['database_id'] = metadata['code']
 
     metadata = metadata.loc[metadata['Strain name'].str.lower() != 'no peaks found']
+
+    metadata = metadata.loc[~ metadata['species'].str.lower().str.contains('mix!')]
+
+    metadata = enrich_with_ncbi_taxonomy(metadata)
 
     metadata.to_csv(output_file, index=False)
 

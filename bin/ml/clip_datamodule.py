@@ -6,6 +6,7 @@ from pathlib import Path
 import torch
 from torchvision import transforms
 from custom_transforms import *
+import time
 
 class CLIP_DataModule(L.LightningDataModule):
     """
@@ -17,20 +18,31 @@ class CLIP_DataModule(L.LightningDataModule):
                  transforms=None, 
                  num_workers:int=4,
                  batch_size:int=32,
-                 split_method='genera'):
+                 split_method='genera',
+                 sampling_mode='nce',
+                 cast_to_classification=False,
+                 targets='genera',
+                 num_turns=1):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
         self.root_dir = root_dir
         self.num_workers = num_workers
         self.split_method = split_method
+        self.sampling_mode = sampling_mode
+        self.targets = targets
+
+        if not self.targets in ['genera', 'species']:
+            raise ValueError(f"Expected targets to be 'genera' or 'species', but got {self.targets}")
 
         self.transform = transforms
 
         self.full_dataset = single_MALDI_TOF_DS(self.preprocessing_dir, self.metadata_table, self.root_dir, process=False,
                                                 transform=self.transform,
-                                                require_genus=True, 
-                                                sampling_mode='nce')
+                                                sampling_mode=self.sampling_mode,
+                                                cast_to_classification=cast_to_classification,
+                                                num_turns=num_turns,
+                                                targets=self.targets,)
         
         self.batch_size = batch_size
 
@@ -67,6 +79,7 @@ class CLIP_DataModule(L.LightningDataModule):
             self.predict_set = self.full_dataset.subset(self.test_accessions)
 
     def collate_fn(self, batch):
+        return batch
         return [x for x in batch]
 
     def train_dataloader(self):
@@ -74,9 +87,12 @@ class CLIP_DataModule(L.LightningDataModule):
                             self.train_set, 
                             batch_size=self.batch_size, 
                             shuffle=True,
-                            num_workers=self.num_workers,
-                            collate_fn=self.collate_fn,
-                            drop_last=True
+                            num_workers=7,#self.num_workers,
+                            # collate_fn=self.collate_fn,
+                            drop_last=True,
+                            persistent_workers=True,
+                            prefetch_factor=10,
+                            pin_memory=True
                         )
     
     def val_dataloader(self):
@@ -84,8 +100,11 @@ class CLIP_DataModule(L.LightningDataModule):
                             self.val_set, 
                             batch_size=self.batch_size, 
                             shuffle=False,
-                            num_workers=self.num_workers,
-                            collate_fn=self.collate_fn
+                            num_workers=2,#self.num_workers,
+                            # collate_fn=self.collate_fn,
+                            persistent_workers=True,
+                            prefetch_factor=10,
+                            pin_memory=True
                         )
     
     def test_dataloader(self):
@@ -94,7 +113,10 @@ class CLIP_DataModule(L.LightningDataModule):
                             batch_size=self.batch_size, 
                             shuffle=False,
                             num_workers=self.num_workers,
-                            collate_fn=self.collate_fn
+                            collate_fn=self.collate_fn,
+                            persistent_workers=True,
+                            prefetch_factor=5,
+                            pin_memory=True
                         )
     
 def test_triplet():
