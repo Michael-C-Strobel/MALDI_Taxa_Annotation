@@ -26,7 +26,7 @@ from custom_transforms import *
 # ML_PROCESSING_PATH = '../../data/idbac_db/processed_data'
 # log_dir = './lightning_logs'
 # BATCH_SIZE = 32
-N_EPOCHS = 330
+# N_EPOCHS = 330
 #### DRIAMS (-A, for Now) Data
 SPECTRA_PATH = '../../data/driams/preprocessing'
 METADATA_PATH = '../../data/driams/preprocessing/merged_metadata.csv'
@@ -34,8 +34,9 @@ ML_PROCESSING_PATH = '../../data/driams/processed_data'
 log_dir = './lightning_logs_DRIAMS_A'
 BATCH_SIZE = 64
 N_EPOCHS = 2_000 # 100
-TARGET='genera' # 'genera'
-SPLIT_METHOD='species'
+#### Other Params
+TARGET='genera' # 'genera' | 'species'
+SPLIT_METHOD='species' # 'genera' | 'species'
 
 def main():
 
@@ -46,6 +47,10 @@ def main():
         'hidden_layers': 3,
         'weight_decay': 1e-5,
         'dropout': 0.2,
+        'TARGET': TARGET,
+        'N_EPOCHS': N_EPOCHS,
+        'batch_size': BATCH_SIZE,
+        'METADATA_PATH': METADATA_PATH,
     }
     Sentence_MALDI_hyperparameters = {
             'input_dim': 1700,
@@ -56,6 +61,10 @@ def main():
             'weight_decay': 1e-5,
             'dropout': 0.2,
             'tau': 1.0,
+            'TARGET': TARGET,
+            'N_EPOCHS': N_EPOCHS,
+            'batch_size': BATCH_SIZE,
+            'METADATA_PATH': METADATA_PATH,
     }
     mlp_binary_classifier_hyperparameters = {
         'input_dim': 1700,
@@ -65,6 +74,10 @@ def main():
         'weight_decay': 1e-5,
         'dropout': 0.2,
         'lr': 5e-6,
+        'TARGET': TARGET,
+        'N_EPOCHS': N_EPOCHS,
+        'batch_size': BATCH_SIZE,
+        'METADATA_PATH': METADATA_PATH,
     }
     clip_maldi_hyperparameters = {
             'input_dim': 1700,
@@ -80,11 +93,19 @@ def main():
             'rcon_head_dim': 1700,
             'warmup_steps': 2000,
             'lr': 1e-6,
+            'TARGET': TARGET,
+            'N_EPOCHS': N_EPOCHS,
+            'batch_size': BATCH_SIZE,
+            'METADATA_PATH': METADATA_PATH,
     }
     multinomial_logistic_classifier_hyperparameters = {
         'input_dim': 1700,
         'lr': 1e-3,
         'weight_decay': 1e-5,
+        'TARGET': TARGET,
+        'N_EPOCHS': N_EPOCHS,
+        'batch_size': BATCH_SIZE,
+        'METADATA_PATH': METADATA_PATH,
     }
     if TARGET == 'genera' and 'idbac' in SPECTRA_PATH:
         multinomial_logistic_classifier_hyperparameters.update({'n_classes': 96})
@@ -116,13 +137,13 @@ def main():
     # model = MLPClassifier(hyperparameters)
     # model = Sentence_MALDI(Sentence_MALDI_hyperparameters)
     # model = MLPBinaryClassifier(mlp_binary_classifier_hyperparameters)
-    model = CLIP_MALDI(clip_maldi_hyperparameters, )
+    # model = CLIP_MALDI(clip_maldi_hyperparameters, )
     # model = CLIP_MALDI_Classifier(clip_maldi_classifier_hyperparameters, )
     # model = MultinomialLogisticClassifier(**multinomial_logistic_classifier_hyperparameters)
-    # model = PrototyicalTransformer( prototypical_transformer_hyperparameters['n_classes'],
-    #                                 prototypical_transformer_hyperparameters['n_support_samples'],
-    #                                 prototypical_transformer_hyperparameters['n_query_samples'],
-    #                                 prototypical_transformer_hyperparameters)
+    model = PrototyicalTransformer( prototypical_transformer_hyperparameters['n_classes'],
+                                    prototypical_transformer_hyperparameters['n_support_samples'],
+                                    prototypical_transformer_hyperparameters['n_query_samples'],
+                                    prototypical_transformer_hyperparameters)
 
     torch.set_float32_matmul_precision('medium')    # medium | high
     
@@ -141,7 +162,8 @@ def main():
                                         wipe_test_sets=False,
                                         # wipe_test_sets=True, # DEBUG
                                         transforms=trans,
-                                        split_method='species'
+                                        split_method=SPLIT_METHOD,
+                                        targets=TARGET,
                                         )
         datamodule.setup('fit')
         datamodule.plot(0)
@@ -156,6 +178,8 @@ def main():
                             ML_PROCESSING_PATH,
                             num_workers=7,
                             transforms=trans,
+                            split_method=SPLIT_METHOD,
+                            targets=TARGET,
                             )
         
         datamodule.setup('fit')
@@ -170,7 +194,9 @@ def main():
                             METADATA_PATH,
                             ML_PROCESSING_PATH,
                             num_workers=7,
-                            transforms=trans)
+                            transforms=trans,
+                            split_method=SPLIT_METHOD,
+                            targets=TARGET,)
         
         datamodule.setup('fit')
     elif isinstance(model, MLPBinaryClassifier):
@@ -180,7 +206,9 @@ def main():
                             METADATA_PATH,
                             ML_PROCESSING_PATH,
                             num_workers=7,
-                            transforms=trans)
+                            transforms=trans,
+                            split_method=SPLIT_METHOD,
+                            targets=TARGET,)
         
         datamodule.setup('fit')
     elif type(model) is CLIP_MALDI and \
@@ -200,7 +228,8 @@ def main():
                                     transforms=trans,
                                     batch_size=BATCH_SIZE,
                                     # split_method='species')
-                                    split_method=SPLIT_METHOD)
+                                    split_method=SPLIT_METHOD,
+                                    targets=TARGET,)
         
         datamodule.setup('fit')
 
@@ -221,7 +250,8 @@ def main():
                             num_workers=7,
                             transforms=trans,
                             batch_size=BATCH_SIZE,
-                            split_method='species')
+                            targets=TARGET,
+                            split_method=SPLIT_METHOD)
 
         datamodule.setup('fit')
 
@@ -235,14 +265,14 @@ def main():
                                 SelectTopKPeaks(150),
                                 PadToLength(150, padding_value=-1.0),
                                 ])
-        logger = TensorBoardLogger(log_dir, name='CLIP_Transformer_Classifier')
+        logger = TensorBoardLogger(log_dir, name=f'CLIP_Transformer_Classifier/{TARGET}')
 
         datamodule = SingleSpectrum_DataModule(SPECTRA_PATH,
                                                 METADATA_PATH,
                                                 ML_PROCESSING_PATH,
                                                 num_workers=7,
                                                 transforms=trans,
-                                                split_method='species',
+                                                split_method=SPLIT_METHOD,
                                                 cast_to_classification=True,
                                                 targets=TARGET,
                                                 )
@@ -262,7 +292,9 @@ def main():
                                                 transforms=trans,
                                                 # split_method='species',
                                                 split_method=SPLIT_METHOD,
-                                                cast_to_classification=True)
+                                                cast_to_classification=True,
+                                                targets=TARGET,
+                                                )
         datamodule.setup('fit')
         # train_set_stats = datamodule.calculate_transformed_train_stats
         # train_set_stats = { # Trainer moves model to GPU, so we need to move the stats too
@@ -290,8 +322,7 @@ def main():
                                         num_workers=7,
                                         transforms=trans,
                                         batch_size=BATCH_SIZE,
-                                        split_method='species',
-                                        # split_method='genera',
+                                        split_method=SPLIT_METHOD,
                                         targets=TARGET,
                                         cast_to_classification=True)
         
@@ -301,6 +332,17 @@ def main():
                                                
     else:
         raise ValueError("Model type not recognized")
+
+    # Add global hyperparameters (e.g., n_epochs, )
+    # logger.log_hyperparams({
+    #     'n_epochs': N_EPOCHS,
+    #     'batch_size': BATCH_SIZE,
+    #     'target': TARGET,
+    #     'split_method': SPLIT_METHOD,
+    #     'METADATA_PATH': METADATA_PATH,
+    #     'ML_PROCESSING_PATH': ML_PROCESSING_PATH,
+    #     'SPECTRA_PATH': SPECTRA_PATH,
+    # })
 
     # Plot the train/test split
     # datamodule.full_dataset.plot_split('./train_test_split.png')
@@ -321,7 +363,7 @@ def main():
 
     trainer = Trainer(
         max_epochs=N_EPOCHS, 
-        log_every_n_steps=5, 
+        log_every_n_steps=1, 
         logger=logger, 
         devices=[0],
         # callbacks=[early_stop_callback]

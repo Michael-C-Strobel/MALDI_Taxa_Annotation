@@ -275,7 +275,7 @@ class single_MALDI_TOF_DS(Dataset):
         anchor_class = metadata['class']
 
         # Positive pair
-        positive_mask = (self.metadata_table['genus'] == anchor_class)
+        positive_mask = (self.metadata_table[self.target_col] == anchor_class)
         
         # Try to get a non-identity pair
         strain_mask = (self.metadata_table['Strain name'] != anchor_strain_name)
@@ -291,7 +291,7 @@ class single_MALDI_TOF_DS(Dataset):
         positive_metadata = {
             'accession': positive_row['accession'],
             'Strain name': positive_row['Strain name'],
-            'class': positive_row['genus'],
+            'class': positive_row[self.target_col],
             'database_id': positive_row['database_id'],
         }
         try:
@@ -965,8 +965,8 @@ class Paired_MALDI_TOF_DS(Dataset):
         val_accessions = list()
         test_accessions = list()
 
-        for species in self.metadata_table[level].unique():
-            species_accessions = self.metadata_table[self.metadata_table[level] == species]['accession'].unique().tolist()
+        for taxa in self.metadata_table[level].unique():
+            species_accessions = self.metadata_table[self.metadata_table[level] == taxa]['accession'].unique().tolist()
             if len(species_accessions) <= 3:
                 train_accessions += species_accessions  # Add all to train
             else:
@@ -1007,8 +1007,10 @@ class Paired_MALDI_TOF_DS(Dataset):
         if split_method == 'species':
             return self._split_taxa(return_indices=return_indices, level='species')
         
-        if split_method == 'species_even':
+        if split_method == 'species_even' or 'strain':
             return self._even_taxa_split(return_indices=return_indices, level='species')
+        
+
         
     def subset(self, accessions:List):
         # Make a copy, in this way the sliced similarities can be used to identify the subset

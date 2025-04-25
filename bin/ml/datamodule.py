@@ -31,6 +31,8 @@ class Spectrum_DataModule(L.LightningDataModule):
 
         self.process = process
 
+        assert split_method in ['genera', 'species', 'strain'], f"Unknown split method: {split_method}"
+
         accessions_path = Path(self.root_dir)/f'{self.split_method}'
 
         if accessions_path / 'train_accessions.pt':
