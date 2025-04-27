@@ -69,7 +69,7 @@ class EpisodicDatamodule(CLIP_DataModule):
                             num_workers=7,#self.num_workers,
                             # collate_fn=self.collate_fn,
                             persistent_workers=True,
-                            prefetch_factor=10,
+                            prefetch_factor=80,
                             pin_memory=True,
                             batch_sampler=sampler,
                         )
@@ -90,7 +90,7 @@ class EpisodicDatamodule(CLIP_DataModule):
                             num_workers=2,#self.num_workers,
                             # collate_fn=self.collate_fn,
                             persistent_workers=True,
-                            prefetch_factor=10,
+                            prefetch_factor=80,
                             pin_memory=True,
                             batch_sampler =sampler
                         )

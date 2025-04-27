@@ -13,13 +13,15 @@ class Spectrum_DataModule(L.LightningDataModule):
                  batch_size:int=32,
                  inference_set_to_use:str='test',
                  split_method='genera',
-                 process:bool=False):
+                 process:bool=False,
+                 targets:str='genera',):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
         self.root_dir = root_dir
         self.num_workers = num_workers
         self.split_method = split_method
+        self.targets = targets
     
         self.batch_size = batch_size
         self.transform = transforms
@@ -31,7 +33,7 @@ class Spectrum_DataModule(L.LightningDataModule):
 
         self.process = process
 
-        assert split_method in ['genera', 'species', 'strain'], f"Unknown split method: {split_method}"
+        assert split_method in ['genera', 'species', 'species_even'], f"Unknown split method: {split_method}"
 
         accessions_path = Path(self.root_dir)/f'{self.split_method}'
 

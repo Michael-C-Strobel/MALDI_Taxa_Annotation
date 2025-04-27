@@ -539,10 +539,20 @@ class Paired_MALDI_TOF_DS(Dataset):
                  metadata_table:str,
                  root_dir: str,
                  process:bool=True,
-                 transform:callable=None):
+                 transform:callable=None,
+                 targets:str='genera',):
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+
+        if targets not in ['genera', 'species']:
+            raise ValueError(f"Expected targets to be 'genera' or 'species', but got {targets}")
+        
+        if targets == 'species':
+            self.target_col = 'species'
+        else:
+            self.target_col = 'genus'
+
         all_spectra_names = [x.stem for x in self.all_spectra]
 
         metadata_table = pd.read_csv(metadata_table)
