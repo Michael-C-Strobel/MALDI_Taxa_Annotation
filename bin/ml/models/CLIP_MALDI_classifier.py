@@ -67,3 +67,9 @@ class CLIP_MALDI_Classifier(CLIP_MALDI):
             x = self.projection(x)
             preds = torch.argmax(x, dim=1)
             return preds
+        
+    def embed_step(self, batch):
+        with torch.no_grad():
+            x = batch
+            x, _, _ = self.embedder(x)
+            return x

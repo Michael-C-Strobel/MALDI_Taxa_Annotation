@@ -698,6 +698,20 @@ class CLIP_MALDI(L.LightningModule):
             loss = None
 
         return {'predictions': preds.detach(), 'similarity': similarity.detach(), 'loss': loss.detach(), 'metadata': metadata}
+    
+    def embed_step(self, batch):
+        inputs = batch[0]
+
+        if len(inputs.shape) == 2:
+            # Add a batch dimension ( S, B, F)
+            inputs = inputs.unsqueeze(0)
+
+        # Run the model in inference mode
+        self.eval()
+        with torch.no_grad():
+            embeddings, _, _ = self.embedder.forward(inputs)
+
+        return embeddings
 
     def on_validation_epoch_end(self):
         self.val_metrics.reset()

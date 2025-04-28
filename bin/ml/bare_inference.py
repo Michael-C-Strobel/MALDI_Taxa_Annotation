@@ -26,12 +26,15 @@ from models.mlp_binary_classifier import MLPBinaryClassifier
 from models.CLIP_MALDI import CLIP_MALDI
 from models.CLIP_MALDI_classifier import CLIP_MALDI_Classifier
 from models.prototypical_transformer import PrototyicalTransformer
+from models.logistic_regression_classifier import MultinomialLogisticClassifier
 
 from datamodule import SingleSpectrum_DataModule
 from tqdm import tqdm
 
 IMPLEMENTED_MODELS = {'Prototyical_Transformer',    # TODO: Spell it right once the models are done training
                       'CLIP_Transformer_Classifier',
+                      'Multinomial_Logistic_Classifier',
+                      'CLIP_Transformer'
                       }
 
 def setup_model(model_name: str,
@@ -71,6 +74,26 @@ def setup_model(model_name: str,
                                 SelectTopKPeaks(150),
                                 PadToLength(150, padding_value=-1.0),
                                 ])
+    elif model_name == 'Multinomial_Logistic_Classifier':
+        raise ValueError(f"Model {model_name} does not generate embeddigs!")
+        model = MultinomialLogisticClassifier.load_from_checkpoint(checkpoint_path=checkpoint_path)
+        trans =  transforms.Compose([
+                                    BinSpectrum(10, 3_000, 20_000),
+                                    SquareRootTransform(),
+                                    NormalizeIntensity(),
+                        ])
+    elif model_name == 'CLIP_Transformer':
+        model = CLIP_MALDI.load_from_checkpoint(checkpoint_path=checkpoint_path)
+        if model.hparams.encoder != 'transformer':
+            raise ValueError(f"Model {model_name} is not a transformer model.")
+        
+
+        trans =  transforms.Compose([
+                                        SquareRootTransform(),
+                                        SelectTopKPeaks(150),
+                                        NormalizeIntensity(),
+                                        PadToLength(150, padding_value=model.hparams.padding_value),
+                                     ])
         
     else:
         raise ValueError(f"Model {model_name} not implemented, please check the model name")
@@ -112,14 +135,14 @@ def main():
 
     logging.basicConfig(level=logging.INFO)
 
-    # Either model + version must be specified or checkpoint_path  must be specified
+    # Either version must be specified or checkpoint_path  must be specified
     if args.checkpoint_path is None:
         if args.model is None or args.version is None:
-            raise ValueError("Either model + version or checkpoint_path  must be specified")
+            raise ValueError("Either version or checkpoint_path  must be specified")
         
     if args.checkpoint_path is not None:
-        if args.model is not None or args.version is not None:
-            raise ValueError("Either model + version or checkpoint_path  must be specified")
+        if args.version is not None:
+            raise ValueError("Either version or checkpoint_path  must be specified")
         
     if not args.model in IMPLEMENTED_MODELS:
         raise ValueError(f"Model {args.model} not implemented, please check the model name")
