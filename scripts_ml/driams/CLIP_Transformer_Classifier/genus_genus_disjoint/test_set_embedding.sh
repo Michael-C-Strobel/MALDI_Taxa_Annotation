@@ -14,8 +14,9 @@ current_dir=$(pwd)
 cd bin/ml
 
 python3 bare_inference.py   --model "CLIP_Transformer_Classifier" \
-                            --checkpoint_path "./lightning_logs_DRIAMS_A/CLIP_Transformer_Classifier/version_9/checkpoints/epoch=1999-step=24000.ckpt" \
+                            --version 1 \
                             --dataset "DIRAMS-A" \
                             --target "genera" \
                             --split_type "genera" \
                             --inference_set "test"
+

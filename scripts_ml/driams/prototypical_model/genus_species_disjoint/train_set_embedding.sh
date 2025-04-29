@@ -14,7 +14,7 @@ current_dir=$(pwd)
 cd bin/ml
 
 python3 bare_inference.py   --model "Prototyical_Transformer" \
-                            --version 12 \
+                            --version 11 \
                             --dataset "DIRAMS-A" \
                             --target "genera" \
                             --split_type "species" \

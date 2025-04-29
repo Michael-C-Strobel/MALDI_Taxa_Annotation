@@ -13,9 +13,8 @@ current_dir=$(pwd)
 
 cd bin/ml
 
-python3 bare_inference.py   --model "CLIP_Transformer" \
-                            --version 4 \
+python3 bare_inference.py   --model "cosine" \
                             --dataset "DIRAMS-A" \
-                            --target "genera" \
+                            --target "species" \
                             --split_type "species" \
-                            --inference_set "train"
+                            --inference_set "test"

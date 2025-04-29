@@ -14,7 +14,7 @@ current_dir=$(pwd)
 cd bin/ml
 
 python3 bare_inference.py   --model "CLIP_Transformer" \
-                            --version 5 \
+                            --version 4 \
                             --dataset "DIRAMS-A" \
                             --target "genera" \
                             --split_type "species" \

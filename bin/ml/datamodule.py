@@ -145,7 +145,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
                  transforms=None,
                  num_workers:int=4,
                  batch_size:int=32,
-                 split_method:str='sepcies',
+                 split_method:str='species',
                  inference_set_to_use:str='train',
                  cast_to_classification:bool=False,
                  targets:str='genera',
