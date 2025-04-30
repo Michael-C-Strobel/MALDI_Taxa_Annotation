@@ -13,33 +13,41 @@ from clip_datamodule import CLIP_DataModule
 from lightning.pytorch.loggers import TensorBoardLogger
 import lightning as L
 import torch
-from lightning.pytorch.callbacks import EarlyStopping
+from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.tuner import Tuner
 from lightning.pytorch import Trainer
+import shutil
+import os
 
 from torchvision import transforms
 from custom_transforms import *
+import tempfile
 
-# IDBac Data
-# SPECTRA_PATH = '../../data/idbac_db/preprocessing'
-# METADATA_PATH = '../../data/idbac_db/raw/ammended_db.csv'
-# ML_PROCESSING_PATH = '../../data/idbac_db/processed_data'
-# log_dir = './lightning_logs'
-# BATCH_SIZE = 32
-# N_EPOCHS = 330
-#### DRIAMS (-A, for Now) Data
-SPECTRA_PATH = '../../data/driams/preprocessing'
-METADATA_PATH = '../../data/driams/preprocessing/merged_metadata.csv'
-ML_PROCESSING_PATH = '../../data/driams/processed_data'
-log_dir = './lightning_logs_DRIAMS_A'
-BATCH_SIZE = 64
-N_EPOCHS = 2_000 # 100
 #### Other Params
 TARGET='genera' # 'genera' | 'species'
-SPLIT_METHOD='species' # 'genera' | 'species'
+SPLIT_METHOD='species' # 'genera' | 'species' | 'species_even'
+
+# IDBac Data
+SPECTRA_PATH = '../../data/idbac_db/preprocessing'
+METADATA_PATH = '../../data/idbac_db/raw/ammended_db.csv'
+ML_PROCESSING_PATH = '../../data/idbac_db/processed_data'
+log_dir = './lightning_logs'
+BATCH_SIZE = 32
+N_EPOCHS = 330
+#### DRIAMS (-A, for Now) Data
+# SPECTRA_PATH = '../../data/driams/preprocessing'
+# METADATA_PATH = '../../data/driams/preprocessing/merged_metadata.csv'
+# if SPLIT_METHOD == 'species_even':
+#     METADATA_PATH = '../../data/driams/preprocessing/merged_metadata_code_accessions.csv'
+# ML_PROCESSING_PATH = '../../data/driams/processed_data'
+# log_dir = './lightning_logs_DRIAMS_A'
+# BATCH_SIZE = 64
+# N_EPOCHS = 2_000 # 100
+
 
 def main():
 
+    GRAD_CLIP_VAL = None
     hyperparameters = {
         'input_dim': 1800,
         'output_dim': 250,
@@ -123,7 +131,7 @@ def main():
     elif TARGET == 'species' and 'driams' in SPECTRA_PATH:
         clip_maldi_classifier_hyperparameters.update({'n_classes': 723}) # For species on Driams
     else:
-        raise ValueError("TARGET must be 'genera' or 'species'")
+        raise ValueError(f"TARGET must be 'genera' or 'species.' Got {TARGET} instead.")
     clip_maldi_classifier_hyperparameters.update({'embed_dim': 128})
     clip_maldi_classifier_hyperparameters.update({'lr': 5e-4})
     clip_maldi_classifier_hyperparameters.update({'weight_decay': 1e-5})
@@ -133,22 +141,48 @@ def main():
     prototypical_transformer_hyperparameters.update({'n_support_samples': 1}) # First model: 5,5, second model: 3, 2
     prototypical_transformer_hyperparameters.update({'n_query_samples': 5})     # Third model: 1, 5 # Fourth, same but skipping singletons in training
 
+    model_specific_callbacks = []
+
     # model = MLP(hyperparameters)  
     # model = MLPClassifier(hyperparameters)
     # model = Sentence_MALDI(Sentence_MALDI_hyperparameters)
     # model = MLPBinaryClassifier(mlp_binary_classifier_hyperparameters)
     # model = CLIP_MALDI(clip_maldi_hyperparameters, )
-    # model = CLIP_MALDI_Classifier(clip_maldi_classifier_hyperparameters, )
+    model = CLIP_MALDI_Classifier(clip_maldi_classifier_hyperparameters, )
     # model = MultinomialLogisticClassifier(**multinomial_logistic_classifier_hyperparameters)
-    model = PrototyicalTransformer( prototypical_transformer_hyperparameters['n_classes'],
-                                    prototypical_transformer_hyperparameters['n_support_samples'],
-                                    prototypical_transformer_hyperparameters['n_query_samples'],
-                                    prototypical_transformer_hyperparameters)
+    # model = PrototyicalTransformer( prototypical_transformer_hyperparameters['n_classes'],
+    #                                 prototypical_transformer_hyperparameters['n_support_samples'],
+    #                                 prototypical_transformer_hyperparameters['n_query_samples'],
+    #                                 prototypical_transformer_hyperparameters)
 
-    torch.set_float32_matmul_precision('medium')    # medium | high
-    
+
+    torch.set_float32_matmul_precision('medium')
+
     # trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity(), NoiseInjection(noise_factor=7e-2), NormalizeIntensity()])
     # trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
+
+    class DelayedCheckpoint(ModelCheckpoint):
+        def __init__(self, delay_epochs: int, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.delay_epochs = delay_epochs
+
+        def on_validation_end(self, trainer, pl_module):
+            # Save only after the delay
+            if trainer.current_epoch >= self.delay_epochs:
+                super().on_validation_end(trainer, pl_module)
+
+        def on_train_end(self, trainer, pl_module):
+            # Always save final model at end of training
+            filepath = self.format_checkpoint_name(
+                metrics=trainer.callback_metrics,
+                filename=f"last_epoch={trainer.current_epoch}"
+            )
+
+            # Ensure directory exists
+            self._fs.makedirs(self.dirpath, exist_ok=True)
+
+            # Save the model
+            self._save_checkpoint(trainer, filepath)
 
     if isinstance(model, MLP):
         logger = TensorBoardLogger(log_dir, name='MLP_model')
@@ -266,6 +300,10 @@ def main():
                                 PadToLength(150, padding_value=-1.0),
                                 ])
         logger = TensorBoardLogger(log_dir, name=f'CLIP_Transformer_Classifier/{TARGET}')
+        checkpoint_dir = os.path.join(
+            logger.log_dir,  # this includes version_x
+            "checkpoints"
+        )
 
         datamodule = SingleSpectrum_DataModule(SPECTRA_PATH,
                                                 METADATA_PATH,
@@ -276,6 +314,20 @@ def main():
                                                 cast_to_classification=True,
                                                 targets=TARGET,
                                                 )
+        
+        if TARGET != SPLIT_METHOD:
+            checkpoint_callback = DelayedCheckpoint(
+                delay_epochs=int(0.33 * N_EPOCHS),
+                monitor='val_loss_epoch',
+                save_top_k=1,
+                mode='min',
+                dirpath=checkpoint_dir, #log_dir + f'/CLIP_Transformer_Classifier/{TARGET}' '/checkpoints',
+                filename='best-checkpoint'
+            )
+            model_specific_callbacks.append(checkpoint_callback)
+
+        # Model overfits aggressively, gradient clipping is required to ensure stability
+        GRAD_CLIP_VAL=0.5
         
         datamodule.setup('fit')
     elif type(model) is MultinomialLogisticClassifier:
@@ -360,14 +412,17 @@ def main():
         patience=40,
         verbose=True,
         min_delta=0.00,)
+    
+    print("Got the following callbacks: ", model_specific_callbacks)
 
     trainer = Trainer(
         max_epochs=N_EPOCHS, 
         log_every_n_steps=1, 
         logger=logger, 
         devices=[0],
-        # callbacks=[early_stop_callback]
-        profiler=None#PyTorchProfiler(),
+        callbacks=model_specific_callbacks,
+        profiler=None,#PyTorchProfiler(),
+        gradient_clip_val=GRAD_CLIP_VAL
     )
 
     
@@ -381,7 +436,6 @@ def main():
 
     trainer.fit(model, datamodule)
 
-    
 
-if __name__=="__main__":
-    main()
+if __name__=="__main__":        
+        main()

@@ -196,7 +196,9 @@ def main():
     else:
         if args.model != 'cosine':
             checkpoint = _checkpoint_root_dir / f"{args.model}/{args.target}/version_{args.version}/checkpoints/"
-            checkpoint_path = list(checkpoint.glob("*.ckpt"))
+            checkpoint_path = list(checkpoint.glob("best*.ckpt"))
+            if len(checkpoint_path) == 0:
+                checkpoint_path = list(checkpoint.glob("*.ckpt"))
             if len(checkpoint_path) == 0:
                 raise ValueError(f"No checkpoint found in {checkpoint}")
             elif len(checkpoint_path) > 1:
