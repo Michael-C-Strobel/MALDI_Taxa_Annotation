@@ -66,7 +66,7 @@ class MultinomialLogisticClassifier(L.LightningModule):
         logits = self.forward(x)
         loss = F.cross_entropy(logits, y)
         metric_results = metrics(logits, y)
-        self.log_dict({f'{prefix}_loss': loss, **metric_results}, on_step=False, on_epoch=True)
+        self.log_dict({f'{prefix}_loss': loss, **metric_results}, on_step=True, on_epoch=True)
         return loss
 
     def training_step(self, batch, batch_idx):

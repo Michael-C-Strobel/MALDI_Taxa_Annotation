@@ -28,22 +28,46 @@ TARGET='genera' # 'genera' | 'species'
 SPLIT_METHOD='species' # 'genera' | 'species' | 'species_even'
 
 # IDBac Data
-SPECTRA_PATH = '../../data/idbac_db/preprocessing'
-METADATA_PATH = '../../data/idbac_db/raw/ammended_db.csv'
-ML_PROCESSING_PATH = '../../data/idbac_db/processed_data'
-log_dir = './lightning_logs'
-BATCH_SIZE = 32
-N_EPOCHS = 330
+# SPECTRA_PATH = '../../data/idbac_db/preprocessing'
+# METADATA_PATH = '../../data/idbac_db/raw/ammended_db.csv'
+# ML_PROCESSING_PATH = '../../data/idbac_db/processed_data'
+# log_dir = './lightning_logs'
+# BATCH_SIZE = 32
+# N_EPOCHS = 330
 #### DRIAMS (-A, for Now) Data
-# SPECTRA_PATH = '../../data/driams/preprocessing'
-# METADATA_PATH = '../../data/driams/preprocessing/merged_metadata.csv'
-# if SPLIT_METHOD == 'species_even':
-#     METADATA_PATH = '../../data/driams/preprocessing/merged_metadata_code_accessions.csv'
-# ML_PROCESSING_PATH = '../../data/driams/processed_data'
-# log_dir = './lightning_logs_DRIAMS_A'
-# BATCH_SIZE = 64
-# N_EPOCHS = 2_000 # 100
+SPECTRA_PATH = '../../data/driams/preprocessing'
+METADATA_PATH = '../../data/driams/preprocessing/merged_metadata.csv'
+if SPLIT_METHOD == 'species_even':
+    METADATA_PATH = '../../data/driams/preprocessing/merged_metadata_code_accessions.csv'
+ML_PROCESSING_PATH = '../../data/driams/processed_data'
+log_dir = './lightning_logs_DRIAMS_A'
+BATCH_SIZE = 64
+N_EPOCHS = 2_000 # 100
 
+log_dir = os.path.join(log_dir, f'{TARGET}/{SPLIT_METHOD}')
+
+class DelayedCheckpoint(ModelCheckpoint):
+    def __init__(self, delay_epochs: int, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.delay_epochs = delay_epochs
+
+    def on_validation_end(self, trainer, pl_module):
+        # Save only after the delay
+        if trainer.current_epoch >= self.delay_epochs:
+            super().on_validation_end(trainer, pl_module)
+
+    def on_train_end(self, trainer, pl_module):
+        # Always save final model at end of training
+        filepath = self.format_checkpoint_name(
+            metrics=trainer.callback_metrics,
+            filename=f"last_epoch={trainer.current_epoch}"
+        )
+
+        # Ensure directory exists
+        self._fs.makedirs(self.dirpath, exist_ok=True)
+
+        # Save the model
+        self._save_checkpoint(trainer, filepath)
 
 def main():
 
@@ -161,29 +185,6 @@ def main():
     # trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity(), NoiseInjection(noise_factor=7e-2), NormalizeIntensity()])
     # trans =  transforms.Compose([BinSpectrum(10, 3_000, 20_000), SquareRootTransform(), NormalizeIntensity()])
 
-    class DelayedCheckpoint(ModelCheckpoint):
-        def __init__(self, delay_epochs: int, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.delay_epochs = delay_epochs
-
-        def on_validation_end(self, trainer, pl_module):
-            # Save only after the delay
-            if trainer.current_epoch >= self.delay_epochs:
-                super().on_validation_end(trainer, pl_module)
-
-        def on_train_end(self, trainer, pl_module):
-            # Always save final model at end of training
-            filepath = self.format_checkpoint_name(
-                metrics=trainer.callback_metrics,
-                filename=f"last_epoch={trainer.current_epoch}"
-            )
-
-            # Ensure directory exists
-            self._fs.makedirs(self.dirpath, exist_ok=True)
-
-            # Save the model
-            self._save_checkpoint(trainer, filepath)
-
     if isinstance(model, MLP):
         logger = TensorBoardLogger(log_dir, name='MLP_model')
         
@@ -253,7 +254,7 @@ def main():
                                         NormalizeIntensity(),
                                         PadToLength(150, padding_value=-1.0),#clip_maldi_hyperparameters['padding_value']),
                                      ])
-        logger = TensorBoardLogger(log_dir, name=f'CLIP_Transformer/{TARGET}')
+        logger = TensorBoardLogger(log_dir, name=f'CLIP_Transformer/')
 
         datamodule = CLIP_DataModule(SPECTRA_PATH,
                                     METADATA_PATH,
@@ -299,7 +300,7 @@ def main():
                                 SelectTopKPeaks(150),
                                 PadToLength(150, padding_value=-1.0),
                                 ])
-        logger = TensorBoardLogger(log_dir, name=f'CLIP_Transformer_Classifier/{TARGET}')
+        logger = TensorBoardLogger(log_dir, name=f'CLIP_Transformer_Classifier/')
         checkpoint_dir = os.path.join(
             logger.log_dir,  # this includes version_x
             "checkpoints"
@@ -321,7 +322,7 @@ def main():
                 monitor='val_loss_epoch',
                 save_top_k=1,
                 mode='min',
-                dirpath=checkpoint_dir, #log_dir + f'/CLIP_Transformer_Classifier/{TARGET}' '/checkpoints',
+                dirpath=checkpoint_dir, #log_dir + f'/CLIP_Transformer_Classifier/' '/checkpoints',
                 filename='best-checkpoint'
             )
             model_specific_callbacks.append(checkpoint_callback)
@@ -336,7 +337,7 @@ def main():
                                     SquareRootTransform(),
                                     NormalizeIntensity(),
                         ])
-        logger = TensorBoardLogger(log_dir, name=f'Multinomial_Logistic_Classifier/{TARGET}')
+        logger = TensorBoardLogger(log_dir, name=f'Multinomial_Logistic_Classifier/')
         datamodule = SingleSpectrum_DataModule(SPECTRA_PATH,
                                                 METADATA_PATH,
                                                 ML_PROCESSING_PATH,
@@ -378,40 +379,12 @@ def main():
                                         targets=TARGET,
                                         cast_to_classification=True)
         
-        logger = TensorBoardLogger(log_dir, name=f'Prototyical_Transformer/{TARGET}')
+        logger = TensorBoardLogger(log_dir, name=f'Prototyical_Transformer/')
         datamodule.setup('fit')
                     
                                                
     else:
         raise ValueError("Model type not recognized")
-
-    # Add global hyperparameters (e.g., n_epochs, )
-    # logger.log_hyperparams({
-    #     'n_epochs': N_EPOCHS,
-    #     'batch_size': BATCH_SIZE,
-    #     'target': TARGET,
-    #     'split_method': SPLIT_METHOD,
-    #     'METADATA_PATH': METADATA_PATH,
-    #     'ML_PROCESSING_PATH': ML_PROCESSING_PATH,
-    #     'SPECTRA_PATH': SPECTRA_PATH,
-    # })
-
-    # Plot the train/test split
-    # datamodule.full_dataset.plot_split('./train_test_split.png')
-
-    early_stop_callback = EarlyStopping(
-                            monitor="val_loss",  # Metric to monitor
-                            patience=5,          # Number of epochs with no improvement before stopping
-                            verbose=True,
-                            mode="min"           # "min" because lower validation loss is better
-                        )
-                        
-    
-    early_stop_callback = EarlyStopping(
-        monitor="val_loss",
-        patience=40,
-        verbose=True,
-        min_delta=0.00,)
     
     print("Got the following callbacks: ", model_specific_callbacks)
 
@@ -424,15 +397,6 @@ def main():
         profiler=None,#PyTorchProfiler(),
         gradient_clip_val=GRAD_CLIP_VAL
     )
-
-    
-    # lr_find_results = tuner.lr_find(model,
-    #                                 datamodule,
-    #                                 min_lr=0.00001,
-    #                                 max_lr=0.001,
-    #                                 early_stop_threshold=None)
-    # model.lr = lr_find_results.suggestion()
-    print("Best learning rate: ", model.lr)
 
     trainer.fit(model, datamodule)
 

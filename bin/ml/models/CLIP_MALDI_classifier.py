@@ -15,7 +15,7 @@ class CLIP_MALDI_Classifier(CLIP_MALDI):
         super().__init__(hyperparameters, pretrained_embedder)
         self.output_dim = self.hparams.n_classes
 
-        self.projection = nn.Linear(self.hparams.embed_dim, self.output_dim)
+        self.projection = nn.Linear(128, self.output_dim)
 
         if self.output_dim == 2:
             self.task = 'binary'

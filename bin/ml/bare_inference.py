@@ -35,7 +35,7 @@ IMPLEMENTED_MODELS = {'Prototyical_Transformer',    # TODO: Spell it right once 
                       'CLIP_Transformer_Classifier',
                       'Multinomial_Logistic_Classifier',
                       'CLIP_Transformer',
-                      'cosine',
+                      'cosine_1', 'cosine_3', 'cosine_5', 'cosine_7', 'cosine_10',
                       }
 
 def setup_model(model_name: str,
@@ -50,7 +50,7 @@ def setup_model(model_name: str,
         model (L.LightningDataModule): Model
         transforms (transforms.Compose): Transforms for the model
     """
-    if model_name != 'cosine':
+    if model_name.split('_')[0] != 'cosine':
         if not checkpoint_path.is_file():
             raise ValueError(f"Checkpoint path {checkpoint_path} does not exist")
     
@@ -93,7 +93,7 @@ def setup_model(model_name: str,
                                         SelectTopKPeaks(150),
                                         NormalizeIntensity(),
                                      ])
-    elif model_name == 'cosine':
+    elif model_name.split('_')[0] == 'cosine':
         class _IdentityModel:
             def __init__(self):
                 self.device = 'cpu'
@@ -103,11 +103,13 @@ def setup_model(model_name: str,
             def eval(self):
                 pass
         model = _IdentityModel()
+        cosine_bin_size = int(model_name.split('_')[1])
         trans = transforms.Compose([
-                                        BinSpectrum(10, 3_000, 20_000),
+                                        BinSpectrum(cosine_bin_size, 3_000, 20_000),
                                         SquareRootTransform(),
                                         NormalizeIntensity(),
                                     ])
+
 
     else:
         raise ValueError(f"Model {model_name} not implemented, please check the model name")
@@ -160,6 +162,7 @@ def main():
     parser.add_argument("--split_type", type=str, required=False, help="Split type", choices=['genera', 'species', 'species_even'], default='genera')
     parser.add_argument("--inference_set", type=str, required=True, help="Inference set name", choices=['train', 'val', 'test'])
     parser.add_argument("--checkpoint_path", type=str, required=False, help="Path to the model checkpoint")
+    parser.add_argument("--new_paths", action='store_true', help="Use new paths for the data")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
@@ -169,7 +172,7 @@ def main():
 
     checkpoint_path = None
 
-    if args.model != 'cosine':
+    if args.model.split('_')[0] != 'cosine':
         # Either version must be specified or checkpoint_path  must be specified
         if args.checkpoint_path is None:
             if args.model is None or args.version is None:
@@ -194,8 +197,11 @@ def main():
         output_dir = checkpoint_path.parent / f"../inference/{args.target}/{args.split_type}/"
 
     else:
-        if args.model != 'cosine':
-            checkpoint = _checkpoint_root_dir / f"{args.model}/{args.target}/version_{args.version}/checkpoints/"
+        if args.model.split('_')[0] != 'cosine':
+            if not args.new_paths:
+                checkpoint = _checkpoint_root_dir / f"{args.model}/{args.target}/version_{args.version}/checkpoints/"
+            else:
+                checkpoint = _checkpoint_root_dir / f"{args.target}/{args.split_type}/{args.model}/version_{args.version}/checkpoints/"
             checkpoint_path = list(checkpoint.glob("best*.ckpt"))
             if len(checkpoint_path) == 0:
                 checkpoint_path = list(checkpoint.glob("*.ckpt"))
