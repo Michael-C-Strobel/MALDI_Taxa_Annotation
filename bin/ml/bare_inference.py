@@ -163,6 +163,7 @@ def main():
     parser.add_argument("--inference_set", type=str, required=True, help="Inference set name", choices=['train', 'val', 'test'])
     parser.add_argument("--checkpoint_path", type=str, required=False, help="Path to the model checkpoint")
     parser.add_argument("--new_paths", action='store_true', help="Use new paths for the data")
+    parser.add_argument("--run_for_score", action='store_true', help="Run for score")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
@@ -185,8 +186,12 @@ def main():
    
     if args.dataset == 'DIRAMS-A':
         _checkpoint_root_dir = Path('./lightning_logs_DRIAMS_A/')
+        if args.run_for_score:
+            _checkpoint_root_dir = Path('./lightning_logs_DRIAMS_A_for_score/')
     elif args.dataset == 'IDBac':
         _checkpoint_root_dir = Path('./lightning_logs/')
+        if args.run_for_score:
+            _checkpoint_root_dir = Path('./lightning_logs_idbac_for_score/')
     else:
         raise ValueError(f"Dataset {args.dataset} not supported")
 

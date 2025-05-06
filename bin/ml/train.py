@@ -29,7 +29,29 @@ import optuna
 import argparse
 import json
 
-from train import DelayedCheckpoint
+class DelayedCheckpoint(ModelCheckpoint):
+    def __init__(self, delay_epochs: int, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.delay_epochs = delay_epochs
+
+    def on_validation_end(self, trainer, pl_module):
+        # Save only after the delay
+        if trainer.current_epoch >= self.delay_epochs:
+            super().on_validation_end(trainer, pl_module)
+
+    def on_train_end(self, trainer, pl_module):
+        # Always save final model at end of training
+        filepath = self.format_checkpoint_name(
+            metrics=trainer.callback_metrics,
+            filename=f"last_epoch={trainer.current_epoch}"
+        )
+
+        # Ensure directory exists
+        self._fs.makedirs(self.dirpath, exist_ok=True)
+
+        # Save the model
+        self._save_checkpoint(trainer, filepath)
+
 
 def get_path_info(dataset: str, args: argparse.Namespace) -> Union[str, str, str, str]:
     """Returns the paths for the dataset and logs based on the dataset name."""
@@ -38,9 +60,9 @@ def get_path_info(dataset: str, args: argparse.Namespace) -> Union[str, str, str
         METADATA_PATH = '../../data/idbac_db/raw/ammended_db.csv'
         ML_PROCESSING_PATH = '../../data/idbac_db/processed_data'
         if args.train_for_score:
-            log_dir = os.path.join('./lightning_logs_idbac_for_score', f'{args.target}/{args.split_method}/{args.model_type}')
+            log_dir = os.path.join('./lightning_logs_idbac_for_score', f'{args.target}/{args.split_method}') # /{args.model_type}?
         else:
-            log_dir=  os.path.join('./lightning_logs_idbac_optuna', f'{args.target}/{args.split_method}/{args.model_type}')
+            log_dir=  os.path.join('./lightning_logs_idbac_optuna', f'{args.target}/{args.split_method}') # /{args.model_type}?
     elif dataset == 'driams':
         SPECTRA_PATH = '../../data/driams/preprocessing'
         METADATA_PATH = '../../data/driams/preprocessing/merged_metadata.csv'
@@ -48,9 +70,9 @@ def get_path_info(dataset: str, args: argparse.Namespace) -> Union[str, str, str
             METADATA_PATH = '../../data/driams/preprocessing/merged_metadata_code_accessions.csv'
         ML_PROCESSING_PATH = '../../data/driams/processed_data'
         if args.train_for_score:
-            log_dir = os.path.join('./lightning_logs_DRIAMS_A_for_score', f'{args.target}/{args.split_method}/{args.model_type}')
+            log_dir = os.path.join('./lightning_logs_DRIAMS_A_for_score', f'{args.target}/{args.split_method}') # /{args.model_type}?
         else:
-            log_dir = os.path.join('./lightning_logs_DRIAMS_A_optuna', f'{args.target}/{args.split_method}/{args.model_type}')
+            log_dir = os.path.join('./lightning_logs_DRIAMS_A_optuna', f'{args.target}/{args.split_method}') # /{args.model_type}?
     else:
         raise ValueError(f"Dataset '{dataset}' not recognized.")
     
@@ -63,11 +85,11 @@ def get_trial_hyperparameters(trial: optuna.Trial, args: argparse.Namespace, tri
             {
                 'input_dim': 1800,  # Fixed for now
                 'output_dim': 250,  # Fixed for now, depends on the target
-                'hidden_dim': trial.suggest_int('mlp_hidden_dim', 100, 500),
-                'hidden_layers': trial.suggest_int('mlp_hidden_layers', 2, 5),
-                'weight_decay': trial.suggest_float('mlp_weight_decay', 1e-6, 1e-3, log=True),
-                'dropout': trial.suggest_float('mlp_dropout', 0.1, 0.5),
-                'lr': trial.suggest_float('mlp_lr', 1e-6, 1e-3, log=True),
+                'hidden_dim': trial.suggest_int('hidden_dim', 100, 500),
+                'hidden_layers': trial.suggest_int('hidden_layers', 2, 5),
+                'weight_decay': trial.suggest_float('weight_decay', 1e-6, 1e-3, log=True),
+                'dropout': trial.suggest_float('dropout', 0.1, 0.5),
+                'lr': trial.suggest_float('lr', 1e-6, 1e-3, log=True),
             }
         )
     elif args.model_type == 'Sentence_MALDI':
@@ -75,23 +97,23 @@ def get_trial_hyperparameters(trial: optuna.Trial, args: argparse.Namespace, tri
             {
                 'input_dim': 1700,  # Fixed
                 'output_bin_edges': torch.Tensor([1.0]),  # Fixed
-                'hidden_dim': trial.suggest_int('sentence_hidden_dim', 100, 500),
-                'hidden_layers': trial.suggest_int('sentence_hidden_layers', 2, 5),
+                'hidden_dim': trial.suggest_int('hidden_dim', 100, 500),
+                'hidden_layers': trial.suggest_int('hidden_layers', 2, 5),
                 'weight_decay': trial.suggest_float(
-                    'sentence_weight_decay', 1e-6, 1e-3, log=True
+                    'weight_decay', 1e-6, 1e-3, log=True
                 ),
-                'dropout': trial.suggest_float('sentence_dropout', 0.1, 0.5),
-                'tau': trial.suggest_float('sentence_tau', 0.5, 2.0),
+                'dropout': trial.suggest_float('dropout', 0.1, 0.5),
+                'tau': trial.suggest_float('tau', 0.5, 2.0),
             }
         )
     elif args.model_type == 'CLIP_MALDI_Classifier':
         trial_hyperparameters.update({
-                'hidden_dim': trial.suggest_int('clip_hidden_dim', 100, 500, step=10),
-                'hidden_layers': trial.suggest_int('clip_hidden_layers', 2, 5),
-                'weight_decay': trial.suggest_float('clip_weight_decay', 1e-6, 1e-3, log=True),
-                'dropout': trial.suggest_float('clip_dropout', 0.1, 0.5),
-                'tau': trial.suggest_float('clip_tau', 0.05, 0.15),
-                'lr': trial.suggest_float('clip_lr', 1e-5, 1e-3, log=True),
+                'hidden_dim': trial.suggest_int('hidden_dim', 100, 500, step=10),
+                'hidden_layers': trial.suggest_int('hidden_layers', 2, 5),
+                'weight_decay': trial.suggest_float('weight_decay', 1e-6, 1e-3, log=True),
+                'dropout': trial.suggest_float('dropout', 0.1, 0.5),
+                'tau': trial.suggest_float('tau', 0.05, 0.15),
+                'lr': trial.suggest_float('lr', 1e-5, 1e-3, log=True),
             })
         if args.target == 'genera' and 'idbac' in args.dataset:
             trial_hyperparameters['n_classes'] = 96
@@ -109,34 +131,28 @@ def get_trial_hyperparameters(trial: optuna.Trial, args: argparse.Namespace, tri
                 'spectrum_bin_width': trial.suggest_int('spectrum_bin_width', 1,10, step=1),
             }
         )
-        trial_hyperparameters.update({
-                'input_dim': (20_000 - 3000) // trial_hyperparameters['spectrum_bin_width'],
-        })
         return trial_hyperparameters
     elif args.model_type == 'PrototypicalTransformer':
         trial_hyperparameters.update(
             {
-                'hidden_dim': trial.suggest_int('clip_hidden_dim', 100, 500, step=10),
-                'hidden_layers': trial.suggest_int('clip_hidden_layers', 2, 5),
-                'weight_decay': trial.suggest_float('clip_weight_decay', 1e-6, 1e-3, log=True),
-                'dropout': trial.suggest_float('clip_dropout', 0.1, 0.5),
-                'tau': trial.suggest_float('clip_tau', 0.05, 0.15),
-                'lr': trial.suggest_float('clip_lr', 1e-5, 1e-3, log=True),
+                'hidden_dim': trial.suggest_int('hidden_dim', 100, 500, step=10),
+                'hidden_layers': trial.suggest_int('hidden_layers', 2, 5),
+                'weight_decay': trial.suggest_float('weight_decay', 1e-6, 1e-3, log=True),
+                'dropout': trial.suggest_float('dropout', 0.1, 0.5),
+                'tau': trial.suggest_float('tau', 0.05, 0.15),
+                'lr': trial.suggest_float('lr', 1e-5, 1e-3, log=True),
                 'n_classes': trial.suggest_int('proto_n_classes', 3, 5, step=1),    # Must be very low to accomidate IDBac
-                'n_support_samples': 1,  # Fixed to mimic single-shot learning
-                'n_query_samples': 5,    # Fixed
-                'episodes_per_epoch': 1000,  # Fixed for now
             }
         )
     elif args.model_type == 'CLIP_MALDI':
         trial_hyperparameters.update(
             {
-                'hidden_dim': trial.suggest_int('clip_hidden_dim', 100, 500, step=10),
-                'hidden_layers': trial.suggest_int('clip_hidden_layers', 2, 5),
-                'weight_decay': trial.suggest_float('clip_weight_decay', 1e-6, 1e-3, log=True),
-                'dropout': trial.suggest_float('clip_dropout', 0.1, 0.5),
-                'tau': trial.suggest_float('clip_tau', 0.05, 0.15),
-                'lr': trial.suggest_float('clip_lr', 1e-5, 1e-3, log=True),
+                'hidden_dim': trial.suggest_int('hidden_dim', 100, 500, step=10),
+                'hidden_layers': trial.suggest_int('hidden_layers', 2, 5),
+                'weight_decay': trial.suggest_float('weight_decay', 1e-6, 1e-3, log=True),
+                'dropout': trial.suggest_float('dropout', 0.1, 0.5),
+                'tau': trial.suggest_float('tau', 0.05, 0.15),
+                'lr': trial.suggest_float('lr', 1e-5, 1e-3, log=True),
             }
         )
     else:
@@ -155,7 +171,7 @@ def initialize_model(SPECTRA_PATH: str,
     datamodule = None
     logger_name = None
     trans = None
-    trainer_args = None
+    trainer_args = {}
 
     trial_hyperparameters: Dict[str, Any] = {
         'TARGET': args.target,
@@ -176,9 +192,11 @@ def initialize_model(SPECTRA_PATH: str,
     # If we're training for score, load them and don't change them
     if args.train_for_score:
         if not os.path.exists(hparam_path):
-            raise FileNotFoundError(f"No hyperparameters found at {args.hparam_dir}")
-        with open(args.hparam_dir, 'r') as f:
+            raise FileNotFoundError(f"No hyperparameters found at {hparam_path}")
+        print("Loading hyperparameters from file:", hparam_path)
+        with open(hparam_path, 'r', encoding='utf-8') as f:
             loaded_hparams = json.load(f)
+            print("Loaded hyperparameters:", loaded_hparams)
         trial_hyperparameters.update(loaded_hparams)
 
     if args.model_type == 'MLPClassifier':
@@ -201,7 +219,7 @@ def initialize_model(SPECTRA_PATH: str,
         datamodule.setup('fit')
         if hasattr(datamodule, 'full_dataset') and hasattr(datamodule.full_dataset, 'get_one_hot_encoded_classes'):
             model.one_hot_encoder = datamodule.full_dataset.get_one_hot_encoded_classes()
-        logger_name = 'MLP_Classifier_Optuna'
+        logger_name = 'MLP_Classifier'
 
     elif args.model_type == 'Sentence_MALDI':
         if not args.train_for_score:
@@ -221,7 +239,7 @@ def initialize_model(SPECTRA_PATH: str,
             batch_size=args.batch_size,
         )
         datamodule.setup('fit')
-        logger_name = 'Sentence_MALDI_Optuna'
+        logger_name = 'Sentence_MALDI'
 
     elif args.model_type == 'CLIP_MALDI_Classifier':
         trial_hyperparameters.update(clip_common_params)
@@ -259,7 +277,7 @@ def initialize_model(SPECTRA_PATH: str,
             batch_size=args.batch_size,
         )
         datamodule.setup('fit')
-        logger_name = 'CLIP_Transformer_Classifier_Optuna'
+        logger_name = 'CLIP_Transformer_Classifier'
         trainer_args = {
             'gradient_clip_val': 0.5,
         }
@@ -267,6 +285,9 @@ def initialize_model(SPECTRA_PATH: str,
     elif args.model_type == 'MultinomialLogisticClassifier':
         if not args.train_for_score:
             trial_hyperparameters = get_trial_hyperparameters(trial, args, trial_hyperparameters)
+        trial_hyperparameters.update({
+            'input_dim': (20_000 - 3000) // trial_hyperparameters['spectrum_bin_width'],
+        })
         if args.target == 'genera' and 'idbac' in SPECTRA_PATH:
             trial_hyperparameters['n_classes'] = 96
         elif args.target == 'genera' and 'driams' in SPECTRA_PATH:
@@ -294,9 +315,13 @@ def initialize_model(SPECTRA_PATH: str,
             batch_size=args.batch_size,
         )
         datamodule.setup('fit')
-        logger_name = 'Multinomial_Logistic_Classifier_Optuna'
+        logger_name = 'Multinomial_Logistic_Classifier'
     elif args.model_type == 'PrototypicalTransformer':
         trial_hyperparameters.update(clip_common_params)
+        # Set defaults for n_support_samples and n_query_samples
+        trial_hyperparameters['n_support_samples'] = 1
+        trial_hyperparameters['n_query_samples'] = 5
+        trial_hyperparameters['episodes_per_epoch'] = 1000
         if not args.train_for_score:
             trial_hyperparameters = get_trial_hyperparameters(trial, args, trial_hyperparameters)
         model = PrototypicalTransformer(trial_hyperparameters['n_classes'],
@@ -326,7 +351,7 @@ def initialize_model(SPECTRA_PATH: str,
             cast_to_classification=True,
         )
         datamodule.setup('fit')
-        logger_name = 'Prototyical_Transformer_Optuna'
+        logger_name = 'Prototyical_Transformer'
 
     elif args.model_type == 'CLIP_MALDI':
         trial_hyperparameters.update(clip_common_params)
@@ -352,7 +377,7 @@ def initialize_model(SPECTRA_PATH: str,
             targets=args.target,
         )
         datamodule.setup('fit')
-        logger_name = f'CLIP_Transformer_Optuna'
+        logger_name = f'CLIP_Transformer'
 
     else:
         raise ValueError(f"Model type '{args.model_type}' is not supported for tuning.")
@@ -533,11 +558,15 @@ def main():
     os.makedirs(log_dir, exist_ok=True)
     sqlite_path = f"sqlite:///{os.path.abspath(os.path.join(log_dir, 'optuna_study.db'))}"
 
-    # For optimal params    
-    hparam_path = os.path.join(args.hparam_dir, args.dataset, args.target, args.split_method, f"{args.model_type}.json")
-    print(f"Saving best hyperparameters to {hparam_path}")
+    # For optimal params
+    if os.path.isfile(args.hparam_dir):
+        hparam_path = args.hparam_dir
+    else:
+        hparam_path = os.path.join(args.hparam_dir, args.dataset, args.target, args.split_method, f"{args.model_type}.json")
 
     if not args.train_for_score:
+        print(f"Saving best hyperparameters to {hparam_path}")
+
         study = optuna.create_study(direction='minimize', 
                                     study_name="optuna_study", 
                                     pruner=MedianPruner(), 
