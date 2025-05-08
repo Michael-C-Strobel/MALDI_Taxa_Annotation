@@ -149,6 +149,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
                  inference_set_to_use:str='train',
                  cast_to_classification:bool=False,
                  targets:str='genera',
+                 k:int=None,
     ):
         """"
         
@@ -162,6 +163,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
         self.inference_set_to_use = inference_set_to_use
         self.cast_to_classification = cast_to_classification
         self.targets = targets
+        self.k_fold_split = k
         if not self.targets in ['genera', 'species']:
             raise ValueError(f"Expected targets to be 'genera' or 'species', but got {self.targets}")
 
@@ -175,22 +177,31 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
         wipe_test_sets=False # Hardcoded 
 
         accessions_path = Path(self.root_dir)/f'{self.split_method}'
+        train_accessions_path = accessions_path / 'train_accessions.pt'
+        val_accessions_path = accessions_path / 'val_accessions.pt'
+        test_accessions_path = accessions_path / 'test_accessions.pt'
 
-        if accessions_path / 'train_accessions.pt':
+        if k is not None:
+            print(f"Using k-fold split with k={k}")
+            train_accessions_path = accessions_path / f'train_fold_{k}.pt'
+            val_accessions_path = accessions_path / f'val_fold_{k}.pt'
+            test_accessions_path = accessions_path / f'test_fold_{k}.pt'
+
+        if train_accessions_path:
             if wipe_test_sets:
-                (accessions_path / 'train_accessions.pt').unlink(missing_ok=True)
+                (train_accessions_path).unlink(missing_ok=True)
             else:
-                self.train_accessions = torch.load(accessions_path / 'train_accessions.pt', weights_only=False)
-        if accessions_path / 'val_accessions.pt':
+                self.train_accessions = torch.load(train_accessions_path, weights_only=False)
+        if val_accessions_path:
             if wipe_test_sets:
-                (accessions_path / 'val_accessions.pt').unlink(missing_ok=True)
+                (val_accessions_path).unlink(missing_ok=True)
             else:
-                self.val_accessions = torch.load(accessions_path / 'val_accessions.pt', weights_only=False)
-        if accessions_path / 'test_accessions.pt':
+                self.val_accessions = torch.load(val_accessions_path, weights_only=False)
+        if test_accessions_path:
             if wipe_test_sets:
-                (accessions_path / 'test_accessions.pt').unlink(missing_ok=True)
+                (test_accessions_path).unlink(missing_ok=True)
             else:
-                self.test_accessions = torch.load(accessions_path / 'test_accessions.pt', weights_only=False)
+                self.test_accessions = torch.load(test_accessions_path, weights_only=False)
         
         self.batch_size = batch_size
         self.train_test_stats = None

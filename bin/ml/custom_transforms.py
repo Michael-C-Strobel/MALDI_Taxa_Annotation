@@ -134,7 +134,28 @@ class NormalizeIntensity(object):
             return spectrum
 
         raise ValueError(f"Expected a 1D or 2D tensor with m/z and intensity values. Got shape {spectrum.shape}")
+
+class BinarizeIntensity(object):
+    """Binarizes the intensity values of the spectrum. If the intensity is greater than threshold, it is set to 1; otherwise, set it to 0.
     
+    Args:
+        threshold (float): The threshold for binarization.
+
+    Returns:
+        torch.Tensor: The binarized spectrum.
+    """
+    def __init__(self, threshold: float = 0.02):
+        self.threshold = threshold
+
+    def __call__(self, spectrum):
+        if len(spectrum.shape) == 1:
+            spectrum[:] = (spectrum > self.threshold).float()
+        elif len(spectrum.shape) == 2:
+            spectrum[:, 1] = (spectrum[:, 1] > self.threshold).float()
+        else:
+            raise ValueError(f"Expected a 1D or 2D array with m/z and intensity values. Instead got {spectrum.shape}")
+        return spectrum
+
 class ScaleIntensity(object):
     """Ensures the max intensity of the spectrum is 1.0. 
 

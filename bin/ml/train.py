@@ -24,10 +24,11 @@ from typing import Dict, Any, Union
 
 from torchvision import transforms
 from custom_transforms import *
-import tempfile
 import optuna
 import argparse
 import json
+
+import time
 
 class DelayedCheckpoint(ModelCheckpoint):
     def __init__(self, delay_epochs: int, *args, **kwargs):
@@ -275,6 +276,7 @@ def initialize_model(SPECTRA_PATH: str,
             cast_to_classification=True,
             targets=args.target,
             batch_size=args.batch_size,
+            k=args.k
         )
         datamodule.setup('fit')
         logger_name = 'CLIP_Transformer_Classifier'
@@ -360,12 +362,24 @@ def initialize_model(SPECTRA_PATH: str,
         
         trial_hyperparameters.update(trial_hyperparameters)
         model = CLIP_MALDI(trial_hyperparameters)
+        # print("*******************************")
+        # print("*******************************")
+        # print("*******************************")
+        # print("Warning: Binarizing Intensities")
+        # print("*******************************")
+        # print("*******************************")
+        # print("*******************************")
+        # time.sleep(5)
         trans = transforms.Compose([
             SquareRootTransform(),
             SelectTopKPeaks(150),
+            BinarizeIntensity(),
             NormalizeIntensity(),
             PadToLength(150, padding_value=-1.0),
         ])
+        print("*******************************")
+        print("Got k = ", args.k)
+        print("*******************************")
         datamodule = CLIP_DataModule(
             SPECTRA_PATH,
             METADATA_PATH,
@@ -375,6 +389,7 @@ def initialize_model(SPECTRA_PATH: str,
             batch_size=args.batch_size,
             split_method=args.split_method,
             targets=args.target,
+            k=args.k,
         )
         datamodule.setup('fit')
         logger_name = f'CLIP_Transformer'
@@ -440,6 +455,9 @@ def train_for_score(args: argparse.Namespace, hparam_path: str) -> None:
         raise ValueError("train_for_score must be True to train for final score.")
 
     spectra_path, metadata_path, ml_processing_path, log_dir = get_path_info(args.dataset, args)
+
+    if args.k is not None:
+        log_dir = os.path.join(log_dir, f'k={args.k}')
     
     model, datamodule, logger_name, trans, trainer_args = initialize_model(
         spectra_path,
@@ -546,6 +564,14 @@ def main():
         "--dump_best"
         , action='store_true',
         help="Dump the best hyperparameters to a file."
+    )
+    parser.add_argument(
+        "--k",
+        "-k",
+        type=int,
+        help="Which k-fold to use for training.",
+        default=None,
+        required=False
     )
 
     args = parser.parse_args()

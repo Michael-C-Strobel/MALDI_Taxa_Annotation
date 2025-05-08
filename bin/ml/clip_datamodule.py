@@ -22,7 +22,8 @@ class CLIP_DataModule(L.LightningDataModule):
                  sampling_mode='nce',
                  cast_to_classification=False,
                  targets='genera',
-                 num_turns=1):
+                 num_turns=1,
+                 k=None):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
@@ -31,6 +32,7 @@ class CLIP_DataModule(L.LightningDataModule):
         self.split_method = split_method
         self.sampling_mode = sampling_mode
         self.targets = targets
+        self.k_fold_split = k
 
         if not self.targets in ['genera', 'species']:
             raise ValueError(f"Expected targets to be 'genera' or 'species', but got {self.targets}")
@@ -47,17 +49,23 @@ class CLIP_DataModule(L.LightningDataModule):
         self.batch_size = batch_size
 
         accessions_path = Path(self.root_dir)/f'{self.split_method}'
+        train_accessions_path = accessions_path / 'train_accessions.pt'
+        val_accessions_path = accessions_path / 'val_accessions.pt'
+        test_accessions_path = accessions_path / 'test_accessions.pt'
+
+        if k is not None:
+            print(f"Using k-fold split with k={k}")
+            train_accessions_path = accessions_path / f'train_fold_{k}.pt'
+            val_accessions_path = accessions_path / f'val_fold_{k}.pt'
+            test_accessions_path = accessions_path / f'test_fold_{k}.pt'
 
         # Get train/val/test accessions
-        self.train_accessions = None
-        self.val_accessions = None
-        self.test_accessions = None
-        if accessions_path /'train_accessions.pt':
-            self.train_accessions = torch.load(accessions_path /'train_accessions.pt', weights_only=False)
-        if accessions_path /'val_accessions.pt':
-            self.val_accessions = torch.load(accessions_path /'val_accessions.pt', weights_only=False)
-        if accessions_path /'test_accessions.pt':
-            self.test_accessions = torch.load(accessions_path /'test_accessions.pt', weights_only=False)
+        if train_accessions_path:
+            self.train_accessions = torch.load(train_accessions_path, weights_only=False)
+        if val_accessions_path:
+            self.val_accessions = torch.load(val_accessions_path, weights_only=False)
+        if test_accessions_path:
+            self.test_accessions = torch.load(test_accessions_path, weights_only=False)
 
     def prepare_data(self):
         pass

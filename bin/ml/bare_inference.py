@@ -160,16 +160,20 @@ def main():
     parser.add_argument("--dataset", "-ds", type=str, required=True, help="Dataset name", choices=['DIRAMS-A', 'IDBac'])
     parser.add_argument("--target", type=str, required=True, help="Target to predict", choices=['genera', 'species'])
     parser.add_argument("--split_type", type=str, required=False, help="Split type", choices=['genera', 'species', 'species_even'], default='genera')
-    parser.add_argument("--inference_set", type=str, required=True, help="Inference set name", choices=['train', 'val', 'test'])
+    parser.add_argument("--inference_set", type=str, required=True, help="Inference set name", choices=['train', 'val', 'test', 'all'])
     parser.add_argument("--checkpoint_path", type=str, required=False, help="Path to the model checkpoint")
     parser.add_argument("--new_paths", action='store_true', help="Use new paths for the data")
     parser.add_argument("--run_for_score", action='store_true', help="Run for score")
+    parser.add_argument("--k", "-k", type=int, required=False, help="CV Fold", default=None)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
 
     if not args.model in IMPLEMENTED_MODELS:
         raise ValueError(f"Model {args.model} not implemented, please check the model name")
+    
+    if args.checkpoint_path is not None and args.k is not None:
+        raise ValueError("Either checkpoint_path or k must be specified, not both")
 
     checkpoint_path = None
 
@@ -202,11 +206,14 @@ def main():
         output_dir = checkpoint_path.parent / f"../inference/{args.target}/{args.split_type}/"
 
     else:
+        k_fold_insert = ""
+        if args.k is not None:
+            k_fold_insert = f"k={args.k}/"
         if args.model.split('_')[0] != 'cosine':
             if not args.new_paths:
-                checkpoint = _checkpoint_root_dir / f"{args.model}/{args.target}/version_{args.version}/checkpoints/"
+                checkpoint = _checkpoint_root_dir / f"{args.model}/{args.target}/{k_fold_insert}/version_{args.version}/checkpoints/"
             else:
-                checkpoint = _checkpoint_root_dir / f"{args.target}/{args.split_type}/{args.model}/version_{args.version}/checkpoints/"
+                checkpoint = _checkpoint_root_dir / f"{args.target}/{args.split_type}/{k_fold_insert}/{args.model}/version_{args.version}/checkpoints/"
             checkpoint_path = list(checkpoint.glob("best*.ckpt"))
             if len(checkpoint_path) == 0:
                 checkpoint_path = list(checkpoint.glob("*.ckpt"))
@@ -216,10 +223,14 @@ def main():
                 raise ValueError(f"Multiple checkpoints found in {checkpoint}, please specify the exact path")
             else:
                 checkpoint_path = checkpoint_path[0]
+
             output_dir = checkpoint_path.parent / f"../inference/{args.target}/{args.split_type}/"
 
         else:
-            output_dir = _checkpoint_root_dir / f"{args.model}/{args.target}/{args.split_type}/"
+            output_dir = _checkpoint_root_dir / f"{args.model}/{args.target}/{args.split_type}/{k_fold_insert}"
+
+    if args.inference_set.lower().strip() == 'all':
+        output_dir = output_dir / '../../all'
 
     output_dir.mkdir(parents=True, exist_ok=True)
    
@@ -273,6 +284,7 @@ def main():
         inference_set_to_use=args.inference_set,
         cast_to_classification=False,
         targets=args.target,
+        k=args.k,
     )
     datamodule.setup('test')
 
