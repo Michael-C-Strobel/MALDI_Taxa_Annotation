@@ -23,9 +23,11 @@ os.getcwd()
 # %%
 NAME_MAPPINGS = {
     'clip_transformer': "Contrastive Transformer",
+    'clip_transformer_intensity_agnostic': "Contrastive Transformer (Int. Agn.)",
     'clip_transformer_classifier': "Classifier Embeddings",
     'cosine': "Cosine Similarity",
     'prototypical_transformer': "Prototypical Transformer",
+    'cosine_intensity_agnostic': "Cosine Similarity (Int. Agn.)",
 }
 
 def gather_embeddings(dataset:str, target:str, split_type:str):
@@ -43,6 +45,7 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
     clip_transformer_classifer_path = None
     cosine_path = None
     prototypical_transformer_path = None
+    clip_transformer_intensity_agnostic_path = None
 
     # inference/{args.target}/{args.split_type}/"
     if target == 'genera':
@@ -83,6 +86,10 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
                 prototypical_transformer_path = [
                     _base_dir / 'genera'/ 'genera' / 'Prototyical_Transformer' / f'version_{i}' / 'inference' / target / split_type
                     for i in range(5)
+                ]
+                clip_transformer_intensity_agnostic_path = [
+                    _base_dir / 'genera'/ 'genera' / 'CLIP_Transformer' / f'version_{i}' / 'inference' / target / split_type
+                    for i in range(5,10)
                 ]
             
         elif split_type == 'species':
@@ -169,16 +176,47 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
 
     elif target == 'species':
         if split_type == 'genera':
-            # I guess we could do this, but it feels like a bit of a stretch
-            raise ValueError(f"Unknown split_type: {split_type} for target: {target}")
+            metadata_path = Path('../data/driams/preprocessing/merged_metadata.csv')
+            if dataset.lower() == 'driams-a':
+                _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_A_for_score')
+                clip_transformer_path = [
+                    _base_dir / 'species'/ 'genera' / 'CLIP_Transformer' / f'version_{i}' / 'inference' / target / split_type
+                    for i in range(5)
+                ]
+                clip_transformer_classifer_path = [
+                    _base_dir / 'species'/ 'genera' / 'CLIP_Transformer_Classifier' / f'version_{i}' / 'inference' / target / split_type
+                    for i in range(5)
+                ]
+                cosine_path = [_base_dir / 'cosine_10' / target / split_type]
+                prototypical_transformer_path = [
+                    _base_dir / 'species'/ 'genera' / 'Prototyical_Transformer' / f'version_{i}' / 'inference' / target / split_type
+                    for i in range(5)
+                ]
+
+            elif dataset.lower() == 'idbac-kb':
+               raise NotImplementedError("Add metadata path of idbac-kb")
     
         elif split_type == 'species':
             if dataset.lower() == 'driams-a':
                 metadata_path = Path('../data/driams/preprocessing/merged_metadata.csv')
-                clip_transformer_path = [base_dir / 'CLIP_Transformer' / 'species' / 'version_1' / 'inference' / target / split_type]
-                clip_transformer_classifer_path = [base_dir / 'CLIP_Transformer_Classifier' / 'version_7' / 'inference' / target / split_type]
+                _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_A_for_score')
+                # clip_transformer_path = [base_dir / 'CLIP_Transformer' / 'species' / 'version_1' / 'inference' / target / split_type]
+                # clip_transformer_classifer_path = [base_dir / 'CLIP_Transformer_Classifier' / 'version_7' / 'inference' / target / split_type]
+                # cosine_path = [base_dir / 'cosine' / target / split_type]
+                # prototypical_transformer_path = [base_dir / 'Prototyical_Transformer' / 'species' / 'version_9' / 'inference' / target / split_type]
+                clip_transformer_path = [
+                    _base_dir / 'species'/ 'species' / 'CLIP_Transformer' / f'version_{i}' / 'inference' / target / split_type
+                    for i in range(5)
+                ]
+                clip_transformer_classifer_path = [
+                    _base_dir / 'species'/ 'species' / 'CLIP_Transformer_Classifier' / f'version_{i}' / 'inference' / target / split_type
+                    for i in range(5)
+                ]
                 cosine_path = [base_dir / 'cosine' / target / split_type]
-                prototypical_transformer_path = [base_dir / 'Prototyical_Transformer' / 'species' / 'version_9' / 'inference' / target / split_type]
+                prototypical_transformer_path = [
+                    _base_dir / 'species'/ 'species' / 'Prototyical_Transformer' / f'version_{i}' / 'inference' / target / split_type
+                    for i in range(5)
+                ]
             elif dataset.lower() == 'idbac-kb':
                 metadata_path = Path('../data/idbac_db/raw/ammended_db.csv')
             
@@ -193,6 +231,8 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
             # clip_transformer_classifer_path = base_dir /
             # cosine_path = base_dir / 'cosine' / target / split_type
             # prototypical_transformer_path = base_dir /
+        else: 
+            raise ValueError(f"Unknown split_type: {split_type} for target: {target}")
 
     else:
         raise ValueError(f"Unknown target: {target}")
@@ -216,6 +256,10 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
         output_dict['prototypical_transformer'] = {}
         output_dict['prototypical_transformer']['train'] = [pd.read_feather(x / 'train_inference.feather') for x in prototypical_transformer_path]
         output_dict['prototypical_transformer']['test'] = [pd.read_feather(x / 'test_inference.feather') for x in prototypical_transformer_path]
+    if clip_transformer_intensity_agnostic_path:
+        output_dict['clip_transformer_intensity_agnostic'] = {}
+        output_dict['clip_transformer_intensity_agnostic']['train'] = [pd.read_feather(x / 'train_inference.feather') for x in clip_transformer_intensity_agnostic_path]
+        output_dict['clip_transformer_intensity_agnostic']['test'] = [pd.read_feather(x / 'test_inference.feather') for x in clip_transformer_intensity_agnostic_path]
 
     # Augment the metadata with the true labels
     if target == 'genera':
@@ -622,44 +666,61 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False)
         
 
 # %%
-def get_within_test_nn_accuracy( 
-                            test_df:pd.DataFrame,
-                            random_seed:int=42,
-                            k:int=5,
-                            distance_metric:str='euclidean',
-                            normalize:bool=True, 
-                          )-> float:
+def nn_accuracy( 
+                test_df:pd.DataFrame,
+                random_seed:int=42,
+                k:int=5,
+                distance_metric:str='euclidean',
+                normalize:bool=True, 
+                dedicated_db:pd.DataFrame=False,
+                )-> float:
     df = test_df.copy(deep=True)
-
-    label_counts = df['true_label'].value_counts()
-    singletons = label_counts[label_counts == 1].index.tolist()
-
-    df = df[~df['true_label'].isin(singletons)]
-
-    
-    if normalize:
-        # L2 Norm
-        df['embedding'] = df['embedding'].apply(lambda x: x / np.linalg.norm(x))
-        # Check if any are nan, set to 0
-        df['embedding'] = df['embedding'].apply(lambda x: np.nan_to_num(x))
-
     np.random.seed(random_seed)
 
-    taxa_indices = {}
-    for idx, row in df.iterrows():
-        if row['true_label'] not in taxa_indices:
-            taxa_indices[row['true_label']] = []
-        taxa_indices[row['true_label']].append(idx)
 
-    # For each taxa, sample k spectra (up to 50% of test set)
-    sampled_indices_set = set()
-    for taxa, indices in taxa_indices.items():
-        _k = min(k, len(indices)//2)
-        sampled_indices = np.random.choice(indices, size=_k, replace=False)
-        for i in sampled_indices:
-            sampled_indices_set.add(i)
+    if dedicated_db is None: # Generate a faux db using the test set
+        label_counts = df['true_label'].value_counts()
+        singletons = label_counts[label_counts == 1].index.tolist()
 
-    faux_db = df.loc[list(sampled_indices_set), :].values
+        df = df[~df['true_label'].isin(singletons)]
+
+        
+        if normalize:
+            # L2 Norm
+            df['embedding'] = df['embedding'].apply(lambda x: x / np.linalg.norm(x))
+            # Check if any are nan, set to 0
+            df['embedding'] = df['embedding'].apply(lambda x: np.nan_to_num(x))
+
+
+        taxa_indices = {}
+        for idx, row in df.iterrows():
+            if row['true_label'] not in taxa_indices:
+                taxa_indices[row['true_label']] = []
+            taxa_indices[row['true_label']].append(idx)
+
+        # For each taxa, sample k spectra (up to 50% of test set)
+        sampled_indices_set = set()
+        for taxa, indices in taxa_indices.items():
+            _k = min(k, len(indices)//2)
+            sampled_indices = np.random.choice(indices, size=_k, replace=False)
+            for i in sampled_indices:
+                sampled_indices_set.add(i)
+
+        faux_db = df.loc[list(sampled_indices_set), :].values
+    else:
+        # Use the provided faux_db
+        dedicated_db = dedicated_db.copy(deep=True)
+        # Subsample the faux_db to k samples per taxa
+        grouped_db = dedicated_db.groupby('true_label')
+        sampled_indices_set = set()
+        sampled_indices_dedicated_db = set()    # Different set because we don't want to remove these indices
+        for taxa, group in grouped_db:
+            _k = min(k, len(group)//2)
+            sampled_indices = np.random.choice(group.index, size=_k, replace=False)
+            for i in sampled_indices:
+                sampled_indices_dedicated_db.add(i)
+
+        faux_db = dedicated_db.loc[list(sampled_indices_dedicated_db), :].values
 
     correct = 0
     total   = 0
@@ -687,7 +748,7 @@ def get_within_test_nn_accuracy(
                     raise ValueError("Unknown distance metric: {}".format(distance_metric))
             similarities.append((faux_true_label, similarity))
 
-        # similarities = sorted(similarities, key=lambda x: x[1], reverse=True)[:k] # Pretty sure this doesn't do anything?
+        # Always take largest
         predicted_genus = max(similarities, key=lambda x: x[1])[0]
       
         if predicted_genus == true_label:
@@ -698,7 +759,6 @@ def get_within_test_nn_accuracy(
                 'true_label': true_label, 
                 'predicted_genus': predicted_genus,
                 })
-        # print(f"True label: {true_label}, Predicted label: {predicted_genus}")
         
         total += 1
 
@@ -798,7 +858,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-def within_test_nn_accuracy_plot(dataset, target, split_type, n_jobs=-1):
+def nn_accuracy_plot(dataset, target, split_type, n_jobs=-1, within_test=False):
     embeddings = gather_embeddings(dataset, target, split_type)
 
     # Ensure test sets are same size
@@ -820,13 +880,14 @@ def within_test_nn_accuracy_plot(dataset, target, split_type, n_jobs=-1):
                 print(f"{key} {i}: {len(train_test_dict['test'])}")
             raise ValueError(f"Test sets are not the same length. {test_length_error_str}")
 
-    def compute_accuracy(key, test_embeddings, distance_metric, k, random_seed):
-        acc, _ = get_within_test_nn_accuracy(
+    def compute_accuracy(key, test_embeddings, distance_metric, k, random_seed, retrieval_db):
+        acc, _ = nn_accuracy(
             test_embeddings, 
             k=k,
             random_seed=random_seed,
             distance_metric=distance_metric,
-            normalize=True
+            normalize=True,
+            dedicated_db=retrieval_db,
         )
         return {
             'model': key,
@@ -840,17 +901,20 @@ def within_test_nn_accuracy_plot(dataset, target, split_type, n_jobs=-1):
         if key == 'metadata':
             continue
         for i in range(len(train_test_dict['train'])):
+            retrieval_db = None
+            if not within_test:
+                retrieval_db = embeddings[key]['train'][i]
             distance_metric = 'cosine' if key == 'cosine' else 'euclidean'
             test_embeddings = train_test_dict['test'][i]
 
             for random_seed in np.arange(42, 42+10):
                 for k in np.arange(1, 11):
-                    tasks.append((key, test_embeddings, distance_metric, k, random_seed))
+                    tasks.append((key, test_embeddings, distance_metric, k, random_seed, retrieval_db))
 
     # Parallel execution
     results = Parallel(n_jobs=n_jobs)(
-        delayed(compute_accuracy)(key, test_embeddings, distance_metric, k, random_seed)
-        for key, test_embeddings, distance_metric, k, random_seed in tqdm(tasks)
+        delayed(compute_accuracy)(key, test_embeddings, distance_metric, k, random_seed, retrieval_db)
+        for key, test_embeddings, distance_metric, k, random_seed, retrieval_db in tqdm(tasks)
     )
 
     accuracies_df = pd.DataFrame(results)
@@ -864,7 +928,10 @@ def within_test_nn_accuracy_plot(dataset, target, split_type, n_jobs=-1):
     new_labels = [NAME_MAPPINGS.get(label, label) for label in labels]
     plt.legend(handles=handles, labels=new_labels, title='Model')
 
-    plt.title(f"Within Test Nearest-Neighbor Accuracy for {dataset} - {target} - {split_type}")
+    if within_test:
+        plt.title(f"Within Test Nearest-Neighbor Accuracy for {dataset} - {target} - {split_type}")
+    else:
+        plt.title(f"Train-Test Nearest-Neighbor Accuracy for {dataset} - {target} - {split_type}")
     plt.xlabel('Number of Neighbors Considered (k)')
     plt.ylabel('Accuracy')
     plt.grid(True)
@@ -1112,9 +1179,10 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
     precision, recall, _ = precision_recall_curve(y_true, sim)
     return fpr, tpr, auc(fpr, tpr), precision, recall, auc(recall, precision)
 
-def _compute_interpolated_curves(df1, df2, method, data_idx, interp_points, metric, max_pairs):
+def _compute_interpolated_curves(df1, df2, method, data_idx, interp_points, metric, max_pairs, ignore_intensity=False):
     try:
-        if method.split('_')[0] == 'cosine':
+        if 'intensity_agnostic' in method and method != 'clip_transformer_intensity_agnostic':
+            print(f"Method {method} is using intensity agnostic embeddings")
             df1['embedding'] = df1['embedding'].apply(lambda x: (x > 0.02).astype(int))
             df2['embedding'] = df2['embedding'].apply(lambda x: (x > 0.02).astype(int))
 
@@ -1138,6 +1206,22 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
     else:
         embeddings = gather_embeddings(dataset, target, split_type)
 
+    # Add a "Cosine (Intensity Agnostic)" method
+    embeddings['cosine_intensity_agnostic'] = embeddings['cosine'].copy()
+
+    # Print prior probability of equal and unequal taxa
+    a_key = [x for x in list(embeddings.keys()) if x != 'metadata'][0]
+    df = embeddings[a_key]['test'][0]
+    labels = df['true_label'].values
+    # print(f"Labels", df['true_label'].value_counts())
+    unique_labels, counts = np.unique(labels, return_counts=True)
+    total_pos = 0
+    total = len(labels) ** 2
+    for label, count in zip(unique_labels, counts):
+        total_pos += count **2
+    
+    print(f"% of pairs with equal taxa: {total_pos / total:.2f}")
+
     roc_fig, roc_ax = plt.subplots()
     pr_fig, pr_ax = plt.subplots()
     fdr_fig, fdr_ax = plt.subplots()
@@ -1148,12 +1232,18 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
         if method == 'metadata':
             continue
 
-        metric = 'cosine' if method == 'cosine' else 'euclidean'
+        if method == 'cosine' or method == 'cosine_intensity_agnostic' \
+            or method == 'clip_transformer':
+             print(f"Method using {method} cosine distance metric")
+             metric = 'cosine'
+        else:
+            metric = 'euclidean'
 
         tasks = []
         for data_idx in range(len(data_list['train'])):
             df1 = data_list['test'][data_idx].copy()
             df2 = df1.copy() if test_only else data_list['train'][data_idx].copy()
+
             tasks.append((df1, df2, method, data_idx))
 
         results = Parallel(n_jobs=2)(
@@ -1203,6 +1293,8 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
         'precision_recall': pr_fig,
         'fdr': fdr_fig
     }
+
+
 
 # %%
 def compute_theoretical_max_precision(train_df, test_df, k: int) -> float:
@@ -1400,9 +1492,26 @@ def similarity_histogram(dataset, target, split_type, model, test_only=False, ma
     within = scores[np.array(l1) == np.array(l2)]
     between = scores[np.array(l1) != np.array(l2)]
 
+    bins = np.linspace(min(scores), max(scores), 51)
+    bin_width = bins[1] - bins[0]
+    bin_centers = 0.5 * (bins[:-1] + bins[1:])
+
+    within_hist, _ = np.histogram(within, bins=bins, density=True)
+    between_hist, _ = np.histogram(between, bins=bins, density=True)
+
+    # Area estimates
+    shared_area = np.sum(np.minimum(within_hist, between_hist)) * bin_width
+    unique_within = np.sum(np.maximum(0, within_hist - between_hist)) * bin_width
+    unique_between = np.sum(np.maximum(0, between_hist - within_hist)) * bin_width
+
+    print(f"Shared Area: {shared_area:.3f}")
+    print(f"Unique Within Area: {unique_within:.3f}")
+    print(f"Unique Between Area: {unique_between:.3f}")
+
+    # Plot
     fig, ax = plt.subplots(figsize=(8, 6))
-    ax.hist(within, bins=50, alpha=0.5, label='Within label', color='blue', density=True)
-    ax.hist(between, bins=50, alpha=0.5, label='Between labels', color='orange', density=True)
+    ax.bar(bin_centers, within_hist, width=bin_width, alpha=0.5, label='Within label', color='blue', align='center')
+    ax.bar(bin_centers, between_hist, width=bin_width, alpha=0.5, label='Between labels', color='orange', align='center')
     ax.set_title(f'Pairwise {"Similarity" if distance_metric == "cosine" else "Distance"} for Model: {model}')
     ax.set_xlabel(xlabel)
     ax.set_ylabel('Density')
@@ -1433,22 +1542,19 @@ for k in range(1, 21, 5):
 debug_acc_lst
 
 # %%
-binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000)
-
-# %%
-within_test_nn_accuracy_plot('driams-a', 'genera', 'genera')
-
-# %%
 binary_curves_plot('DRIAMS-A', 'genera', 'genera', test_only=True, max_pairs=1_000_000)
 
 # %%
-binary_curves_plot('IDBac-KB', 'genera', 'species', test_only=True)
+nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=-1)
 
 # %%
-binary_curves_plot('IDBac-KB', 'genera', 'genera', test_only=True)
+binary_curves_plot('DRIAMS-A', 'species', 'species', test_only=True, max_pairs=1_000_000)
 
 # %%
-_ = top_k_recall_plot('IDBac-KB', 'genera', 'species', within_test=True)
+binary_curves_plot('DRIAMS-A', 'genera', 'species', test_only=True, max_pairs=1_000_000, ignore_intensity=False)
+
+# %%
+binary_curves_plot('IDBac-KB', 'genera', 'species_even', test_only=True)
 
 # %%
 _ = top_k_precision_plot('IDBac-KB', 'genera', 'species', within_test=True)
@@ -1457,7 +1563,30 @@ _ = top_k_precision_plot('IDBac-KB', 'genera', 'species', within_test=True)
 within_test_nn_accuracy_plot('DRIAMS-A', 'genera', 'species')
 
 # %%
-within_test_nn_accuracy_plot('IDBac-KB', 'genera', 'species')
+_ = nn_accuracy_plot('DRIAMS-A', 'genera', 'species', within_test=False)
+
+# %%
+_ = nn_accuracy_plot('IDBac-KB', 'genera', 'species', within_test=True)
+_ = nn_accuracy_plot('IDBac-KB', 'genera', 'species', within_test=False)
+
+# %%
+_ = nn_accuracy_plot('DRIAMS-A', 'genera', 'species', within_test=False)
+
+# %%
+_ = nn_accuracy_plot('DRIAMS-A', 'species', 'species', within_test=True)
+
+# %%
+_ = nn_accuracy_plot('DRIAMS-A', 'species', 'species_even', within_test=False)
+_ = nn_accuracy_plot('DRIAMS-A', 'species', 'species_even', within_test=True)
+
+# %%
+_ = nn_accuracy_plot('DRIAMS-A', 'genera', 'genera', within_test=True)
+
+# %%
+_ = nn_accuracy_plot('IDBac-KB', 'genera', 'genera', within_test=True)
+
+# %%
+_ = nn_accuracy_plot('DRIAMS-A', 'species', 'genera', within_test=True)
 
 # %%
 _ = top_k_precision_plot('DRIAMS-A', 'genera', 'species')
@@ -1470,7 +1599,11 @@ train_test_curves_nn_plot('DRIAMS-A', 'genera', 'species')
 
 # %%
 # DRIAMS Plots
-_ = binary_curves_plot('driams-a', 'genera', 'species_even', test_only=True, max_pairs=1_000_000)
+_ = binary_curves_plot('driams-a', 'species', 'species', test_only=True, max_pairs=1_000_000)
+
+
+# %%
+_ = binary_curves_plot('driams-a', 'species', 'genera', test_only=True, max_pairs=1_000_000)
 
 
 # %% [markdown]
@@ -1550,7 +1683,7 @@ _ = similarity_histogram(
 _ = similarity_histogram(
     dataset='DRIAMS-A',
     target='genera',
-    split_type='species',
+    split_type='genera',
     model='cosine',
     distance_metric='cosine',
     test_only=True,
@@ -1559,11 +1692,636 @@ _ = similarity_histogram(
 _ = similarity_histogram(
     dataset='DRIAMS-A',
     target='genera',
-    split_type='species',
+    split_type='genera',
     model='clip_transformer_classifier',
     distance_metric='euclidean',
     test_only=True,
     max_pairs=1_000_000 # ML Methods don't reqiure subsampling, but it's added for congruence
+)
+
+# %%
+_ = similarity_histogram(
+    dataset='DRIAMS-A',
+    target='genera',
+    split_type='genera',
+    model='cosine',
+    distance_metric='cosine',
+    test_only=True,
+    max_pairs=1_000_000 # Cosine requires subsampling because the vector is high dimensional    (5 M ~= 1-- GB)
+)
+
+# %%
+_ = similarity_histogram(
+    dataset='DRIAMS-A',
+    target='genera',
+    split_type='genera',
+    model='cosine',
+    distance_metric='cosine',
+    test_only=True,
+    max_pairs=3_000_000 # Cosine requires subsampling because the vector is high dimensional    (5 M ~= 1-- GB)
+)
+_ = similarity_histogram(
+    dataset='DRIAMS-A',
+    target='genera',
+    split_type='species',
+    model='cosine',
+    distance_metric='cosine',
+    test_only=True,
+    max_pairs=3_000_000 # Cosine requires subsampling because the vector is high dimensional    (5 M ~= 1-- GB)
+)
+
+# %%
+# Get a DRIAMS genus / genus test set
+driams_a_genera_test = gather_embeddings('driams-a', 'genera', 'genera')['cosine']['test'][0]
+driams_a_species_test = gather_embeddings('driams-a', 'genera', 'species')['cosine']['test'][0]
+driams_a_genera_train = gather_embeddings('driams-a', 'genera', 'genera')['cosine']['train'][0]
+driams_a_species_train = gather_embeddings('driams-a', 'genera', 'species')['cosine']['train'][0]
+
+# %%
+# Annotate with a species label
+m_data = pd.read_csv('../data/driams/preprocessing/merged_metadata.csv')
+species_mapping = m_data.set_index('code')['species'].to_dict()
+genus_mapping = m_data.set_index('code')['genus'].to_dict()
+driams_a_genera_test['species'] = driams_a_genera_test['strain_name'].map(species_mapping)
+driams_a_genera_test['genus'] = driams_a_genera_test['strain_name'].map(genus_mapping)
+driams_a_species_test['species'] = driams_a_species_test['strain_name'].map(species_mapping)
+driams_a_species_test['genus'] = driams_a_species_test['strain_name'].map(genus_mapping)
+
+driams_a_genera_train['species'] = driams_a_genera_train['strain_name'].map(species_mapping)
+driams_a_genera_train['genus'] = driams_a_genera_train['strain_name'].map(genus_mapping)
+driams_a_species_train['species'] = driams_a_species_train['strain_name'].map(species_mapping)
+driams_a_species_train['genus'] = driams_a_species_train['strain_name'].map(genus_mapping)
+
+# %%
+m_data.genus.value_counts()
+
+# %%
+m_data[m_data.genus == 'Corynebacterium'].species.value_counts()
+
+# %%
+m_data[m_data.genus == 'Pseudomonas'].shape
+
+# %%
+# Plot histogram of within genus cosine similarity vs within species cosine similarity for species and genera disjoint sets
+
+def _get_scores_and_samples(df, chunk_size=1000, k=10, threshold=0.2, max_genera=None):
+    if max_genera is not None:
+        # Randomly sample a subset of genera
+        unique_genera = df['genus'].unique()
+        rng = np.random.default_rng(42)
+        sampled_genera = rng.choice(unique_genera, size=min(max_genera, len(unique_genera)), replace=False)
+        df = df[df['genus'].isin(sampled_genera)]
+
+    # Calculate pairwise cosine similarities in chunks to avoid memory issues
+    X = np.stack(df['embedding'].values)
+    X = X / np.linalg.norm(X, axis=1, keepdims=True)
+    X = np.nan_to_num(X)
+    n = len(X)
+
+    print("Number of unique genera:", df['genus'].nunique())
+
+    within_genus = []
+    within_species = []
+    within_genus_genus_names = []
+    within_species_genus_names = []
+    genus_pairs = []
+    species_pairs = []
+
+    for start in tqdm(range(0, n, chunk_size)):
+        end = min(start + chunk_size, n)
+        X_chunk = X[start:end]
+        l1_genus_chunk = df['genus'].values[start:end]
+        l1_species_chunk = df['species'].values[start:end]
+
+        # Compute cosine similarity between the chunk and the entire dataset
+        scores_chunk = np.dot(X_chunk, X.T)
+
+        for i, scores_row in enumerate(scores_chunk):
+            l1_genus = l1_genus_chunk[i]
+            l1_species = l1_species_chunk[i]
+
+            # Mask for within genus
+            within_genus_mask = (df['genus'].values == l1_genus)
+            within_genus.extend(scores_row[within_genus_mask])
+
+            # Collect pairs for genus with similarity below threshold
+            genus_indices = np.where(within_genus_mask)[0]
+            genus_pairs.extend([(start + i, j) for j in genus_indices if scores_row[j] < threshold])
+
+            # Mask for within species
+            within_species_mask = (df['species'].values == l1_species)
+            within_species.extend(scores_row[within_species_mask])
+
+            # Collect pairs for species with similarity below threshold
+            species_indices = np.where(within_species_mask)[0]
+            species_pairs.extend([(start + i, j) for j in species_indices if scores_row[j] < threshold])
+
+            # Store genus names for within genus and species
+            within_genus_genus_names.extend([l1_genus] * len(scores_row[within_genus_mask]))
+            within_species_genus_names.extend([l1_genus] * len(scores_row[within_species_mask]))
+
+    # Randomly sample k pairs for genus and species
+    rng = np.random.default_rng(42)
+    sampled_genus_pairs = rng.choice(genus_pairs, size=min(k, len(genus_pairs)), replace=False).tolist()
+    sampled_species_pairs = rng.choice(species_pairs, size=min(k, len(species_pairs)), replace=False).tolist()
+
+    # Convert sampled pairs to dict with code, embedding, cosine similarity, and genus/species
+    genus_pairs_dict = [
+        {
+            "code_1": df.iloc[pair[0]]['strain_name'],
+            "embedding_1": df.iloc[pair[0]]['embedding'],
+            "code_2": df.iloc[pair[1]]['strain_name'],
+            "embedding_2": df.iloc[pair[1]]['embedding'],
+            "cosine": np.dot(df.iloc[pair[0]]['embedding'], df.iloc[pair[1]]['embedding']),
+            "genus": df.iloc[pair[0]]['genus'],
+        }
+        for pair in sampled_genus_pairs
+    ]
+    species_pairs_dict = [
+        {
+            "code_1": df.iloc[pair[0]]['strain_name'],
+            "embedding_1": df.iloc[pair[0]]['embedding'],
+            "code_2": df.iloc[pair[1]]['strain_name'],
+            "embedding_2": df.iloc[pair[1]]['embedding'],
+            "cosine": np.dot(df.iloc[pair[0]]['embedding'], df.iloc[pair[1]]['embedding']),
+            "species": df.iloc[pair[0]]['species'],
+        }
+        for pair in sampled_species_pairs
+    ]
+
+    return (
+        np.array(within_genus),
+        np.array(within_species),
+        genus_pairs_dict,
+        species_pairs_dict,s
+        within_genus_genus_names,
+        within_species_genus_names,
+    )
+
+genera_within_genus, genera_within_species, genera_genus_pairs, genera_species_pairs, genera_genera_pair_labels, genera_species_pair_labels = _get_scores_and_samples(
+    driams_a_genera_test
+)
+
+species_within_genus, species_within_species, species_genus_pairs, species_species_pairs, species_genera_pair_labels, species_species_pair_labels = _get_scores_and_samples(
+    driams_a_species_test
+)
+
+# %%
+len(genera_within_genus), len(genera_genera_pair_labels)
+
+# %%
+bplot_within_genus_df
+
+# %%
+# Box plot of within genus similarity by genus in each pair
+
+plt.figure(figsize=(12, 6))
+genera_bplot_within_genus_df = pd.DataFrame({
+    'pair_similarity': genera_within_genus,
+    'genus': genera_genera_pair_labels
+})
+
+# Sort the DataFrame by genus alphabetically
+genera_bplot_within_genus_df = genera_bplot_within_genus_df.sort_values(by='genus')
+
+sns.boxplot(data=genera_bplot_within_genus_df, x='genus', y='pair_similarity')
+
+# Rotate x-axis labels
+plt.xticks(rotation=90)
+plt.title('Within Genus Similarity by Genus (Genus Disjoint)')
+plt.xlabel('Genus')
+plt.ylabel('Pair Similarity')
+plt.tight_layout()
+plt.show()
+
+# %%
+from matplotlib.patches import Patch
+# Box plot of within genus similarity by genus in each pair
+
+plt.figure(figsize=(12, 6))
+species_bplot_within_genus_df = pd.DataFrame({
+    'pair_similarity': species_within_genus,
+    'genus': species_genera_pair_labels
+})
+
+# Sort the DataFrame by genus alphabetically
+species_bplot_within_genus_df = species_bplot_within_genus_df.sort_values(by='genus')
+
+sns.boxplot(data=species_bplot_within_genus_df, x='genus', y='pair_similarity')
+
+# Rotate x-axis labels
+plt.xticks(rotation=90)
+plt.title('Within Genus Similarity by Genus (Species Disjoint)')
+plt.xlabel('Genus')
+plt.ylabel('Pair Similarity')
+plt.tight_layout()
+plt.show()
+
+# Get common genus names between species and genera splits
+common_genera = set(genera_genera_pair_labels).intersection(set(species_genera_pair_labels))
+print(f"Common genera: {len(common_genera)}")
+
+# Do a boxplot for just the common genera with both splits
+common_genera = list(common_genera)
+
+# Add an identifier column
+species_bplot_within_genus_df['split'] = 'species'
+genera_bplot_within_genus_df['split'] = 'genera'
+
+bplot_with_labels = pd.concat([species_bplot_within_genus_df, genera_bplot_within_genus_df])
+bplot_with_labels_common = bplot_with_labels[bplot_with_labels['genus'].isin(common_genera)]
+bplot_with_labels_remainder = bplot_with_labels[~bplot_with_labels['genus'].isin(common_genera)]
+
+plt.figure(figsize=(12, 6))
+sns.boxplot(data=bplot_with_labels_common, x='genus', y='pair_similarity', hue='split')
+plt.title('Within Genus Similarity by Genus (Common Genera)')
+plt.xlabel('Genus')
+plt.ylabel('Pair Similarity')
+plt.legend(title='Split')
+plt.xticks(rotation=90)
+plt.tight_layout()
+plt.show()
+
+# Histogram of common vs remainder genera (in each set)
+sns.histplot(data=bplot_with_labels_common, x='pair_similarity', bins=50, 
+             color='violet', label='Shared', alpha=0.5)
+
+# Plot split histograms with hue
+ax = sns.histplot(data=bplot_with_labels_remainder, x='pair_similarity', hue='split', color=['blue', 'orange'],
+                  bins=50, alpha=0.5)
+
+# Create custom legend
+handles = [Patch(color='violet', alpha=0.5, label='Shared')]
+handles += [Patch(color='blue', alpha=0.5, label='Species'),
+            Patch(color='orange', alpha=0.5, label='Genera')]
+plt.title('Within Genus Similarity Distribution (Common Genera)')
+plt.xlabel('Pair Similarity')
+plt.ylabel('Density')
+plt.legend(handles=handles, title='Split')
+plt.tight_layout()
+plt.show()
+
+
+# %%
+# Plot mean cosine similarity vs number of species in genus
+fig, axes = plt.subplots(1, 2, figsize=(6, 3), sharey=True)
+
+# First subplot: genera_bplot_within_genus_df
+genera_bplot_within_genus_df = pd.DataFrame({
+    'pair_similarity': genera_within_genus,
+    'genus': genera_genera_pair_labels
+})
+
+# Calculate mean pair similarity for each genus
+genera_bplot_within_genus_df = genera_bplot_within_genus_df.groupby('genus').agg(
+    pair_similarity=('pair_similarity', 'mean'),
+).reset_index()
+genera_bplot_within_genus_df['num_species'] = genera_bplot_within_genus_df['genus'].map(
+    lambda x: len(driams_a_genera_test[driams_a_genera_test['genus'] == x]['species'].unique())
+)
+
+sns.scatterplot(
+    data=genera_bplot_within_genus_df,
+    x='num_species',
+    y='pair_similarity',
+    alpha=0.8,
+    ax=axes[0]
+)
+axes[0].set_title('Genera Disjoint')
+axes[0].set_xlabel('Number of Species')
+axes[0].set_ylabel('Pair Similarity')
+
+# Second subplot: species_bplot_within_genus_df
+species_bplot_within_genus_df = pd.DataFrame({
+    'pair_similarity': species_within_genus,
+    'genus': species_genera_pair_labels
+})
+
+# Calculate mean pair similarity for each genus
+species_bplot_within_genus_df = species_bplot_within_genus_df.groupby('genus').agg(
+    pair_similarity=('pair_similarity', 'mean'),
+).reset_index()
+species_bplot_within_genus_df['num_species'] = species_bplot_within_genus_df['genus'].map(
+    lambda x: len(driams_a_species_test[driams_a_species_test['genus'] == x]['species'].unique())
+)
+
+sns.scatterplot(
+    data=species_bplot_within_genus_df,
+    x='num_species',
+    y='pair_similarity',
+    alpha=0.8,
+    ax=axes[1]
+)
+axes[1].set_title('Species Disjoint')
+axes[1].set_xlabel('Number of Species')
+
+# Add grids
+axes[0].grid(True)
+axes[1].grid(True)
+axes[0].set_xlim(0, 13)
+axes[1].set_xlim(0, 13)
+axes[0].set_ylim(0, 1)
+
+plt.tight_layout()
+plt.show()
+
+# %%
+import pandas as pd
+all_idbac_data = pd.read_feather('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_idbac_for_score/cosine_10/all/all_inference.feather')
+idbac_metadata = pd.read_csv('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/data/idbac_db/raw/ammended_db.csv')
+
+idbac_name_to_genus = idbac_metadata.set_index('Strain name')['genus'].to_dict()
+all_idbac_data['strain_name'] = all_idbac_data['strain_name'].apply(lambda x: x[0])
+all_idbac_data['true_label'] = all_idbac_data['strain_name'].map(idbac_name_to_genus)
+
+# %%
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from tqdm.notebook import tqdm
+
+def plot_cosine_similarity_histogram(df, title, bins=50, binarize=False):
+    # Compute all pairs similarity within label
+    X = np.stack(df['embedding'].values)
+    if binarize:
+        # Binarize the embeddings
+        X = (X > 0.02).astype(float)
+    X = X / np.linalg.norm(X, axis=1, keepdims=True)
+    X = np.nan_to_num(X)
+    n = len(X)
+
+    scores = np.dot(X, X.T)
+    within_label = []
+    between_label = []
+    labels = df['true_label'].values
+    # Create masks for within-label and between-label
+    within_label_mask = labels[:, None] == labels[None, :]
+    between_label_mask = ~within_label_mask
+
+    # Extract scores using the masks
+    within_label = scores[within_label_mask]
+    between_label = scores[between_label_mask]
+
+    print(f"Within label: {len(within_label)}")
+    print(f"Between label: {len(between_label)}")
+
+    # Plot histogram
+    # plt.figure(figsize=(12, 6))
+    # plt.hist(within_label.flatten(), bins=bins, alpha=0.5, label='Within label', color='blue', density=True)
+    # plt.hist(between_label.flatten(), bins=bins, alpha=0.5, label='Between labels', color='orange', density=True)
+    # plt.title(title)
+    # plt.xlabel("Cosine Similarity")
+    # plt.ylabel("Density")
+    # plt.legend()
+
+    # Cleanup what we can to save memory
+    del X
+    del within_label
+    del between_label
+    del between_label_mask
+    del labels
+    del bins
+    
+    within_label_mask = within_label_mask.flatten()
+    scores = scores.flatten()
+
+    num_samples = 10_000_000
+    # Random subsammple if greater than num_samples
+    if len(scores) > num_samples:
+        rng = np.random.default_rng(42)
+        indices = rng.choice(len(scores), size=num_samples, replace=False)
+        scores = scores[indices]
+        within_label_mask = within_label_mask[indices]
+
+    # Plot precision/recall curve
+    precision, recall, _ = precision_recall_curve(within_label_mask, scores)
+    plt.figure(figsize=(12, 6))
+    plt.plot(recall, precision, label='Precision-Recall curve')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    # Sort recall and precision in ascending order of recall
+    sorted_indices = np.argsort(recall)
+    recall = recall[sorted_indices]
+    precision = precision[sorted_indices]
+    auc = np.trapz(precision, recall)
+    plt.title(f'Precision-Recall Curve (auc={auc:.2f})')
+    plt.legend()
+    plt.show()
+
+plot_cosine_similarity_histogram(
+    all_idbac_data,
+    title="Cosine Similarity Histogram for All IDBac Data",
+    bins=50
+)
+plot_cosine_similarity_histogram(
+    all_idbac_data,
+    title="Cosine Similarity Histogram for All IDBac Data",
+    bins=50, 
+    binarize=True
+)
+
+# %%
+all_dirams_data = pd.read_feather('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_A_for_score/cosine_10/all/all_inference.feather')
+driams_metadata = pd.read_csv('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/data/driams/preprocessing/merged_metadata.csv')
+driams_name_to_genus = driams_metadata.set_index('code')['genus'].to_dict()
+all_dirams_data['strain_name'] = all_dirams_data['strain_name'].apply(lambda x: x[0])
+all_dirams_data['true_label'] = all_dirams_data['strain_name'].map(driams_name_to_genus)
+
+# %%
+plot_cosine_similarity_histogram(
+    all_dirams_data,
+    title="Cosine Similarity Histogram for All DRIAMS Data",
+    bins=50
+)
+
+# %%
+plot_cosine_similarity_histogram(
+    all_dirams_data,
+    title="Cosine Similarity Histogram for All DRIAMS Data",
+    bins=50,
+    binarize=True
+)
+
+# %%
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import seaborn as sns
+
+# Set up the figure with gridspec
+fig = plt.figure(figsize=(10, 4), constrained_layout=True)
+gs = gridspec.GridSpec(
+    2, 4,
+    height_ratios=[1, 4],
+    width_ratios=[4, 0.8, 4, 0.8],
+    hspace=0.05,
+    wspace=0.15  # Reduce if overlap persists
+)
+
+# Genera subplot
+ax_scatter_1 = fig.add_subplot(gs[1, 0])
+ax_histx_1 = fig.add_subplot(gs[0, 0], sharex=ax_scatter_1)
+ax_histy_1 = fig.add_subplot(gs[1, 1], sharey=ax_scatter_1)
+
+# Species subplot
+ax_scatter_2 = fig.add_subplot(gs[1, 2])
+ax_histx_2 = fig.add_subplot(gs[0, 2], sharex=ax_scatter_2)
+ax_histy_2 = fig.add_subplot(gs[1, 3], sharey=ax_scatter_2)
+
+# First plot: Genera disjoint
+sns.scatterplot(
+    data=genera_bplot_within_genus_df,
+    x='num_species',
+    y='pair_similarity',
+    ax=ax_scatter_1,
+    alpha=0.8
+)
+clean_df = genera_bplot_within_genus_df.dropna(subset=['num_species', 'pair_similarity'])
+
+sns.histplot(
+    data=clean_df,
+    x='num_species',
+    ax=ax_histx_1,
+    kde=True,
+    bins=20
+)
+
+sns.histplot(
+    data=clean_df,
+    y='pair_similarity',
+    ax=ax_histy_1,
+    kde=True,
+    bins=20
+)
+
+ax_scatter_1.set_title('Genera Disjoint', loc='right')
+ax_scatter_1.set_xlabel('Number of Species')
+ax_scatter_1.set_ylabel('Pair Similarity')
+ax_histx_1.axis('off')
+ax_histy_1.axis('off')
+ax_scatter_1.grid(True)
+
+# Second plot: Species disjoint
+sns.scatterplot(
+    data=species_bplot_within_genus_df,
+    x='num_species',
+    y='pair_similarity',
+    ax=ax_scatter_2,
+    alpha=0.8
+)
+
+clean_df = species_bplot_within_genus_df.dropna(subset=['num_species', 'pair_similarity'])
+sns.histplot(
+    data=clean_df,
+    x='num_species',
+    ax=ax_histx_2,
+    kde=True,
+    bins=20
+)
+sns.histplot(
+    data=clean_df,
+    y='pair_similarity',
+    ax=ax_histy_2,
+    kde=True,
+    bins=20
+)
+
+ax_scatter_2.set_title('Species Disjoint', loc='right')
+ax_scatter_2.set_xlabel('Number of Species')
+ax_scatter_2.set_ylabel('')
+ax_histx_2.axis('off')
+ax_histy_2.axis('off')
+ax_scatter_2.grid(True)
+
+# Set y and x lims
+ax_scatter_1.set_ylim(0, 1)
+ax_scatter_2.set_ylim(0, 1)
+ax_scatter_1.set_xlim(0, 13)
+ax_scatter_2.set_xlim(0, 13)
+
+plt.tight_layout()
+plt.show()
+
+
+# %%
+# Plot histogram for within genus for both sets
+plt.figure()
+plt.hist(genera_within_genus, bins=50, alpha=0.5, label='Within Genus (Genus Disjoint Test Set)', color='blue', density=True)
+plt.hist(species_within_genus, bins=50, alpha=0.5, label='Within Genus (Species Disjoint Test Set)', color='orange', density=True)
+
+plt.title('Within Genus Cosine Similarity')
+
+plt.xlabel('Cosine Similarity')
+plt.ylabel('Density')
+
+plt.legend()
+plt.show()
+
+# %%
+# Plot histogram for within species for both sets
+plt.figure()
+plt.hist(genera_within_species, bins=50, alpha=0.5, label='Within Species (Genus Disjoint Test Set)', color='blue', density=True)
+plt.hist(species_within_species, bins=50, alpha=0.5, label='Within Species (Species Disjoint Test Set)', color='orange', density=True)
+plt.title('Within Species Cosine Similarity')
+plt.xlabel('Cosine Similarity')
+
+plt.ylabel('Density')
+plt.legend()
+plt.show()
+
+# %%
+import numpy as np
+
+import matplotlib.pyplot as plt
+
+def plot_mirror_embeddings(pair_dicts, idx=0, title="Mirror Plot of Embeddings"):
+    """
+    Creates a mirror plot of embedding_1 and embedding_2 from the given dictionary list.
+
+    Args:
+        pair_dicts (list): List of dictionaries containing 'embedding_1' and 'embedding_2'.
+        title (str): Title of the plot.
+    """
+    pair = pair_dicts[idx]
+    # for i, pair in enumerate(pair_dicts):
+    embedding_1 = pair['embedding_1']
+    embedding_2 = pair['embedding_2']
+    print(pair['cosine'])
+    print(f"Num peaks in embedding 1: {np.sum(embedding_1 > 0.02)}")
+    print(f"Num peaks in embedding 2: {np.sum(embedding_2 > 0.02)}")
+
+    plt.figure(figsize=(10, 4))
+    print(embedding_1)
+    plt.stem(range(len(embedding_1)), embedding_1, label='Embedding 1', basefmt=" ", markerfmt=" ", )
+    plt.stem(range(len(embedding_2)), -embedding_2, label='Embedding 2', basefmt=" ", markerfmt=" ", )
+    plt.axhline(0, color='black', linewidth=0.8, linestyle='--')
+    plt.title(f"{title} - Pair {idx+1}")
+    plt.xlabel("Embedding Dimension")
+    plt.ylabel("Value")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+# Example usage with genera_genus_pairs
+plot_mirror_embeddings(genera_genus_pairs, idx=4, title="Mirror Plot of Genera Genus Embeddings")
+
+# %%
+_ = similarity_histogram(
+    dataset='DRIAMS-A',
+    target='species',
+    split_type='genera',
+    model='cosine',
+    distance_metric='cosine',
+    test_only=True,
+    max_pairs=3_000_000 # Cosine requires subsampling because the vector is high dimensional    (5 M ~= 1-- GB)
+)
+_ = similarity_histogram(
+    dataset='DRIAMS-A',
+    target='species',
+    split_type='species',
+    model='cosine',
+    distance_metric='cosine',
+    test_only=True,
+    max_pairs=3_000_000 # Cosine requires subsampling because the vector is high dimensional    (5 M ~= 1-- GB)
 )
 
 # %%
