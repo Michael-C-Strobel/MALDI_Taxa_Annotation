@@ -13,6 +13,7 @@ class MultinomialLogisticClassifier(L.LightningModule):
         self.output_dim = self.hparams['n_classes']
         self.lr = self.hparams.get('lr', 1e-3)
         self.weight_decay = self.hparams.get('weight_decay', 0.0)
+        self.is_classifier = True
 
         self.linear = nn.Linear(self.input_dim, self.output_dim)
 
@@ -84,6 +85,9 @@ class MultinomialLogisticClassifier(L.LightningModule):
             probs = F.softmax(logits, dim=1)
             preds = torch.argmax(probs, dim=1)
             return preds
+        
+    def embed_step(self, batch):
+        return batch    # Embeddings are just the transformed inputs
 
     def configure_optimizers(self):
         return torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)

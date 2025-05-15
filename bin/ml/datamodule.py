@@ -150,6 +150,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
                  cast_to_classification:bool=False,
                  targets:str='genera',
                  k:int=None,
+                 num_turns:int=1,
     ):
         """"
         
@@ -164,6 +165,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
         self.cast_to_classification = cast_to_classification
         self.targets = targets
         self.k_fold_split = k
+        self.num_turns = num_turns
         if not self.targets in ['genera', 'species']:
             raise ValueError(f"Expected targets to be 'genera' or 'species', but got {self.targets}")
 
@@ -217,6 +219,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
                                                 transform=self.transform,
                                                 cast_to_classification=self.cast_to_classification,
                                                 targets=self.targets,
+                                                num_turns=self.num_turns
                                                 )
         if stage == 'fit':
             # self.train_set, self.val_set = random_split(

@@ -11,6 +11,7 @@ from torch.utils.data import Subset, Sampler, IterableDataset
 import scipy
 import pytest
 import copy
+from joblib import Parallel, delayed
 from tqdm import tqdm
 
 import time
@@ -59,11 +60,14 @@ class single_MALDI_TOF_DS(Dataset):
                 sampling_mode:str=None,
                 cast_to_classification:bool=False,
                 num_turns:int=1,
-                targets:str='genera'):
+                targets:str='genera',
+                in_memory:bool=True,
+                n_workers:int=-1,):
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
         self.cast_to_classification = cast_to_classification
+    
 
         balance = str(balance).lower()
         if balance not in ['accession', 'genus', 'species']:
@@ -89,6 +93,7 @@ class single_MALDI_TOF_DS(Dataset):
         if self.cast_to_classification:
             # Sort unique values in 'genus' column, annotate with number
             self.class_to_int = {genus: i for i, genus in enumerate(sorted(metadata_table[self.target_col].unique()))}
+            self.int_to_class = {i: genus for genus, i in self.class_to_int.items()}
 
         if 'accession' not in metadata_table.columns:
             metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
@@ -108,15 +113,16 @@ class single_MALDI_TOF_DS(Dataset):
         if sampling_mode is not None:
             sampling_mode = str(sampling_mode).lower().strip()
             if sampling_mode == 'triplets':
+                print("Using triplet sampling")
                 self.triplets = True
             elif sampling_mode == 'nce':
+                print("Using NCE sampling")
                 self.nce = True
             else:
                 raise ValueError(f"Invalid sampling mode. Expected one of ['triplets', 'nce'], got '{sampling_mode}'")
 
-        if (cast_to_classification and self.triplets) or \
-            (cast_to_classification and self.nce):
-            raise ValueError("Cannot use triplet or nce sampling with cast_to_classification")
+        if (cast_to_classification and self.triplets):
+            raise ValueError("Cannot use triplet  sampling with cast_to_classification")
 
         similarities = Path(self.root_dir) / 'similarities.feather'
         self.similarities = None
@@ -173,6 +179,39 @@ class single_MALDI_TOF_DS(Dataset):
 
         self.n_classes = len(self.metadata_table[self.target_col].unique())
 
+        print("Prefetching accession to class")
+        self.accession_to_class = {}
+        for accession in tqdm(self.all_accessions):
+            # Get the class for this accession
+            _class = self.metadata_table[self.metadata_table['accession'] == accession][self.target_col].values[0]
+            self.accession_to_class[accession] = _class
+
+        print("Prefetching accession to strain")
+        self.accession_to_strain_names = {}
+        for accession in tqdm(self.metadata_table['accession'].unique()):
+            # Get the class for this accession
+            rows = self.metadata_table[self.metadata_table['accession'] == accession]['Strain name'].values
+            self.accession_to_strain_names[accession] = rows
+        
+        # print("Prefecting strain name to metadata")
+        # self.strain_name_to_metadata = {}
+        # for strain_name in tqdm(self.metadata_table['Strain name'].unique()):
+        #     # Get the class for this accession
+        #     row = self.metadata_table[self.metadata_table['Strain name'] == strain_name].to_dict(orient='records')[0]
+        #     self.strain_name_to_metadata[strain_name] = row
+        
+        print("Prefetching strain name to metadata")
+        assert self.metadata_table['Strain name'].is_unique, "Strain names are not unique"
+        _metadata_table = self.metadata_table.copy()
+        _metadata_table['_strain_name'] = _metadata_table['Strain name'].astype(str)
+        self.strain_name_to_metadata = (
+            _metadata_table
+            .groupby('_strain_name', sort=False)
+            .first()
+            .to_dict(orient='index')
+        )
+        print("Done")
+
         # Dead code, most probably
         # labels, uniques = pd.factorize(self.metadata_table[self.target_col].sort_values().unique())
         # # Create the class indices dictionary
@@ -181,11 +220,52 @@ class single_MALDI_TOF_DS(Dataset):
         # one_hot_encoder['nan'] = 0
         # self.one_hot_encoder = one_hot_encoder
 
+        # Unfortunately this happens before the subset, so it will iterate over the entire dataset
+        self.in_memory = in_memory
+        self.n_workers = n_workers
+        if in_memory:
+            self.spectra = self.preload()
+            
+    def preload(self):
+        """Joblib-parallelized loading of spectra into memory"""
+        def _fetch(strain_names_chunk):
+            chunk_results = []
+            for strain_name in strain_names_chunk:
+                spectrum = torch.load(Path(self.root_dir) / 'spectra' / f"{strain_name}.pt", weights_only=True).to(torch.float32)
+                if self.transform:
+                    spectrum = self.transform(spectrum)
+                chunk_results.append((strain_name, spectrum))
+            return chunk_results
+
+        strain_names = self.metadata_table['Strain name'].values
+        n_workers = self.n_workers
+        if n_workers == -1:
+            n_workers = os.cpu_count()
+        chunk_size = max(1, len(strain_names) // (n_workers * 2))
+        strain_name_chunks = [strain_names[i:i + chunk_size] for i in range(0, len(strain_names), chunk_size)]
+
+        results = Parallel(n_jobs=self.n_workers)(
+            delayed(_fetch)(chunk) for chunk in tqdm(strain_name_chunks, desc=f"Loading Spectra into Memory with {self.n_workers} cpus")
+        )
+        results = [item for sublist in results for item in sublist]
+
+        return {strain_name: spectrum for strain_name, spectrum in results}
+        
+
     def sample_strain_from_accession(self, accession):
-        choices = self.metadata_table[self.metadata_table['accession'] == accession]
+        # choices = self.metadata_table[self.metadata_table['accession'] == accession]
+        # choices = self.accession_to_strains[accession]
+        # if len(choices) == 0:
+        #     raise ValueError(f"No strain found for accession '{accession}'")
+        # return choices.sample(1).to_dict(orient='records')[0]
+    
+        choices = self.accession_to_strain_names[accession]
         if len(choices) == 0:
             raise ValueError(f"No strain found for accession '{accession}'")
-        return choices.sample(1).to_dict(orient='records')[0]
+        # Randomly sample 1
+        sampled_row = np.random.choice(choices)
+        # Get the metadata for this strain 
+        return self.strain_name_to_metadata[sampled_row]
     
     def __len__(self):
         return len(self.all_accessions) * self.num_turns
@@ -198,18 +278,22 @@ class single_MALDI_TOF_DS(Dataset):
         strain_name = sampled_row['Strain name']
         database_id = sampled_row['database_id']
         
-        spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
-
-        if self.transform:
-            try:
-                spectrum = self.transform(spectrum)
-            except Exception as e:
-                raise RuntimeError(f"Error transforming spectrum for strain {strain_name} with accession {accession}") from e
+        if self.in_memory:
+            # They're already transformed
+            spectrum = self.spectra[strain_name]
+        else:
+            spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
+            
+            if self.transform:
+                try:
+                    spectrum = self.transform(spectrum)
+                except Exception as e:
+                    raise RuntimeError(f"Error transforming spectrum for strain {strain_name} with accession {accession}") from e
 
         metadata = {
             'accession': accession,
             'Strain name': strain_name,
-            'class': str(self.metadata_table[self.metadata_table['database_id'] == database_id][self.target_col].values[0]),
+            'class': str(self.accession_to_class[accession]),
             'database_id': database_id,
         }
 
@@ -428,6 +512,11 @@ class single_MALDI_TOF_DS(Dataset):
             None: Similarity TODO
         """
         positive_spectrum, positive_metadata, similarity = self._genus_pair(metadata)
+
+        # Cast to classification if needed
+        if self.cast_to_classification:
+            # Cast main spectrum to classification
+            metadata['class_as_int'] = self.class_to_int[metadata['class']]
         
         return (spectrum, positive_spectrum), (metadata, positive_metadata), (similarity,)
 

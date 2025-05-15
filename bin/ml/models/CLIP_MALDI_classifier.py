@@ -14,6 +14,7 @@ class CLIP_MALDI_Classifier(CLIP_MALDI):
     def __init__(self, hyperparameters, pretrained_embedder=None):
         super().__init__(hyperparameters, pretrained_embedder)
         self.output_dim = self.hparams.n_classes
+        self.is_classifier = True
 
         self.projection = nn.Linear(128, self.output_dim)
 
@@ -63,7 +64,7 @@ class CLIP_MALDI_Classifier(CLIP_MALDI):
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         with torch.no_grad():
             x = batch
-            x = self.embedder(x)
+            x = self.embedder(x)[0]
             x = self.projection(x)
             preds = torch.argmax(x, dim=1)
             return preds

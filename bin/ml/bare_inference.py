@@ -75,10 +75,12 @@ def setup_model(model_name: str,
                                 # PadToLength(150, padding_value=-1.0),
                                 ])
     elif model_name == 'Multinomial_Logistic_Classifier':
-        raise ValueError(f"Model {model_name} does not generate embeddigs!")
         model = MultinomialLogisticClassifier.load_from_checkpoint(checkpoint_path=checkpoint_path)
+        # Calculate bin size based on hparam tuned input_dim
+        input_dim = model.hparams.input_dim
+        bin_size = int((20000 - 3000) / input_dim)
         trans =  transforms.Compose([
-                                    BinSpectrum(10, 3_000, 20_000),
+                                    BinSpectrum(bin_size, 3_000, 20_000),
                                     SquareRootTransform(),
                                     NormalizeIntensity(),
                         ])
@@ -132,10 +134,19 @@ def get_inference_df(model, datamodule, inference_set: str, target: str) -> pd.D
                 if spectra.shape[1] == 0:
                     continue
             try:
+                pred_class = None
+                embedding = None
+                # Check if model has a model.is_classifier attribute, and if it's true
+                if hasattr(model, 'is_classifier') and model.is_classifier:
+                    pred = model.predict_step(spectra, None)
+                    pred = pred.cpu().numpy().copy()
+                    # Convert back to labels
+                    pred_class = datamodule.full_dataset.int_to_class[pred.item()]
 
                 embedding = model.embed_step(spectra)
                 embedding = embedding.cpu().numpy().copy()  # Wihtout copy, runs into memory issues
             except Exception as e:
+                raise e
                 print(f"Error in embedding: {e}")
                 print(f"Batch: {batch}")
                 print(spectra)
@@ -145,6 +156,7 @@ def get_inference_df(model, datamodule, inference_set: str, target: str) -> pd.D
                                 'accession':metadata['accession'], 
                                 'strain_name':metadata['strain_name'],
                                 'embedding': np.squeeze(embedding),
+                                'pred_class': pred_class,
                               }
             inference_lst.append(embedding_dict)
 
@@ -260,7 +272,12 @@ def main():
 
     model, model_specific_transforms = setup_model(args.model, checkpoint_path)
 
-    # DEBUG WRITE ALL ARGS to datamodule
+   
+    cast_to_classification = False
+    if hasattr(model, 'is_classifier') and model.is_classifier:
+        cast_to_classification = True
+
+    # Write all args to datamodule
     print('spectra_path', spectra_path)
     print('metadata_path', metadata_path)
     print('ml_processing_path', ml_processing_path)
@@ -269,9 +286,8 @@ def main():
     print('transforms', model_specific_transforms)
     print('split_method', args.split_type)
     print('inference_set_to_use', args.inference_set)
-    print('cast_to_classification', False)
+    print('cast_to_classification', cast_to_classification)
     print('targets', args.target)
-    
 
     datamodule = SingleSpectrum_DataModule(
         spectra_path,
@@ -282,7 +298,7 @@ def main():
         transforms=model_specific_transforms,
         split_method=args.split_type,
         inference_set_to_use=args.inference_set,
-        cast_to_classification=False,
+        cast_to_classification=cast_to_classification,
         targets=args.target,
         k=args.k,
     )

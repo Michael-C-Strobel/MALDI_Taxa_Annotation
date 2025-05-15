@@ -6,6 +6,8 @@ from models.mlp_binary_classifier import MLPBinaryClassifier
 from models.CLIP_MALDI_classifier import CLIP_MALDI_Classifier
 from models.logistic_regression_classifier import MultinomialLogisticClassifier
 from models.prototypical_transformer import PrototyicalTransformer as PrototypicalTransformer
+from models.Transformer_MultiLoss import Transformer_MulitLoss
+from models.MaldiTransformer.MaldiTransformerWrapper import MaldiTransformerWrapper
 from datamodule import Spectrum_DataModule, SingleSpectrum_DataModule
 from datamodule_triplet import Triplet_DataModule
 from prototypical_datamodule import EpisodicDatamodule
@@ -156,6 +158,17 @@ def get_trial_hyperparameters(trial: optuna.Trial, args: argparse.Namespace, tri
                 'lr': trial.suggest_float('lr', 1e-5, 1e-3, log=True),
             }
         )
+    elif args.model_type == 'Transformer_MulitLoss':
+        trial_hyperparameters.update(
+            {
+                'hidden_dim': trial.suggest_int('hidden_dim', 100, 500, step=10),
+                'hidden_layers': trial.suggest_int('hidden_layers', 2, 5),
+                'weight_decay': trial.suggest_float('weight_decay', 1e-6, 1e-3, log=True),
+                'dropout': trial.suggest_float('dropout', 0.1, 0.5),
+                'tau': trial.suggest_float('tau', 0.05, 0.15),
+                'lr': trial.suggest_float('lr', 1e-5, 1e-3, log=True),
+            }
+        )
     else:
         raise ValueError(f"Model type '{args.model_type}' is not supported for tuning.")
     
@@ -173,6 +186,8 @@ def initialize_model(SPECTRA_PATH: str,
     logger_name = None
     trans = None
     trainer_args = {}
+
+    parameter_free_methods = ('MaldiTransformerWrapper',)
 
     trial_hyperparameters: Dict[str, Any] = {
         'TARGET': args.target,
@@ -192,13 +207,14 @@ def initialize_model(SPECTRA_PATH: str,
 
     # If we're training for score, load them and don't change them
     if args.train_for_score:
-        if not os.path.exists(hparam_path):
-            raise FileNotFoundError(f"No hyperparameters found at {hparam_path}")
-        print("Loading hyperparameters from file:", hparam_path)
-        with open(hparam_path, 'r', encoding='utf-8') as f:
-            loaded_hparams = json.load(f)
-            print("Loaded hyperparameters:", loaded_hparams)
-        trial_hyperparameters.update(loaded_hparams)
+        if args.model_type not in parameter_free_methods:
+            if not os.path.exists(hparam_path):
+                raise FileNotFoundError(f"No hyperparameters found at {hparam_path}")
+            print("Loading hyperparameters from file:", hparam_path)
+            with open(hparam_path, 'r', encoding='utf-8') as f:
+                loaded_hparams = json.load(f)
+                print("Loaded hyperparameters:", loaded_hparams)
+            trial_hyperparameters.update(loaded_hparams)
 
     if args.model_type == 'MLPClassifier':
         if not args.train_for_score:
@@ -315,6 +331,7 @@ def initialize_model(SPECTRA_PATH: str,
             cast_to_classification=True,
             targets=args.target,
             batch_size=args.batch_size,
+            k=args.k
         )
         datamodule.setup('fit')
         logger_name = 'Multinomial_Logistic_Classifier'
@@ -362,18 +379,18 @@ def initialize_model(SPECTRA_PATH: str,
         
         trial_hyperparameters.update(trial_hyperparameters)
         model = CLIP_MALDI(trial_hyperparameters)
-        # print("*******************************")
-        # print("*******************************")
-        # print("*******************************")
-        # print("Warning: Binarizing Intensities")
-        # print("*******************************")
-        # print("*******************************")
-        # print("*******************************")
-        # time.sleep(5)
+        print("*******************************")
+        print("*******************************")
+        print("*******************************")
+        print("Warning: Binarizing Intensities")
+        print("*******************************")
+        print("*******************************")
+        print("*******************************")
+        time.sleep(5)
         trans = transforms.Compose([
             SquareRootTransform(),
             SelectTopKPeaks(150),
-            BinarizeIntensity(),
+            BinarizeIntensity(),  # *************
             NormalizeIntensity(),
             PadToLength(150, padding_value=-1.0),
         ])
@@ -393,7 +410,128 @@ def initialize_model(SPECTRA_PATH: str,
         )
         datamodule.setup('fit')
         logger_name = f'CLIP_Transformer'
+    elif args.model_type == 'Transformer_MulitLoss':
+        trial_hyperparameters.update(clip_common_params)
+        if not args.train_for_score:
+            trial_hyperparameters = get_trial_hyperparameters(trial, args, trial_hyperparameters)
+        
+        if args.target == 'genera' and 'idbac' in SPECTRA_PATH:
+            trial_hyperparameters['n_classes'] = 96
+        elif args.target == 'genera' and 'driams' in SPECTRA_PATH:
+            trial_hyperparameters['n_classes'] = 182
+        elif args.target == 'species' and 'driams' in SPECTRA_PATH:
+            trial_hyperparameters['n_classes'] = 723
+        else:
+            raise ValueError(f"TARGET must be 'genera' or 'species.' Got {args.target} instead.")
+        
+        model = Transformer_MulitLoss(trial_hyperparameters)
 
+        print("*******************************")
+        print("*******************************")
+        print("*******************************")
+        print("Warning: Binarizing Intensities")
+        print("*******************************")
+        print("*******************************")
+        print("*******************************")
+        # time.sleep(5)
+
+        trans = transforms.Compose([
+            SquareRootTransform(),
+            SelectTopKPeaks(150),
+            BinarizeIntensity(), # *************
+            NormalizeIntensity(),
+            PadToLength(150, padding_value=-1.0),
+        ])
+
+        datamodule = CLIP_DataModule(
+            SPECTRA_PATH,
+            METADATA_PATH,
+            ML_PROCESSING_PATH,
+            num_workers=7,
+            transforms=trans,
+            batch_size=args.batch_size,
+            split_method=args.split_method,
+            targets=args.target,
+            k=args.k,
+            cast_to_classification=True,
+            )
+    
+        trainer_args = {
+            'gradient_clip_val': 0.5,
+        }
+
+        datamodule.setup('fit')
+        logger_name = f'Transformer_MulitLoss'
+    elif args.model_type == "MaldiTransformerWrapper":
+        modeltype = MaldiTransformerWrapper
+
+        if args.target == 'genera' and 'idbac' in SPECTRA_PATH:
+            n_classes = 96
+        elif args.target == 'genera' and 'driams' in SPECTRA_PATH:
+            n_classes = 182
+        elif args.target == 'species' and 'driams' in SPECTRA_PATH:
+            n_classes = 723
+        else:
+            raise ValueError(f"TARGET must be 'genera' or 'species.' Got {args.target} instead.")
+        
+        size_to_layer_dims = {
+            "S": [160, 4],
+            "M": [184, 6],
+            "L": [232, 8],
+            "XL": [304, 10],
+        }
+            
+        model_kwargs = {
+            "n_classes": n_classes,
+            "n_heads": 8,
+            "dropout": 0.2,
+            "p": 0.15,                  # depends on model size
+            "clf": True,
+            "clf_train_p": 0.01,        # depends on model size
+            "lmbda": 1.0,               # depends on model size
+            "lr": 0.0005,               # depends on model size
+            "weight_decay": 0,
+            "lr_decay_factor": 1,
+            "warmup_steps": 2500,
+            "proportional": False,      # depends on model size
+        }
+        
+        spectrum_embedder_size =  "M"   # "S", "M", "L", "XL", "M" metrics are reported in manuscript
+        model = modeltype(
+            size_to_layer_dims[spectrum_embedder_size][1],
+            size_to_layer_dims[spectrum_embedder_size][0],
+            **model_kwargs,
+        )
+
+        trainer_args = {
+            'gradient_clip_val': 1.0,
+            'precision': "bf16-mixed",
+
+        }
+
+        trans = transforms.Compose([
+                    SquareRootTransform(),
+                    SelectTopKPeaks(150),
+                    NormalizeIntensity(),
+                    PadToLength(150, padding_value=-1.0),
+                ])
+
+        datamodule = SingleSpectrum_DataModule(
+            SPECTRA_PATH,
+            METADATA_PATH,
+            ML_PROCESSING_PATH,
+            num_workers=7,
+            transforms=trans,
+            split_method=args.split_method,
+            targets=args.target,
+            batch_size=args.batch_size,
+            cast_to_classification=True,
+            num_turns=292, # Based on DRIAMS-A CV Fold 0: # spectra in train / # unique accessions = 16096/55
+        )
+        datamodule.setup('fit')
+
+        logger_name = 'MaldiTransformerWrapper'
+        
     else:
         raise ValueError(f"Model type '{args.model_type}' is not supported for tuning.")
     
@@ -508,6 +646,8 @@ def main():
             'MultinomialLogisticClassifier',
             'PrototypicalTransformer',
             'CLIP_MALDI',
+            'Transformer_MulitLoss',
+            'MaldiTransformerWrapper',
         ],
         help="The type of model to tune.",
     )
@@ -578,7 +718,7 @@ def main():
 
     # Save sqlite of study to log folder
     log_dir = os.path.join(
-        './lightning_logs_idbac_optuna',
+        f'./lightning_logs_{args.dataset}_optuna',
         f'{args.target}/{args.split_method}/{args.model_type}',
     )
     os.makedirs(log_dir, exist_ok=True)

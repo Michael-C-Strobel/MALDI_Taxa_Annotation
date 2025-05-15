@@ -21,10 +21,10 @@ process_mzML_file <- function(input_file, output_file) {
                          SNR=4
                         )
     
-    # Bin peaks
+    # Bin peaks (only has an effect if replicates are present)
     peaks <- binPeaks(peaks, tolerance=0.001, method="strict")
     
-    # Filter peaks
+    # Filter peaks (only has an effect if replicates are present)
     peaks <- filterPeaks(peaks, minFrequency=0.70)
     
     # Trim peaks
