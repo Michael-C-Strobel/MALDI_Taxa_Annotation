@@ -5,80 +5,129 @@ import numpy as np
 import pandas as pd
 import torch
 
-def generate_k_fold_splits(metadata, k, split_style):
-    """ Generate a list of 'accession' values that correspont to the k-fold splits. """
-    # Create a dictionary to hold the train/val/test accessions for each fold
-    fold_indices = {i: {'train': [], 'val': [], 'test':[]} for i in range(k)}
 
-    # Group by the specified split style
-    if split_style == "genera":
-        groups = metadata.groupby("genus")
-        split_col = "genus"
-    elif split_style == "species":
-        groups = metadata.groupby("species")
-        split_col = "species"
-    elif split_style == "species_even":
-        groups = metadata.groupby("species_even")
-        split_col = "species"
-    else:
-        raise ValueError(f"Unknown split style: {split_style}")
-    
-    # Automatically assign any group with fewer than max(5, k) samples to the train set
+def split_by_genera(metadata, k, min_group_size):
+    fold_indices = {i: {'train': [], 'val': [], 'test': []} for i in range(k)}
+    groups = metadata.groupby("genus")
+
     small_groups = set()
     for name, group in groups:
-        if len(group) <= max(5, k):
+        if len(group) <= max(min_group_size, k):
             small_groups.add(name)
             for i in range(k):
                 fold_indices[i]['train'].extend(group['accession'].tolist())
-    # Remove small groups from further processing
-    org_num_groups = len(groups)
-    groups = {name: group for name, group in groups if name not in small_groups}
-    if len(small_groups) > 0:
-        logging.info(f"Removed {len(small_groups)} small groups from {org_num_groups} total groups.")
-        assert len(groups) > 0, "All groups are small, no folds can be generated."
-        assert len(groups) != org_num_groups, "No groups were removed, but some should have been."
 
-    # Shuffle the groups
+    groups = {name: group for name, group in groups if name not in small_groups}
+    logging.info(f"Removed {len(small_groups)} small groups from {len(groups) + len(small_groups)} total groups.")
+    assert len(groups) > 0, "All groups are small, no folds can be generated."
+
     shuffled_groups = list(groups.keys())
     np.random.shuffle(shuffled_groups)
-
-    # Assign the remaining groups to folds in a round-robin fashion
     fold_groups = [[] for _ in range(k)]
     for i, group_name in enumerate(shuffled_groups):
         fold_groups[i % k].append(group_name)
 
-    print(f"Fold groups: {fold_groups}")
-
-    # Now assign accessions to val/test/train for each fold
     for i in range(k):
         val_groups = fold_groups[i]
         test_groups = fold_groups[(i + 1) % k]
         train_groups = [g for j in range(k) if j not in {i, (i + 1) % k} for g in fold_groups[j]]
 
-        print(test_groups)
+        val_accessions = metadata[metadata["genus"].isin(val_groups)]['accession'].tolist()
+        test_accessions = metadata[metadata["genus"].isin(test_groups)]['accession'].tolist()
+        train_accessions = metadata[metadata["genus"].isin(train_groups)]['accession'].tolist()
 
-        val_accessions = metadata[metadata[split_col].isin(val_groups)]['accession'].tolist()
-        test_accessions = metadata[metadata[split_col].isin(test_groups)]['accession'].tolist()
-        train_accessions = metadata[metadata[split_col].isin(train_groups)]['accession'].tolist()
-        print("Test accessions: ", test_accessions)
+        fold_indices[i]['val'] = np.array(val_accessions, dtype=str)
+        fold_indices[i]['test'] = np.array(test_accessions, dtype=str)
+        fold_indices[i]['train'] = np.array(train_accessions, dtype=str)
 
-        # Assert no overlap
-        assert len(set(val_accessions) & set(test_accessions)) == 0, "Validation and test sets overlap."
-        assert len(set(val_accessions) & set(train_accessions)) == 0, "Validation and train sets overlap."
-        assert len(set(test_accessions) & set(train_accessions)) == 0, "Test and train sets overlap."
-
-        fold_indices[i]['val'].extend(val_accessions)
-        fold_indices[i]['test'].extend(test_accessions)
-        fold_indices[i]['train'].extend(train_accessions)
+    return fold_indices
 
 
-        # Convert to numpy array of str
+def split_by_species(metadata, k, min_group_size):
+    fold_indices = {i: {'train': [], 'val': [], 'test': []} for i in range(k)}
+    genus_groups = metadata.groupby("genus")
+
+    for genus, genus_df in genus_groups:
+        species_groups = genus_df.groupby("species")
+
+        large_species = [name for name, grp in species_groups if len(grp) > max(min_group_size, k)]
+        if len(large_species) < k:
+            for i in range(k):
+                fold_indices[i]['train'].extend(genus_df['accession'].tolist())
+            continue
+
+        shuffled_species = large_species.copy()
+        np.random.shuffle(shuffled_species)
+        fold_species = [[] for _ in range(k)]
+        for i, sp in enumerate(shuffled_species):
+            fold_species[i % k].append(sp)
+
+        for i in range(k):
+            val_species = fold_species[i]
+            test_species = fold_species[(i + 1) % k]
+            train_species = [s for j in range(k) if j not in {i, (i + 1) % k} for s in fold_species[j]]
+
+            val_acc = genus_df[genus_df['species'].isin(val_species)]['accession'].tolist()
+            test_acc = genus_df[genus_df['species'].isin(test_species)]['accession'].tolist()
+            train_acc = genus_df[genus_df['species'].isin(train_species)]['accession'].tolist()
+
+            fold_indices[i]['val'].extend(val_acc)
+            fold_indices[i]['test'].extend(test_acc)
+            fold_indices[i]['train'].extend(train_acc)
+
+    for i in range(k):
         fold_indices[i]['val'] = np.array(fold_indices[i]['val'], dtype=str)
         fold_indices[i]['test'] = np.array(fold_indices[i]['test'], dtype=str)
         fold_indices[i]['train'] = np.array(fold_indices[i]['train'], dtype=str)
 
+    return fold_indices
+
+
+def split_by_species_even(metadata, k, min_group_size):
+    fold_indices = {i: {'train': [], 'val': [], 'test': []} for i in range(k)}
+    groups = metadata.groupby("species_even")
+
+    small_groups = set()
+    for name, group in groups:
+        if len(group) <= max(min_group_size, k):
+            small_groups.add(name)
+            for i in range(k):
+                fold_indices[i]['train'].extend(group['accession'].tolist())
+
+    groups = {name: group for name, group in groups if name not in small_groups}
+    logging.info(f"Removed {len(small_groups)} small groups from {len(groups) + len(small_groups)} total groups.")
+    assert len(groups) > 0, "All groups are small, no folds can be generated."
+
+    shuffled_groups = list(groups.keys())
+    np.random.shuffle(shuffled_groups)
+    fold_groups = [[] for _ in range(k)]
+    for i, group_name in enumerate(shuffled_groups):
+        fold_groups[i % k].append(group_name)
+
+    for i in range(k):
+        val_groups = fold_groups[i]
+        test_groups = fold_groups[(i + 1) % k]
+        train_groups = [g for j in range(k) if j not in {i, (i + 1) % k} for g in fold_groups[j]]
+
+        val_accessions = metadata[metadata["species_even"].isin(val_groups)]['accession'].tolist()
+        test_accessions = metadata[metadata["species_even"].isin(test_groups)]['accession'].tolist()
+        train_accessions = metadata[metadata["species_even"].isin(train_groups)]['accession'].tolist()
+
+        fold_indices[i]['val'] = np.array(val_accessions, dtype=str)
+        fold_indices[i]['test'] = np.array(test_accessions, dtype=str)
+        fold_indices[i]['train'] = np.array(train_accessions, dtype=str)
 
     return fold_indices
+
+def generate_k_fold_splits(metadata, k, split_style, min_group_size=5):
+    if split_style == "genera":
+        return split_by_genera(metadata, k, min_group_size)
+    elif split_style == "species":
+        return split_by_species(metadata, k, min_group_size)
+    elif split_style == "species_even":
+        return split_by_species_even(metadata, k, min_group_size)
+    else:
+        raise ValueError(f"Unknown split style: {split_style}")
 
 def main():
     parser = argparse.ArgumentParser(description="Generate k-fold splits for a dataset.")
@@ -86,6 +135,7 @@ def main():
     parser.add_argument("--output_dir", type=str, help="Directory to save the k-fold splits.", required=True)
     parser.add_argument("--split_style", type=str, choices=["genera", "species", "species_even"], help="Criterion for splitting the strata.", required=True)
     parser.add_argument("-k", type=int, help="Number of folds for k-fold cross-validation.", default=7)
+    parser.add_argument("--min_group_size", type=int, help="Minimum group size for splitting.", default=5)
     args = parser.parse_args()
 
     if args.split_style == "species_even":
@@ -111,9 +161,12 @@ def main():
     # Read the metadata
     metadata = pd.read_csv(input_file)
     logging.info(f"Read {len(metadata)} rows from {input_file}")
+    if "accession" not in metadata.columns:
+        metadata['accession'] = metadata["Genbank accession"]
+        metadata['accession'] = metadata['accession'].astype(str).str.strip().str.split('.').str[0]
 
     logging.info(f"Generating {args.k}-fold splits for {args.split_style}...")
-    fold_indices = generate_k_fold_splits(metadata, args.k, args.split_style)
+    fold_indices = generate_k_fold_splits(metadata, args.k, args.split_style, args.min_group_size)
     logging.info(f"Generated {args.k}-fold splits.")
 
     output_dir = output_dir / str(args.split_style)
@@ -123,7 +176,11 @@ def main():
         for key in ['train', 'val', 'test']:
             fold_file = output_dir / f"{key}_fold_{i}.pt"
             torch.save(fold_indices[i][key], fold_file)
-            logging.info(f"Saved fold {i} to {fold_file}")
+            # Based on accessions, get the number of spectra
+            num_spectra = metadata[metadata['accession'].isin(fold_indices[i][key])].shape[0]
+            num_genera = metadata[metadata['accession'].isin(fold_indices[i][key])]['genus'].nunique()
+            num_species = metadata[metadata['accession'].isin(fold_indices[i][key])]['species'].nunique()
+            logging.info(f"Saved fold {i} to {fold_file} with {num_spectra} spectra, {num_species} species, and {num_genera} genera.")
 
     logging.info("All folds saved.")
     logging.info("Done.")   

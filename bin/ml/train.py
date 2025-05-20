@@ -8,6 +8,7 @@ from models.logistic_regression_classifier import MultinomialLogisticClassifier
 from models.prototypical_transformer import PrototyicalTransformer as PrototypicalTransformer
 from models.Transformer_MultiLoss import Transformer_MulitLoss
 from models.MaldiTransformer.MaldiTransformerWrapper import MaldiTransformerWrapper
+from models.binary_transformer_embedding_prediction_head import BinaryTransformerPredictionHead
 from datamodule import Spectrum_DataModule, SingleSpectrum_DataModule
 from datamodule_triplet import Triplet_DataModule
 from prototypical_datamodule import EpisodicDatamodule
@@ -23,6 +24,7 @@ from lightning.pytorch import Trainer
 import shutil
 import os
 from typing import Dict, Any, Union
+from pathlib import Path
 
 from torchvision import transforms
 from custom_transforms import *
@@ -169,6 +171,9 @@ def get_trial_hyperparameters(trial: optuna.Trial, args: argparse.Namespace, tri
                 'lr': trial.suggest_float('lr', 1e-5, 1e-3, log=True),
             }
         )
+    elif args.model_type == 'BinaryTransformerPredictionHead':
+        raise ValueError("BinaryTransformerPredictionHead is not supported for tuning.")
+
     else:
         raise ValueError(f"Model type '{args.model_type}' is not supported for tuning.")
     
@@ -178,6 +183,7 @@ def initialize_model(SPECTRA_PATH: str,
                      METADATA_PATH: str,
                      ML_PROCESSING_PATH: str,
                      args: argparse.Namespace,
+                     log_dir: str,
                      trial: optuna.Trial=None,
                      hparam_path: str=None
                      ) -> L.LightningModule:
@@ -187,7 +193,7 @@ def initialize_model(SPECTRA_PATH: str,
     trans = None
     trainer_args = {}
 
-    parameter_free_methods = ('MaldiTransformerWrapper',)
+    parameter_free_methods = ('MaldiTransformerWrapper', 'BinaryTransformerPredictionHead')
 
     trial_hyperparameters: Dict[str, Any] = {
         'TARGET': args.target,
@@ -407,6 +413,7 @@ def initialize_model(SPECTRA_PATH: str,
             split_method=args.split_method,
             targets=args.target,
             k=args.k,
+            prefer_hard=True
         )
         datamodule.setup('fit')
         logger_name = f'CLIP_Transformer'
@@ -531,6 +538,63 @@ def initialize_model(SPECTRA_PATH: str,
         datamodule.setup('fit')
 
         logger_name = 'MaldiTransformerWrapper'
+    elif args.model_type == 'BinaryTransformerPredictionHead':
+        trial_hyperparameters.update(clip_common_params)
+        if not args.train_for_score:
+            raise ValueError("BinaryTransformerPredictionHead is not supported for tuning.")
+        
+        trial_hyperparameters.update(trial_hyperparameters)
+        # Use the most releveant CLIP_MALDI weights based on log path
+        trial_hyperparameters['encoder_path'] = os.path.join(
+            log_dir,
+            'CLIP_Transformer',
+            'version_0',    # Hardcoded for now, but should be the same for all trials
+            'checkpoints',
+            'best-checkpoint.ckpt'
+        )
+
+        print("Got log_dir = ", log_dir)
+        print("Got encoder_path = ", trial_hyperparameters['encoder_path'])
+
+        if not os.path.exists(trial_hyperparameters['encoder_path']):
+            raise FileNotFoundError(f"No encoder found at {trial_hyperparameters['encoder_path']}")
+        
+        # Fixed hyperparameters
+        trial_hyperparameters['mlp_hidden_dim'] = 512
+        trial_hyperparameters['mlp_hidden_layers'] = 2
+
+        model = BinaryTransformerPredictionHead(trial_hyperparameters)
+
+        print("*******************************")
+        print("*******************************")
+        print("*******************************")
+        print("Warning: Binarizing Intensities")
+        print("*******************************")
+        print("*******************************")
+        print("*******************************")
+        time.sleep(5)
+        trans = transforms.Compose([
+            SquareRootTransform(),
+            SelectTopKPeaks(150),
+            BinarizeIntensity(),  # *************
+            NormalizeIntensity(),
+            PadToLength(150, padding_value=-1.0),
+        ])
+
+        datamodule = Triplet_DataModule(
+            SPECTRA_PATH,
+            METADATA_PATH,
+            ML_PROCESSING_PATH,
+            num_workers=7,
+            transforms=trans,
+            split_method=args.split_method,
+            cast_to_classification=False,   # Not required
+            targets=args.target,
+            batch_size=args.batch_size,
+            k=args.k,
+        )
+        datamodule.setup('fit')
+        logger_name = f'BinaryTransformerPredictionHead'
         
     else:
         raise ValueError(f"Model type '{args.model_type}' is not supported for tuning.")
@@ -553,6 +617,7 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> float:
         metadata_path,
         ml_processing_path,
         args,
+        log_dir,
         trial
     )
 
@@ -602,6 +667,7 @@ def train_for_score(args: argparse.Namespace, hparam_path: str) -> None:
         metadata_path,
         ml_processing_path,
         args,
+        log_dir,
         None ,   # No trial needed here
         hparam_path,
     )
@@ -647,6 +713,7 @@ def main():
             'PrototypicalTransformer',
             'CLIP_MALDI',
             'Transformer_MulitLoss',
+            'BinaryTransformerPredictionHead',
             'MaldiTransformerWrapper',
         ],
         help="The type of model to tune.",
@@ -728,18 +795,21 @@ def main():
     if os.path.isfile(args.hparam_dir):
         hparam_path = args.hparam_dir
     else:
-        hparam_path = os.path.join(args.hparam_dir, args.dataset, args.target, args.split_method, f"{args.model_type}.json")
+        hparam_path = Path(log_dir) / f"{args.model_type}.json" #os.path.join(args.hparam_dir, args.dataset, args.target, args.split_method, f"{args.model_type}.json")
+    print(f"Hyperparameter path: {hparam_path}")
 
     if not args.train_for_score:
         print(f"Saving best hyperparameters to {hparam_path}")
 
         study = optuna.create_study(direction='minimize', 
                                     study_name="optuna_study", 
-                                    pruner=MedianPruner(), 
+                                    pruner=MedianPruner(n_warmup_steps=int(0.1 * args.n_epochs)), 
                                     storage=sqlite_path, 
                                     load_if_exists=True)
+        curr_num_trials = len(study.get_trials(deepcopy=False))
+        
         if not args.dump_best:
-            study.optimize(lambda trial: objective(trial, args), n_trials=args.n_trials)
+            study.optimize(lambda trial: objective(trial, args), n_trials=args.n_trials-curr_num_trials)
 
         print("Number of finished trials: ", len(study.trials))
         print(f"Best trial for {args.model_type} on {args.dataset} (Target: {args.target}, Split: {args.split_method}):")

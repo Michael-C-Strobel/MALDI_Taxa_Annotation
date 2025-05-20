@@ -62,11 +62,15 @@ class single_MALDI_TOF_DS(Dataset):
                 num_turns:int=1,
                 targets:str='genera',
                 in_memory:bool=True,
-                n_workers:int=-1,):
+                n_workers:int=-1,
+                prefer_hard:bool=False,
+                singletons_as_anchors:bool=True,):
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
         self.cast_to_classification = cast_to_classification
+        self.prefer_hard = prefer_hard
+        self.singletons_as_anchors = singletons_as_anchors
     
 
         balance = str(balance).lower()
@@ -166,6 +170,12 @@ class single_MALDI_TOF_DS(Dataset):
             self.preprocess()
 
         self.all_accessions = self.metadata_table.loc[self.metadata_table['accession'].str.lower() != 'nan', 'accession'].unique().astype(str)
+        print(f"Found a total of {len(self.all_accessions)} accessions in the metadata table")
+        if (not self.singletons_as_anchors) and self.nce:
+            # Remove accessions with only one strain
+            self.all_accessions = [x for x in self.all_accessions if self.metadata_table[self.metadata_table['accession'] == x]['Strain name'].nunique() > 1]
+            print("Removing singletons from accessions")
+            print("New number of accessions", len(self.all_accessions))
         
         if self.similarities is not None:
             print("Filtering accessions based on similarities")
@@ -179,12 +189,27 @@ class single_MALDI_TOF_DS(Dataset):
 
         self.n_classes = len(self.metadata_table[self.target_col].unique())
 
-        print("Prefetching accession to class")
-        self.accession_to_class = {}
+        print("Prefetching accession to genus")
+        self.accession_to_genus = {}
         for accession in tqdm(self.all_accessions):
             # Get the class for this accession
             _class = self.metadata_table[self.metadata_table['accession'] == accession][self.target_col].values[0]
-            self.accession_to_class[accession] = _class
+            self.accession_to_genus[accession] = _class
+
+        print("Prefetching accession to species")
+        self.accession_to_species = {}
+        for accession in tqdm(self.all_accessions):
+            # Get the class for this accession
+            _class = self.metadata_table[self.metadata_table['accession'] == accession]['species'].values[0]
+            self.accession_to_species[accession] = _class
+
+        print("Prefetching accession to class")
+        if self.target_col == 'genus':
+            self.accession_to_class = self.accession_to_genus
+        elif self.target_col == 'species':
+            self.accession_to_class = self.accession_to_species
+        else:
+            raise ValueError(f"Invalid target column: {self.target_col}")
 
         print("Prefetching accession to strain")
         self.accession_to_strain_names = {}
@@ -192,13 +217,6 @@ class single_MALDI_TOF_DS(Dataset):
             # Get the class for this accession
             rows = self.metadata_table[self.metadata_table['accession'] == accession]['Strain name'].values
             self.accession_to_strain_names[accession] = rows
-        
-        # print("Prefecting strain name to metadata")
-        # self.strain_name_to_metadata = {}
-        # for strain_name in tqdm(self.metadata_table['Strain name'].unique()):
-        #     # Get the class for this accession
-        #     row = self.metadata_table[self.metadata_table['Strain name'] == strain_name].to_dict(orient='records')[0]
-        #     self.strain_name_to_metadata[strain_name] = row
         
         print("Prefetching strain name to metadata")
         assert self.metadata_table['Strain name'].is_unique, "Strain names are not unique"
@@ -212,15 +230,7 @@ class single_MALDI_TOF_DS(Dataset):
         )
         print("Done")
 
-        # Dead code, most probably
-        # labels, uniques = pd.factorize(self.metadata_table[self.target_col].sort_values().unique())
-        # # Create the class indices dictionary
-        # one_hot_encoder = dict(zip(uniques, range(1, len(uniques) + 1)))  # Starting from 1
-        # # Add 'nan' as class 0
-        # one_hot_encoder['nan'] = 0
-        # self.one_hot_encoder = one_hot_encoder
-
-        # Unfortunately this happens before the subset, so it will iterate over the entire dataset
+        # This happens before the subset, so it will iterate over the entire dataset
         self.in_memory = in_memory
         self.n_workers = n_workers
         if in_memory:
@@ -364,7 +374,14 @@ class single_MALDI_TOF_DS(Dataset):
         # Try to get a non-identity pair
         strain_mask = (self.metadata_table['Strain name'] != anchor_strain_name)
         if sum(positive_mask & strain_mask) > 0:
-            positive_mask = positive_mask & strain_mask
+            if self.prefer_hard and self.target_col == 'genus':
+                # Prefer hard positives (if target == genus: different species, if target == species: N/A)
+                anchor_species = self.accession_to_species[anchor_accession]
+                different_species_mask = (self.metadata_table['species'] != anchor_species)
+                if sum(positive_mask & strain_mask & different_species_mask) > 0:
+                    positive_mask = positive_mask & strain_mask & different_species_mask
+                else:
+                    positive_mask = positive_mask & strain_mask
 
         # TODO: filter for distances, if we ever want to require them
 
@@ -481,7 +498,10 @@ class single_MALDI_TOF_DS(Dataset):
             'class': negative_row['genus'],
             'database_id': negative_row['database_id'],
         }
-        neg_sim = self.similarities.loc[metadata['accession'], negative_metadata['accession']]
+        try:
+            neg_sim = self.similarities.loc[metadata['accession'], negative_metadata['accession']]
+        except:
+            neg_sim = np.nan
         negative_spectrum = torch.load(Path(self.root_dir) / 'spectra' / f"{negative_metadata['Strain name']}.pt", weights_only=True).to(torch.float32)
 
         if self.transform:
@@ -519,10 +539,72 @@ class single_MALDI_TOF_DS(Dataset):
             metadata['class_as_int'] = self.class_to_int[metadata['class']]
         
         return (spectrum, positive_spectrum), (metadata, positive_metadata), (similarity,)
+    
+    def taxa_triplets(self, metadata:dict):
+        """ Generates a positive and negative triplet for a given metadata input.
+
+        Args:
+            metadata (dict): The metadata dictionary.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: The positive and negative triplet.
+            Tuple[dict, dict]: The positive and negative metadata.
+        """
+        # Unpack metadata
+        anchor_strain_name = metadata['Strain name']
+        anchor_accession = metadata['accession']
+        anchor_class = metadata['class']
+
+        # Positive triplet
+        positive_options = self.metadata_table[self.metadata_table[self.target_col] == anchor_class]['Strain name'].values
+        if len(positive_options) > 1:
+            # Try to pick a different one
+            positive_options = positive_options[positive_options != anchor_strain_name]
+
+        random_positive_strain_name = np.random.choice(list(positive_options))
+
+        # Negative triplet
+        neg_classes = self.metadata_table[self.metadata_table[self.target_col] != anchor_class][self.target_col].unique()
+
+        random_class_name = np.random.choice(list(neg_classes))
+        negative_options = self.metadata_table[self.metadata_table[self.target_col] == random_class_name]['Strain name'].values
+        random_negative_strain_name = np.random.choice(list(negative_options))
+
+        # Get all data 
+        positive_metadata = self.metadata_table[self.metadata_table['Strain name'] == random_positive_strain_name].to_dict(orient='records')[0]
+        negative_metadata = self.metadata_table[self.metadata_table['Strain name'] == random_negative_strain_name].to_dict(orient='records')[0]
+        positive_metadata = {
+            'accession': positive_metadata['accession'],
+            'Strain name': positive_metadata['Strain name'],
+            'class': positive_metadata[self.target_col],
+            'database_id': positive_metadata['database_id'],
+        }
+        negative_metadata = {
+            'accession': negative_metadata['accession'],
+            'Strain name': negative_metadata['Strain name'],
+            'class': negative_metadata[self.target_col],
+            'database_id': negative_metadata['database_id'],
+        }
+        # Get the spectra
+        if self.in_memory:
+            positive_spectrum = self.spectra[random_positive_strain_name]
+            negative_spectrum = self.spectra[random_negative_strain_name]
+        else:
+            positive_spectrum = torch.load(Path(self.root_dir) / 'spectra' / f"{random_positive_strain_name}.pt", weights_only=True).to(torch.float32)
+            negative_spectrum = torch.load(Path(self.root_dir) / 'spectra' / f"{random_negative_strain_name}.pt", weights_only=True).to(torch.float32)
+            if self.transform:
+                try:
+                    positive_spectrum = self.transform(positive_spectrum)
+                    negative_spectrum = self.transform(negative_spectrum)
+                except Exception as e:
+                    raise RuntimeError(f"Error transforming spectrum for strain {random_positive_strain_name} with accession {random_negative_strain_name}") from e
+                
+        return (positive_spectrum, negative_spectrum), (positive_metadata, negative_metadata), (np.nan, np.nan)
 
 
 
-    def generate_triplets(self, spectrum:torch.Tensor, metadata:dict, strategy:str='genus'):
+
+    def generate_triplets(self, spectrum:torch.Tensor, metadata:dict):
         """ Generates the positive and negative triplets for a given metadata input and strategy.
 
         Args:
@@ -534,12 +616,25 @@ class single_MALDI_TOF_DS(Dataset):
             Tuple[dict, dict]: The positive and negative metadata.
         """
 
-        if strategy == 'genus':
-            (positive_spectrum, negative_spectrum), (positive_metadata, negative_metadata), (pos_sim, neg_sim) = self._genus_triplets(metadata)
+        if self.target_col == 'genus':
+            # (positive_spectrum, negative_spectrum), (positive_metadata, negative_metadata), (pos_sim, neg_sim) = self._genus_triplets(metadata)
+            (positive_spectrum, negative_spectrum), (positive_metadata, negative_metadata), (pos_sim, neg_sim) = self.taxa_triplets(metadata)
         else:
-            raise ValueError(f"Unknown strategy: {strategy}")
+            raise NotImplementedError(f"Triplet generation has not been implemented for {self.target_col} yet")
 
-        return (spectrum, positive_spectrum, negative_spectrum), (metadata, positive_metadata, negative_metadata), (None, pos_sim, neg_sim)
+        if False:
+            # Print everything
+            print("Anchor metadata", metadata)
+            print("Positive metadata", positive_metadata)
+            print("Negative metadata", negative_metadata)
+
+            print("Anchor spectrum", spectrum)
+            print("Positive spectrum", positive_spectrum)
+            print("Negative spectrum", negative_spectrum)
+
+            
+
+        return (spectrum, positive_spectrum, negative_spectrum), (metadata, positive_metadata, negative_metadata), (pos_sim, neg_sim)
     
     def subset(self, accessions:List):
         #  Make a copy, in this way the sliced similarities can be used to identify the subset
@@ -737,6 +832,7 @@ class Paired_MALDI_TOF_DS(Dataset):
         self.clustered_accessions = None
 
     def __len__(self):
+        # Will always be the same, independent of whether we've subset
         return len(self.all_accessions) * self.num_turns
     
     def __getitem__(self, idx):
@@ -770,6 +866,10 @@ class Paired_MALDI_TOF_DS(Dataset):
         elif len(spectrum_a.shape) == 1:
             num_peaks_in_a = (spectrum_a > 0).sum().item()
             num_peaks_in_b = (spectrum_b > 0).sum().item()
+
+        if hasattr(self, 'relevant_accessions'):
+            if accession_a not in self.relevant_accessions or accession_b not in self.relevant_accessions:
+                raise ValueError(f"accession_a {accession_a} or accession_b {accession_b} not in relevant accessions")
 
         metadata = {
             'accession_a': accession_a,
@@ -1114,6 +1214,7 @@ class Paired_MALDI_TOF_DS(Dataset):
     def subset(self, accessions:List):
         # Make a copy, in this way the sliced similarities can be used to identify the subset
         subset_dataset = copy.deepcopy(self)
+
         indices = [i for i, x in enumerate(self.all_accessions) if x in accessions]
         # Match indices to accessions
         # mapped_indices = [idx % len(self.all_accessions) for idx in indices]    # TODO: This is untennable. Need to switch to unique IDS

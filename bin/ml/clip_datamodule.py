@@ -23,7 +23,10 @@ class CLIP_DataModule(L.LightningDataModule):
                  cast_to_classification=False,
                  targets='genera',
                  num_turns=1,
-                 k=None):
+                 k=None,
+                 prefer_hard=False,
+                 singletons_as_anchors=True,
+                 ):
         super().__init__()
         self.preprocessing_dir = preprocessing_dir
         self.metadata_table = metadata_table
@@ -44,7 +47,10 @@ class CLIP_DataModule(L.LightningDataModule):
                                                 sampling_mode=self.sampling_mode,
                                                 cast_to_classification=cast_to_classification,
                                                 num_turns=num_turns,
-                                                targets=self.targets,)
+                                                targets=self.targets,
+                                                prefer_hard=prefer_hard,
+                                                singletons_as_anchors=singletons_as_anchors,
+                                                )
         
         self.batch_size = batch_size
 

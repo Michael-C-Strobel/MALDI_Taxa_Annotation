@@ -71,27 +71,6 @@ class Spectrum_DataModule(L.LightningDataModule):
                 torch.save(val_accessions, out_path / 'val_accessions.pt')
                 torch.save(test_accessions, out_path / 'test_accessions.pt')
             else:
-                # DEBUG Remove accessions ['EF178692', 'AB184357', 'AB122711', 'AB184476', 'strain_B017']:
-                indices_to_drop = []
-
-                # For SS: ['EF178692', 'AB184357', 'AB122711', 'AB184476', 'strain_B017', 'AB122711']
-
-                # for x in ['strain_B032',]:
-                #     indices_to_drop.append(list(self.full_dataset.all_accessions).index(x))
-                # new_train_indices = [i for i in self.train_indices if i not in indices_to_drop]
-                # new_val_indices = [i for i in self.val_indices if i not in indices_to_drop]
-
-                
-
-                # print("Number of train indices dropped: ", len(self.train_indices) - len(new_train_indices))
-                # print("Number of val indices dropped: ", len(self.val_indices) - len(new_val_indices))
-
-                # self.train_set = Subset(self.full_dataset, new_train_indices) #self.train_indices)                                                              # THIS IS A BUG, THIS WILL CAUSE DATA LEAKAGE FOR CROSS-SET PAIRS
-                # self.val_set = Subset(self.full_dataset, new_val_indices) #self.val_indices)
-
-                # self.train_set = self.full_dataset.subset(new_train_indices)
-                # self.val_set = self.full_dataset.subset(new_val_indices)
-
                 self.train_set = self.full_dataset.subset(self.train_accessions)
                 self.val_set = self.full_dataset.subset(self.val_accessions)
 
@@ -211,7 +190,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
     def prepare_data(self):
        pass
 
-    def setup(self, stage:str):
+    def setup(self, stage:str, paired:bool=False):
         self.full_dataset = single_MALDI_TOF_DS(self.preprocessing_dir,
                                                 self.metadata_table,
                                                 self.root_dir,
@@ -232,13 +211,13 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
                 self.val_set = self.full_dataset.subset(self.val_accessions)
         elif stage == 'test' or stage == 'predict':
             if self.inference_set_to_use == "test":
-                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.test_accessions, paired=False)
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.test_accessions, paired=paired)
             elif self.inference_set_to_use == "val":
-                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.val_accessions, paired=False)
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.val_accessions, paired=paired)
             elif self.inference_set_to_use == "train": 
-                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.train_accessions, paired=False)
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.train_accessions, paired=paired)
             elif self.inference_set_to_use == "all": 
-                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.full_dataset.all_accessions, paired=False)
+                self.predict_set = ExhaustiveMALDI_TOF_DS(self.full_dataset, self.full_dataset.all_accessions, paired=paired)
         elif stage == 'all':
             self.predict_set = self.full_dataset
         else:
