@@ -29,7 +29,9 @@ NAME_MAPPINGS = {
     'prototypical_transformer': "Prototypical Transformer",
     'cosine_intensity_agnostic': "Cosine Similarity (Int. Agn.)",
     'multinomial_classifier': "Multinomial Classifier",
-    'clip_transformer_genus_genus': 'Contrastive Transformer (Task-Specific HParams)'
+    'clip_transformer_genus_genus': 'Contrastive Transformer (Task-Specific HParams)',
+    'BinaryTransformerPredictionHead': 'Binary Transformer Prediction Head',
+    'Euclidean': 'Euclidean Distance',
 }
 
 level_heirarchy = {
@@ -56,6 +58,9 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
     prototypical_transformer_path = None
     clip_transformer_intensity_agnostic_path = None
     multinomial_classifier_path = None
+    binary_transformer_prediction_head_path = None
+
+    DRIAMS_MAX_INDEX=7
 
     # inference/{args.target}/{args.split_type}/"
     if target == 'genera':
@@ -64,15 +69,11 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
                 metadata_path = Path('../data/driams/preprocessing/merged_metadata.csv')
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_A_for_score')
                 clip_transformer_path = [
-                    _base_dir / 'genera'/ 'genera' / f'k={i}' / 'CLIP_Transformer' / 'version_0' / 'inference' / target / split_type
-                    for i in range(0,6) # Omit fold 7 where val is used for test
+                    _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_0' / 'inference' / target / split_type for i in range(0,DRIAMS_MAX_INDEX7)
                 ]
-                clip_transformer_genus_genus_path = [
-                    _base_dir / 'genera'/ 'genera' / f'k={i}' / 'CLIP_Transformer' / 'version_1' / 'inference' / target / split_type
-                    for i in range(0,6)
-                ]
+                clip_transformer_genus_genus_path = None
                 clip_transformer_classifer_path = None
-                cosine_path = [_base_dir / 'cosine_10' / target / split_type / f'k={i}' for i in range(1,6)]
+                cosine_path = [_base_dir / 'cosine_10' / target / split_type / f'k={i}' for i in range(0,DRIAMS_MAX_INDEX)]
                 prototypical_transformer_path = None
             elif dataset.lower() == 'idbac-kb':
                 metadata_path = Path('../data/idbac_db/raw/ammended_db.csv')
@@ -88,36 +89,47 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
                 metadata_path = Path('../data/driams/preprocessing/merged_metadata.csv')
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_A_for_score')
                 clip_transformer_path = [
-                    _base_dir / 'genera'/ 'species' / f'k={i}' / 'CLIP_Transformer' / 'version_0' / 'inference' / target / split_type
-                    for i in range(0,3)
+                    _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_0' / 'inference' / target / split_type for i in range(0,DRIAMS_MAX_INDEX)
+
                 ]
                 clip_transformer_classifer_path = None
-                cosine_path = [_base_dir / 'cosine_10' / target / split_type / f'k={i}' for i in range(1,6)]
+                cosine_path = [
+                    _base_dir / 'cosine_10' / target / split_type / f'k={i}'  for i in range(0,DRIAMS_MAX_INDEX)
+                ]
                 prototypical_transformer_path = None
                 multinomial_classifier_path = [
-                    _base_dir / 'genera'/ 'species' / f'k={i}' / 'Multinomial_Logistic_Classifier' / 'version_0' / 'inference' / target / split_type
-                    for i in range(0,3)
+                    _base_dir / target / split_type / f'k={i}' / 'Multinomial_Logistic_Classifier' / 'version_0' / 'inference' / target / split_type for i in range(0,DRIAMS_MAX_INDEX)
                 ]
+
             elif dataset.lower() == 'idbac-kb':
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_idbac_for_score')
                 metadata_path = Path('../data/idbac_db/raw/ammended_db.csv')
 
                 clip_transformer_path = [
-                    _base_dir / 'genera'/ 'species' / f'k={i}' / 'CLIP_Transformer' / 'version_0' / 'inference' / target / split_type
-                    for i in range(0,3)
+                     _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_0' / 'inference' / target / split_type for i in range(0,3)
                 ]
                 clip_transformer_classifer_path = None
-                cosine_path = [_base_dir / 'cosine_10' / target / split_type / f'k={i}' for i in range(1,6)]
+                cosine_path = [_base_dir / 'cosine_10' / target / split_type / f'k={i}' for i in range(0,3)]
                 prototypical_transformer_path = None
+                multinomial_classifier_path = [
+                    _base_dir / target / split_type / f'k={i}' / 'Multinomial_Logistic_Classifier' / 'version_0' / 'inference' / target / split_type for i in range(0,3)
+                ]
+                # binary_transformer_prediction_head_path = [
+                #     _base_dir / target / split_type / f'k={i}' / 'Binary_Transformer_Prediction_Head' / 'version_0' / 'inference' / target / split_type for i in range(0,3)
+                # ]
 
 
         elif split_type == 'species_even':
             if dataset.lower() == 'driams-a':
                 metadata_path = Path('../data/driams/preprocessing/merged_metadata_code_accessions.csv')
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_A_for_score')
-                clip_transformer_path = None
+                clip_transformer_path = [
+                    _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_0' / 'inference' / target / split_type for i in range(0,DRIAMS_MAX_INDEX)
+                ]
                 clip_transformer_classifer_path = None
-                cosine_path = None
+                cosine_path = [
+                    _base_dir / 'cosine_10' / target / split_type / f'k={i}' for i in range(0,DRIAMS_MAX_INDEX)
+                ]
                 prototypical_transformer_path = None
             elif dataset.lower() == 'idbac-kb':
                 metadata_path = Path('../data/idbac_db/raw/ammended_db.csv')
@@ -146,9 +158,13 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
             if dataset.lower() == 'driams-a':
                 metadata_path = Path('../data/driams/preprocessing/merged_metadata.csv')
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_A_for_score')
-                clip_transformer_path = None
+                clip_transformer_path = [
+                    _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_0' / 'inference' / target / split_type for i in range(0,7)
+                ]
                 clip_transformer_classifer_path = None
-                cosine_path = None
+                cosine_path = [
+                    _base_dir / 'cosine_10' / target / split_type / f'k={i}' for i in range(0,7)
+                ]
                 prototypical_transformer_path = None
             elif dataset.lower() == 'idbac-kb':
                 metadata_path = Path('../data/idbac_db/raw/ammended_db.csv')
@@ -204,6 +220,10 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
         output_dict['multinomial_classifier'] = {}
         output_dict['multinomial_classifier']['train'] = [pd.read_feather(x / 'train_inference.feather') for x in multinomial_classifier_path]
         output_dict['multinomial_classifier']['test'] = [pd.read_feather(x / 'test_inference.feather') for x in multinomial_classifier_path]
+    if binary_transformer_prediction_head_path:
+        output_dict['binary_transformer_prediction_head'] = {}
+        output_dict['binary_transformer_prediction_head']['train'] = [pd.read_feather(x / 'train_inference.feather') for x in binary_transformer_prediction_head_path]
+        output_dict['binary_transformer_prediction_head']['test'] = [pd.read_feather(x / 'test_inference.feather') for x in binary_transformer_prediction_head_path]
 
     # Augment the metadata with the true labels
     if target == 'genera':
@@ -220,6 +240,8 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
     
     metadata_table.dropna(subset=[target_col], inplace=True)
     accession_to_label = metadata_table.set_index('accession')[target_col].to_dict()
+    accession_to_genus = metadata_table.set_index('accession')['genus'].to_dict()
+    accession_to_species = metadata_table.set_index('accession')['species'].to_dict()
 
     for key, train_test_dict in output_dict.items():
         for i in range(len(output_dict[key]['test'])):
@@ -235,6 +257,18 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
             # Fix strain_name so it's no longer a list
             output_dict[key]['train'][i]['strain_name'] = output_dict[key]['train'][i]['strain_name'].apply(lambda x: x[0])
             output_dict[key]['test'][i]['strain_name'] = output_dict[key]['test'][i]['strain_name'].apply(lambda x: x[0])
+
+            # Manually annotate with 'genus' and 'species' columns
+            output_dict[key]['train'][i]['genus'] = output_dict[key]['train'][i]['accession'].apply(lambda x: accession_to_genus.get(x, None))
+            output_dict[key]['train'][i]['species'] = output_dict[key]['train'][i]['accession'].apply(lambda x: accession_to_species.get(x, None))
+            output_dict[key]['test'][i]['genus'] = output_dict[key]['test'][i]['accession'].apply(lambda x: accession_to_genus.get(x, None))
+            output_dict[key]['test'][i]['species'] = output_dict[key]['test'][i]['accession'].apply(lambda x: accession_to_species.get(x, None))
+
+            # Add metadata to the output dataframes
+            output_dict[key]['test'][i].target = target
+            output_dict[key]['train'][i].target = target
+            output_dict[key]['test'][i]._metadata += ('target',)
+            output_dict[key]['train'][i]._metadata += ('target',)
 
     output_dict['metadata'] = metadata_table
     
@@ -469,7 +503,7 @@ def evaluate_top_k_recall(
     distance_metric='euclidean',
     normalize=True,
     max_k=10,
-    macro=False,
+    average='macro',
     within_test=False,
 ) -> Tuple[List[float], List[Dict[str, str]]]:
     if within_test:
@@ -500,7 +534,7 @@ def evaluate_top_k_recall(
     accuracies = []
     failure_indices_per_k = []
 
-    if macro:
+    if average == 'macro':
         label_to_counts_k = [defaultdict(lambda: {'correct': 0, 'total': 0}) for _ in range(max_k)]
         for i, true_label in enumerate(test_labels):
             for k in range(1, max_k + 1):
@@ -511,12 +545,37 @@ def evaluate_top_k_recall(
         for label_to_counts in label_to_counts_k:
             recalls = [v['correct'] / v['total'] for v in label_to_counts.values() if v['total'] > 0]
             accuracies.append(np.mean(recalls))
-    else:
+    elif average == 'micro':
         match_matrix = predicted_k_labels == test_labels[:, None]
         for k in range(1, max_k + 1):
             hits = match_matrix[:, :k].any(axis=1)
             accuracies.append(hits.mean())
             failure_indices_per_k.append(np.where(~hits)[0])
+    elif average == 'none':
+        # Calculate accuracy within top k per class
+        accuracies_per_class = {}
+        totals_per_class = {}
+
+        if max_k != 1:
+            raise NotImplementedError("Top-k accuracy is not implemented for k > 1 with 'average' == 'none'")
+
+        match_matrix = predicted_k_labels == test_labels[:, None]
+        for i, true_label in enumerate(test_labels):
+            if true_label not in accuracies_per_class:
+                accuracies_per_class[true_label] = 0
+                totals_per_class[true_label] = 0
+            if match_matrix[i, 0]:
+                accuracies_per_class[true_label] += 1
+            totals_per_class[true_label] += 1
+        for true_label in accuracies_per_class:
+            accuracies_per_class[true_label] = accuracies_per_class[true_label] / totals_per_class[true_label]
+
+        return accuracies_per_class
+
+
+    else:
+        raise ValueError(f"Unknown average method: {average}")
+    
 
     if len(failure_indices_per_k) == 0:
         failure_cases = [np.array([]) for _ in range(max_k)]
@@ -882,10 +941,41 @@ def nn_accuracy(
                 distance_metric:str='euclidean',
                 normalize:bool=True, 
                 dedicated_db:pd.DataFrame=False,
+                average:str='micro', # 'macro' or 'micro'
+                require_cross_species:bool=False,
+                require_same_species:bool=False,
                 )-> float:
+    """
+    Computes the accuracy of the nearest neighbor classifier using a faux or dedicated database.
+    Subsamples classes in the database to max(k , n_c//2) samples per taxa (c).
+
+    Parameters
+    ----------
+    test_df : pd.DataFrame
+        DataFrame containing the test set with columns 'embedding', 'strain_name', and 'true_label'.
+    random_seed : int, optional
+        Random seed for reproducibility, by default 42
+    k : int, optional
+        Number of nearest neighbors to consider, by default 5
+    distance_metric : str, optional
+        Distance metric to use, either 'euclidean' or 'cosine', by default 'euclidean'
+    normalize : bool, optional
+        Whether to normalize the embeddings, by default True
+    dedicated_db : pd.DataFrame, optional
+        DataFrame containing the dedicated database with columns 'embedding', 'strain_name', and 'true_label', by default None
+    average : str, optional
+        Type of averaging to use for accuracy calculation, either 'micro', 'macro', or 'none', by default 'micro'
+    
+    Returns
+    -------
+    float
+        Accuracy of the nearest neighbor classifier
+    """
+    if require_cross_species and require_same_species:
+        raise ValueError("Cannot require both cross and same species. Choose one or the other.")
+
     df = test_df.copy(deep=True)
     np.random.seed(random_seed)
-
 
     if dedicated_db is None: # Generate a faux db using the test set
         label_counts = df['true_label'].value_counts()
@@ -931,46 +1021,97 @@ def nn_accuracy(
 
         faux_db = dedicated_db.loc[list(sampled_indices_dedicated_db), :].values
 
-    correct = 0
-    total   = 0
+    predictions = []
+    labels = []
     failure_cases = []
+
+    faux_db_labels = np.unique(faux_db[:, 4])
           
     for i, row in df.iterrows():
         if i in sampled_indices_set:
-            continue  # Skip sampled indices
-      
+            continue  # Skip sampled indices used in faux_db
+
         embedding = row['embedding']
         strain_name = row['strain_name']
         true_label = row['true_label']
+        species = row['species']
+
+        if true_label not in faux_db_labels:# and \
+            # (require_cross_species or require_same_species):
+            # If the true label is not in the faux_db, we skip this row
+            print(f"Skipping {strain_name} with true label {true_label} as it is not in the faux_db.")
+            continue
 
         similarities = []
-        for j, faux_row in enumerate(faux_db):
+        correction_factor = 0
+        for faux_row in faux_db:
             faux_embedding = faux_row[2]
-            faux_strain_name = faux_row[1]
-            faux_true_label = faux_row[4]    # I HAD TO CHANGE TO 4
+            faux_true_label = faux_row[4]
+            faux_species = faux_row[6]
+            if require_cross_species and faux_species == species:
+                continue
+            if require_same_species and faux_species != species:
+                continue
             if distance_metric == 'cosine':
-                    similarity = np.dot(embedding, faux_embedding) / (np.linalg.norm(embedding) * np.linalg.norm(faux_embedding))
+                similarity = np.dot(embedding, faux_embedding) / (
+                    np.linalg.norm(embedding) * np.linalg.norm(faux_embedding)
+                )
             elif distance_metric == 'euclidean':
-                    similarity = -1 * np.linalg.norm(embedding - faux_embedding)
+                similarity = -1 * np.linalg.norm(embedding - faux_embedding)
             else:
-                    raise ValueError("Unknown distance metric: {}".format(distance_metric))
+                raise ValueError(f"Unknown distance metric: {distance_metric}")
+
             similarities.append((faux_true_label, similarity))
 
-        # Always take largest
-        predicted_genus = max(similarities, key=lambda x: x[1])[0]
-      
-        if predicted_genus == true_label:
-            correct += 1
-        else:
+        # Scale to 100% Accuracy
+        if true_label not in [x[0] for x in similarities]:
+            continue
+
+        predicted_label = max(similarities, key=lambda x: x[1])[0]
+        similarity_count = len(similarities)
+
+        predictions.append(predicted_label)
+        labels.append(true_label)
+
+        if predicted_label != true_label:
             failure_cases.append({
                 'strain_name': strain_name,
-                'true_label': true_label, 
-                'predicted_genus': predicted_genus,
-                })
-        
-        total += 1
+                'true_label': true_label,
+                'predicted_genus': predicted_label,
+                'total_comparisons': similarity_count,
+            })
 
-    acc = correct / total
+    if average == 'micro':
+        correct = sum([p == l for p, l in zip(predictions, labels)])
+        total = len(predictions)
+        acc = correct / total
+    elif average == 'macro' or average == 'none':
+        from collections import defaultdict
+
+        class_correct = defaultdict(int)
+        test_class_total = defaultdict(int)
+
+        for p, l in zip(predictions, labels):
+            test_class_total[l] += 1
+            if p == l:
+                class_correct[l] += 1
+
+        if average == 'none':
+            # Return per-class accuracy, and total number in each class label, along with labels
+            per_class_accuracies = {
+                label: class_correct[label] / test_class_total[label] for label in test_class_total
+            }
+
+            return per_class_accuracies, test_class_total,
+        else:
+            per_class_accuracies = [
+                class_correct[label] / test_class_total[label] for label in test_class_total
+            ]
+            acc = np.mean(per_class_accuracies)
+
+    else:
+        raise ValueError(f"Invalid average type: {average}")
+
     return acc, failure_cases
 
 
@@ -1066,8 +1207,18 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from tqdm.notebook import tqdm
 
-def nn_accuracy_plot(dataset, target, split_type, n_jobs=-1, within_test=False):
+def nn_accuracy_plot(dataset, target, split_type, n_jobs=-1, within_test=False, num_samples_per_k=1,
+                     average='macro', require_cross_species=False, require_same_species=False):
+    
+    if require_cross_species and require_same_species:
+        raise ValueError("Cannot require both cross-species and same-species accuracy at the same time.")
+
     embeddings = gather_embeddings(dataset, target, split_type)
+
+    if require_cross_species and target != 'genera':
+        raise ValueError("Cross-species accuracy is only applicable for genus-level predictions")
+    if require_same_species and target != 'genera':
+        raise ValueError("Same-species accuracy is only applicable for genus-level predictions")
 
     # Add a "Cosine (Intensity Agnostic)" method
     embeddings['cosine_intensity_agnostic'] = {'train': [None for _ in range(len(embeddings['cosine']['train']))],
@@ -1078,6 +1229,25 @@ def nn_accuracy_plot(dataset, target, split_type, n_jobs=-1, within_test=False):
         embeddings['cosine_intensity_agnostic']['train'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['train'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
         embeddings['cosine_intensity_agnostic']['test'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['test'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
 
+    # Quick sanity check, remove everything but contrastive transformer TODO DEBUG
+    for key in list(embeddings.keys()):
+        if key not in {'clip_transformer', 'cosine'}:
+            print(f"Removing {key} from embeddings")
+            del embeddings[key]
+
+    # Check that all dataframes have a 'target' value
+    for key, train_test_dict in embeddings.items():
+        if key == 'metadata':
+            continue
+        for i in range(len(train_test_dict['train'])):
+            train_df = train_test_dict['train'][i]
+            test_df = train_test_dict['test'][i]
+            if not hasattr(train_df, 'target') or not hasattr(test_df, 'target'):
+                raise ValueError(f"DataFrame for {key} at index {i} does not have a 'target' attribute.")
+            # Ensure it's in _metadata
+            if 'target' not in train_df._metadata or 'target' not in test_df._metadata:
+                raise ValueError(f"DataFrame for {key} at index {i} does not have 'target' in _metadata.")
+
     def compute_accuracy(key, test_embeddings, distance_metric, k, random_seed, retrieval_db):
         acc, _ = nn_accuracy(
             test_embeddings, 
@@ -1086,6 +1256,9 @@ def nn_accuracy_plot(dataset, target, split_type, n_jobs=-1, within_test=False):
             distance_metric=distance_metric,
             normalize=True,
             dedicated_db=retrieval_db,
+            average=average,
+            require_cross_species=require_cross_species,
+            require_same_species=require_same_species,
         )
         return {
             'model': key,
@@ -1114,7 +1287,7 @@ def nn_accuracy_plot(dataset, target, split_type, n_jobs=-1, within_test=False):
 
             test_embeddings = train_test_dict['test'][i]
 
-            for random_seed in [42]: #np.arange(42, 42+10):
+            for random_seed in np.arange(42, 42+num_samples_per_k):
                 for k in np.arange(1, 11):
                     tasks.append((key, test_embeddings, distance_metric, k, random_seed, retrieval_db))
 
@@ -1129,7 +1302,7 @@ def nn_accuracy_plot(dataset, target, split_type, n_jobs=-1, within_test=False):
         print("Adding static accuracy calculation for multinomial classifier...")
         for i in range(len(embeddings['multinomial_classifier']['train'])):
             test_df = embeddings['multinomial_classifier']['test'][i]
-            acc = recall_score(test_df['true_label'], test_df['pred_class'], average='micro')    # Micro is equivlent to accuracy
+            acc = recall_score(test_df['true_label'], test_df['pred_class'], average=average)
             for k in np.arange(1, 11):
                 results.append({
                     'model': 'multinomial_classifier',
@@ -1410,6 +1583,7 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
     return fpr, tpr, auc(fpr, tpr), precision, recall, auc(recall, precision)
 
 def _compute_interpolated_curves(df1, df2, method, data_idx, interp_points, metric, max_pairs, ignore_intensity=False):
+    print(f"_compute_interpolated_curves; {method} : {metric}")
     try:
         if 'intensity_agnostic' in method and method != 'clip_transformer_intensity_agnostic':
             print(f"Method {method} is using intensity agnostic embeddings")
@@ -1480,8 +1654,25 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
         embeddings = gather_embeddings(dataset, target, split_type)
 
     # Add a "Cosine (Intensity Agnostic)" method
-    embeddings['cosine_intensity_agnostic'] = embeddings['cosine'].copy()
+    embeddings['cosine_intensity_agnostic'] = {
+        'train': [None for _ in range(len(embeddings['cosine']['train']))],
+        'test': [None for _ in range(len(embeddings['cosine']['test']))]
+    }
+    for i in range(len(embeddings['cosine_intensity_agnostic']['test'])):
+        embeddings['cosine_intensity_agnostic']['train'][i] = embeddings['cosine']['train'][i].copy(deep=True)
+        embeddings['cosine_intensity_agnostic']['test'][i] = embeddings['cosine']['test'][i].copy(deep=True)
+        embeddings['cosine_intensity_agnostic']['train'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['train'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
+        embeddings['cosine_intensity_agnostic']['test'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['test'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
 
+    # Add a "Euclidean" method
+    # embeddings['Euclidean'] = {
+    #     'train': [None for _ in range(len(embeddings['cosine']['train']))],
+    #     'test': [None for _ in range(len(embeddings['cosine']['test']))]
+    # }
+    # for i in range(len(embeddings['Euclidean']['test'])):
+    #     embeddings['Euclidean']['train'][i] = embeddings['cosine']['train'][i].copy(deep=True)
+    #     embeddings['Euclidean']['test'][i] = embeddings['cosine']['test'][i].copy(deep=True)
+       
     # Print prior probability of equal and unequal taxa
     a_key = [x for x in list(embeddings.keys()) if x != 'metadata'][0]
     df = embeddings[a_key]['test'][0]
@@ -1495,9 +1686,9 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
     
     print(f"% of pairs with equal taxa: {total_pos / total:.2f}")
 
-    roc_fig, roc_ax = plt.subplots()
-    pr_fig, pr_ax = plt.subplots()
-    fdr_fig, fdr_ax = plt.subplots()
+    roc_fig, roc_ax = plt.subplots(figsize=(7, 5), dpi=200)
+    pr_fig, pr_ax = plt.subplots(figsize=(7, 5), dpi=200)
+    fdr_fig, fdr_ax = plt.subplots(figsize=(7, 5), dpi=200)
 
     interp_points = np.linspace(0, 1, 100)
 
@@ -1512,6 +1703,7 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
              print(f"Method using {method} cosine distance metric")
              metric = 'cosine'
         else:
+            print(f"Method using {method} euclidean distance metric")
             metric = 'euclidean'
 
         if method == 'multinomial_classifier':
@@ -1573,6 +1765,11 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
 
             fdr_ax.errorbar([recall_mean], [1 - precision_mean], xerr=[recall_std], yerr=[precision_std],
                             fmt='o', capsize=4, label=f"{name} (FDR={1 - precision_mean:.2f})")
+
+            # Add a fill between to keep the colors consistent
+            roc_ax.fill_between([], [], alpha=0.2)
+            pr_ax.fill_between([], [], alpha=0.2)
+            fdr_ax.fill_between([], [], alpha=0.2)
 
         else:
                 
@@ -1757,13 +1954,19 @@ def top_k_precision_plot(dataset, target, split_type, n_jobs=-1, within_test=Fal
     embeddings = gather_embeddings(dataset, target, split_type)
 
     # Add a "Cosine (Intensity Agnostic)" method
-    embeddings['cosine_intensity_agnostic'] = embeddings['cosine'].copy()
+    embeddings['cosine_intensity_agnostic'] = [
+        {
+            'train': [None for _ in range(len(embeddings['cosine']['train']))],
+            'test': [None for _ in range(len(embeddings['cosine']['test']))]
+        }
+    ]
     
     for train_test_df in embeddings['cosine_intensity_agnostic']:
-        train_test_df['train'] = train_test_df['train'].copy()
-        train_test_df['test'] = train_test_df['test'].copy()
-        train_test_df['train']['embedding'] = train_test_df['train']['embedding'].apply(lambda x: (x > 0.02).astype(int))
-        train_test_df['test']['embedding'] = train_test_df['test']['embedding'].apply(lambda x: (x > 0.02).astype(int))
+        for i in range(len(train_test_df['test'])):
+            train_test_df['train'][i] = embeddings['cosine']['train'][i].copy(deep=True)
+            train_test_df['test'][i] = embeddings['cosine']['test'][i].copy(deep=True)
+            train_test_df['train'][i]['embedding'] = train_test_df['train'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
+            train_test_df['test'][i]['embedding'] = train_test_df['test'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
 
     base_train_df = list(embeddings.values())[0]['train'][0]
     base_test_df = list(embeddings.values())[0]['test'][0]
@@ -1847,147 +2050,158 @@ def top_k_precision_plot(dataset, target, split_type, n_jobs=-1, within_test=Fal
 
     return fig, df
 
-# def get_precision_in_top_k(
-#     train_df,
-#     test_df,
-#     k: int,
-#     method: str = 'clip_transformer',
-#     distance_metric: str = 'euclidean',
-#     normalize: bool = True,
-# ) -> Tuple[float, List[Dict[str, str]]]:
 
-#     if 'intensity_agnostic' in method and method != 'clip_transformer_intensity_agnostic':
-#         print(f"Method {method} is using intensity agnostic embeddings")
-#         train_df['embedding'] = train_df['embedding'].apply(lambda x: (x > 0.02).astype(int))
-#         test_df['embedding'] = test_df['embedding'].apply(lambda x: (x > 0.02).astype(int))
+# %%
+def plot_nn_accuracy_vs_train_taxa_size(dataset, target, split_type, n_jobs=-1, within_test=False):
+    """
+    Plots the accuracy of 1-nearest neighbor classification against the number taxa in the training (or test) set.
+    
+    Args:
+        dataset (str): Dataset name.
+        target (str): Label column (e.g. 'species').
+        split_type (str): Split type (e.g. 'species_even').
+        n_jobs (int): Number of parallel jobs.
+        within_test (bool): If True, use the test set for both training and testing.
 
-#     if normalize:
-#         def _normalize_fn(x):
-#             norm = np.linalg.norm(x)
-#             return x / norm if norm > 0 else x
-#         train_df['embedding'] = train_df['embedding'].apply(_normalize_fn)
-#         test_df['embedding'] = test_df['embedding'].apply(_normalize_fn)
+    Returns:
+        fig: Matplotlib figure object.
+        accuracies_df: DataFrame containing accuracies for each model and k value.
+    """
+    embeddings = gather_embeddings(dataset, target, split_type)
 
-#     train_embeddings = np.vstack(train_df['embedding'])
-#     test_embeddings = np.vstack(test_df['embedding'])
+    # Add a "Cosine (Intensity Agnostic)" method
+    embeddings['cosine_intensity_agnostic'] = {
+        'train': [None for _ in range(len(embeddings['cosine']['train']))],
+        'test': [None for _ in range(len(embeddings['cosine']['test']))]
+    }
+    for i in range(len(embeddings['cosine_intensity_agnostic']['test'])):
+        embeddings['cosine_intensity_agnostic']['train'][i] = embeddings['cosine']['train'][i].copy(deep=True)
+        embeddings['cosine_intensity_agnostic']['test'][i] = embeddings['cosine']['test'][i].copy(deep=True)
+        embeddings['cosine_intensity_agnostic']['train'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['train'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
+        embeddings['cosine_intensity_agnostic']['test'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['test'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
 
-#     if distance_metric == 'cosine':
-#         similarities = cosine_similarity(test_embeddings, train_embeddings)
-#     elif distance_metric == 'euclidean':
-#         similarities = -euclidean_distances(test_embeddings, train_embeddings)
-#     else:
-#         raise ValueError(f"Unknown distance metric: {distance_metric}")
+    tasks = []
+    for key, d in embeddings.items():
+        if key == 'metadata':
+            continue
+        if key in {'cosine', 'cosine_intensity_agnostic', 'clip_transformer', 'clip_transformer_genus_genus'}:
+            print(f"Method using {key} cosine distance metric")
+            distance_metric = 'cosine'
+        else:
+            distance_metric = 'euclidean'
 
-#     test_labels = (test_df['true_label'].values).astype(np.float32)
-#     train_labels = (train_df['true_label'].values).astype(np.float32)
-
-#     total_correct = 0
-#     total_predictions = 0
-#     failure_cases = []
-#     strain_names = test_df['strain_name'].values
-#     true_labels = test_df['true_label'].values
-
-#     for i in range(test_embeddings.shape[0]):
-#         top_k_indices = np.argsort(similarities[i])[::-1][:k]
-#         predicted_labels = train_labels[top_k_indices]
-
-#         num_correct = np.sum(predicted_labels == test_labels[i])
-#         total_correct += num_correct  # Sum up total correct across all samples
-#         total_predictions += len(predicted_labels)
-
-#         if num_correct == 0:
-#             failure_cases.append({
-#                 'strain_name': strain_names[i],
-#                 'true_label': true_labels[i],
-#                 'predicted_labels': predicted_labels.tolist(),
-#             })
-
-#     precision = total_correct / total_predictions  # Global precision
-#     return precision, failure_cases
+        for k in range(1, 11):
+            for j in range(len(d['train'])):
+                tasks.append((key, k, d['train'][j], d['test'][j], distance_metric))
 
 
-# def top_k_precision_plot(dataset, target, split_type, n_jobs=-1, within_test=False):
-#     embeddings = gather_embeddings(dataset, target, split_type)
+    def _compute_accuracy(key, k, train_df, test_df, distance_metric):
+        if key == 'multinomial_classifier':
+            # Plot the accuracy as a horizontal line
+            # Require that the target level is below the split level
+            if level_heirarchy[target] <= level_heirarchy[split_type]:
+                return None
+            # Calculate accuracy directly on test set per class (no difference for train-test inference)
+            g = test_df.groupby('true_label')
+            per_class_acc_dict = g.apply(lambda x: np.sum(x['pred_class'] == x['true_label']) / len(x)).to_dict()
+            test_total_count_dict = g.size().to_dict()
+            train_total_count_dict = train_df['true_label'].value_counts().to_dict()
 
-#     # Add a "Cosine (Intensity Agnostic)" method
-#     embeddings['cosine_intensity_agnostic'] = embeddings['cosine'].copy()
+        else:
+            per_class_acc_dict = evaluate_top_k_recall(
+                train_df, test_df, distance_metric, normalize=True, max_k=1, average="none"
+            )
+            train_total_count_dict = train_df['true_label'].value_counts().to_dict()
+            test_total_count_dict = test_df['true_label'].value_counts().to_dict()
 
-#     base_train_df = list(embeddings.values())[0]['train'][0]
-#     base_test_df = list(embeddings.values())[0]['test'][0]
-#     if within_test:
-#         base_train_df = base_test_df
+        return {
+            'model': key,
+            'k': k,
+            'per_class_acc_dict': per_class_acc_dict,
+            'train_total_count_dict': train_total_count_dict,
+            'test_total_count_dict': test_total_count_dict,
+        }
+    
+    
 
-#     # Precompute theoretical max precision@k once
-#     theoretical_max_per_k = {
-#         k: compute_theoretical_max_precision(base_train_df, base_test_df, k)
-#         for k in range(1, 11)
-#     }
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(_compute_accuracy)(key, k, tr, te, dm)
+        for key, k, tr, te, dm in tqdm(tasks)
+    )
 
-#     tasks = []
-#     for key, d in embeddings.items():
-#         if key == 'metadata':
-#             continue
-#         if key == 'cosine' or key == 'cosine_intensity_agnostic' \
-#             or key == 'clip_transformer':
-#             print(f"Method using {key} cosine distance metric")
-#             distance_metric = 'cosine'
-#         else:
-#             distance_metric = 'euclidean'
+    # Unpack results
+    results = [res for res in results if res is not None]  # Filter out None results
+    
+    accuracies = []
+    for res in results:
+        model = res['model']
+        k = res['k']
+        per_class_acc_dict = res['per_class_acc_dict']
+        train_total_count_dict = res['train_total_count_dict']
+        test_total_count_dict = res['test_total_count_dict']
 
-#         for k in range(1, 11):
-#             for j in range(len(d['train'])):
-#                 tasks.append((key, k, d['train'][j], d['test'][j], distance_metric))
+        for label, acc in per_class_acc_dict.items():
+            train_size = train_total_count_dict.get(label, 0)
+            test_size = test_total_count_dict.get(label, 0)
+            accuracies.append({
+                'model': model,
+                'k': k,
+                'train_size': train_size,
+                'test_size': test_size,
+                'accuracy': acc
+            })
 
-#     def compute_precision(key, k, train_df, test_df, distance_metric):
-#         if key == 'multinomial_classifier':
-#             # Plot the precision as a horizontal line
-#             # Require that the target level is below the split level
-#             if level_heirarchy[target] <= level_heirarchy[split_type]:
-#                 return None
-#             # Calculate precision directly on test set (no difference for train-test inference)
-#             tp = np.sum(test_df['pred_class'] == test_df['true_label'])
-#             fp = np.sum(test_df['pred_class'] != test_df['true_label'])
-#             precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-#         else:
-#             precision, _ = get_precision_in_top_k(
-#                 train_df, test_df, k, key, distance_metric, normalize=True
-#             )
-#         return {
-#             'model': key,
-#             'k': k,
-#             'precision': precision,
-#         }
+    accuracies_df = pd.DataFrame(accuracies)
 
-#     results = Parallel(n_jobs=n_jobs)(
-#         delayed(compute_precision)(key, k, tr, te, dm)
-#         for key, k, tr, te, dm in tqdm(tasks)
-#     )
-#     results = [res for res in results if res is not None]  # Filter out None results
+    # Plot 
+    # x: train class size
+    # y: accuracy
+    # color: model
 
-#     df = pd.DataFrame(results)
-#     df['k'] = df['k'].astype(int)
-#     df = df.sort_values(by=['model', 'k'])
+    fig = plt.figure(figsize=(12, 8))
+    sns.scatterplot(data=accuracies_df, x='train_size', y='accuracy', hue='model', style='model', markers=True) 
+    plt.title(f"1-NN Accuracy vs Training Class Size\n{dataset} - {target} - {split_type}")
+    plt.xlabel('Training Class Size')
+    plt.ylabel('1-NN Accuracy')
 
-#     # --- Plot ---
-#     fig = plt.figure(figsize=(12, 8))
+    plt.grid(True)
+    plt.legend(title='Model')
+    plt.tight_layout()
+    plt.show()
 
-#     # Plot each model
-#     sns.lineplot(data=df, x='k', y='precision', hue='model', style='model', markers=True, dashes=False)
+    # Get the the range of the middle three quartiles
+    q1 = accuracies_df['train_size'].quantile(0.25)
+    q2 = accuracies_df['train_size'].quantile(0.5)
+    q3 = accuracies_df['train_size'].quantile(0.75)
+    # iqr = q3 - q1
 
-#     # Plot the theoretical max separately
-#     k_vals = list(theoretical_max_per_k.keys())
-#     theoretical_vals = list(theoretical_max_per_k.values())
-#     plt.plot(k_vals, theoretical_vals, label='Theoretical Max', linestyle='dashed', color='black', linewidth=2)
+    # lower_bound = q1 - 1.5 * iqr
+    # upper_bound = q3 + 1.5 * iqr
 
-#     plt.title(f"Precision@k with Theoretical Max\n{dataset} - {target} - {split_type}")
-#     plt.xlabel('k (Top-k Nearest Neighbors)')
-#     plt.ylabel('% of Retrievals in Correct Taxa')
-#     plt.grid(True)
-#     plt.legend(title='Model')
-#     plt.tight_layout()
-#     plt.show()
+    accuracies_df['size_bin'] = pd.cut(
+        accuracies_df['train_size'],
+        bins=[0, q1, q2, q3, accuracies_df['train_size'].max()],
+    )
 
-#     return fig, df
+    plt.figure(figsize=(16, 8))
+    sns.violinplot(
+        data=accuracies_df,
+        x='size_bin',
+        y='accuracy',
+        hue='model',
+        split=False,
+        inner="quartile",
+        width=0.7
+    )
+    plt.title(f"1-NN Accuracy vs Training Class Size (Binned & Filtered)\n{dataset} - {target} - {split_type}")
+    plt.xlabel('Training Class Size Bin')
+    plt.ylabel('1-NN Accuracy')
+    plt.grid(True)
+    plt.legend(title='Model')
+    plt.xticks(rotation=0)
+    plt.tight_layout()
+    plt.show()
+
 
 # %%
 def similarity_histogram(dataset, target, split_type, model, test_only=False, max_pairs=None, distance_metric='euclidean'):
@@ -2081,58 +2295,6 @@ def similarity_histogram(dataset, target, split_type, model, test_only=False, ma
     return fig
 
 # %%
-debug_embeddings = gather_embeddings('driams-a', 'genera', 'species')
-debug_embeddings_train = debug_embeddings['cosine']['test']
-debug_embeddings_test = debug_embeddings['cosine']['test']
-
-# %%
-debug_acc_lst = []
-for k in range(1, 21, 5):
-  debug_acc = get_accuracy_in_top_k(
-                              train_df=debug_embeddings_train,
-                              test_df=debug_embeddings_test,
-                              k=k,
-                              distance_metric='euclidean',
-                              normalize=True,
-                            )
-  debug_acc_lst.append(debug_acc[0])
-
-debug_acc_lst
-
-# %%
-binary_curves_plot('DRIAMS-A', 'genera', 'genera', test_only=True, max_pairs=1_000_000)
-
-# %%
-nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=-1)
-
-# %%
-binary_curves_plot('DRIAMS-A', 'species', 'species', test_only=True, max_pairs=1_000_000)
-
-# %%
-binary_curves_plot('DRIAMS-A', 'genera', 'species', test_only=True, max_pairs=1_000_000)
-
-# %%
-binary_curves_plot('DRIAMS-A', 'genera', 'genera', test_only=True, max_pairs=1_000_000)
-
-# %%
-_ = top_k_boxplot_per_method_by_label(
-    dataset='driams-a',
-    target='genera',
-    split_type='species',
-    within_test=False,
-    n_jobs=-1,
-)
-
-# %%
-_ = top_k_barplot_per_method_by_label(
-    dataset='driams-a',
-    target='genera',
-    split_type='species',
-    within_test=False,
-    n_jobs=10,
-)
-
-# %%
 _ = top_k_boxplot_per_method_by_label(
     dataset='driams-a',
     target='genera',
@@ -2153,39 +2315,118 @@ _ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs
 # %%
 _ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=5, macro=True)
 
+# %% [markdown]
+# ## DRIAMS Plots Genera/Genera
+
+# %%
+_ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=4)
+
+# %%
+_ = nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=16, average='micro', num_samples_per_k=5)
+
+# %%
+_ = nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=16, average='macro', num_samples_per_k=5)
+
+# %% [markdown]
+# ## DRIAMS Plots Genera/Species
+
+# %%
+_ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4)
+
+
 # %%
 # DRIAMS Plots
 _ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4)
 
 
 # %%
-# DRIAMS Plots
-_ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=4)
-
-
-# %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=4)
+_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=False, n_jobs=12, num_samples_per_k=5, average='macro')
+_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=12, num_samples_per_k=5, average='macro')
 
 # %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=6)
+_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=12, num_samples_per_k=2, average='macro')
+
+# %%
+_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=12, num_samples_per_k=2, average='macro', require_cross_species=True)
+
+# %%
+_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=16, num_samples_per_k=5, average='macro', require_same_species=True)
+
+# %%
+_[1].head(50)
+
+# %%
+_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=6)
+_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=False, n_jobs=6)
+
+# %%
+_ = top_k_recall_plot('driams-a', 'genera', 'species', within_test=False, n_jobs=6, macro=False)
+_ = top_k_recall_plot('driams-a', 'genera', 'species', within_test=False, n_jobs=6, macro=True)
+
+# %%
+plot_nn_accuracy_vs_train_taxa_size(
+    dataset='driams-a',
+    target='genera',
+    split_type='species',
+    n_jobs=6,
+    within_test=False
+)
+
+# %% [markdown]
+# ## DRIAMS Plots Species/Species
+
+# %%
+_ = binary_curves_plot('driams-a', 'species', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4)
+
+# %%
+_ = nn_accuracy_plot('driams-a', 'species', 'species', within_test=True, n_jobs=12, num_samples_per_k=5)
+
+# %%
+_ = nn_accuracy_plot('driams-a', 'species', 'species', within_test=True, n_jobs=16, num_samples_per_k=5, average='micro')
+
+# %%
+_ = nn_accuracy_plot('driams-a', 'genera', 'species_even', within_test=True, n_jobs=16, num_samples_per_k=5, average='macro')
+
+# %%
+_ = binary_curves_plot('driams-a', 'genera', 'species_even', test_only=True, max_pairs=1_000_000, n_jobs=4)
 
 # %% [markdown]
 # ## IDBac Plots
 
 # %%
-# Get embeddings for the idbac dataset with cosine
-t = gather_embeddings('IDBac-kb', 'genera', 'species')['cosine']
+plot_nn_accuracy_vs_train_taxa_size(
+    dataset='IDBac-kb',
+    target='genera',
+    split_type='species',
+    n_jobs=12,
+    within_test=False
+)
 
 # %%
-for i in range(5):
-    print(t['test'][i].true_label.value_counts())
+_ = top_k_recall_plot('IDBac-kb', 'genera', 'species', within_test=False, n_jobs=6, macro=False)
+_ = top_k_recall_plot('IDBac-kb', 'genera', 'species', within_test=False, n_jobs=6, macro=True)
 
 # %%
-_ = nn_accuracy_plot('IDBac-kb', 'genera', 'species', within_test=True, n_jobs=6)
+_ = nn_accuracy_plot('IDBac-kb', 'genera', 'species', within_test=False, n_jobs=6, num_samples_per_k=5, average='micro')
+_ = nn_accuracy_plot('IDBac-kb', 'genera', 'species', within_test=True, n_jobs=6, num_samples_per_k=5, average='micro')
+
+# %%
+_ = nn_accuracy_plot('IDBac-kb', 'genera', 'species', within_test=False, n_jobs=6, num_samples_per_k=5, average='macro')
+_ = nn_accuracy_plot('IDBac-kb', 'genera', 'species', within_test=True, n_jobs=6, num_samples_per_k=5, average='macro')
+
+# %%
+_ = nn_accuracy_plot('IDBac-kb', 'genera', 'species', within_test=True, n_jobs=1, num_samples_per_k=5, average='macro', require_cross_species=True)
 
 # %%
 _ = binary_curves_plot('IDBac-kb', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4)
 # _ = binary_curves_plot('IDBac-kb', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=4) # TODO
+
+# %%
+_ = top_k_precision_plot('IDBac-kb', 'genera', 'species', within_test=False, n_jobs=6, average='micro')
+_ = top_k_precision_plot('IDBac-kb', 'genera', 'species', within_test=False, n_jobs=6, average='macro')
+
+# %% [markdown]
+# ## End official IDBac Plots
 
 # %%
 _ = train_test_precision_plot('idbac-kb', 'genera', 'species')
