@@ -85,14 +85,18 @@ def split_by_species(metadata, k, min_group_size):
 
 def split_by_species_even(metadata, k, min_group_size):
     fold_indices = {i: {'train': [], 'val': [], 'test': []} for i in range(k)}
-    groups = metadata.groupby("species_even")
+    # Make accessions unique
+    metadata = metadata.drop_duplicates(subset='accession')
+
+    groups = metadata.groupby("species")
 
     small_groups = set()
+    small_accessions = set()
     for name, group in groups:
         if len(group) <= max(min_group_size, k):
             small_groups.add(name)
             for i in range(k):
-                fold_indices[i]['train'].extend(group['accession'].tolist())
+                small_accessions.update(group['accession'].tolist())
 
     groups = {name: group for name, group in groups if name not in small_groups}
     logging.info(f"Removed {len(small_groups)} small groups from {len(groups) + len(small_groups)} total groups.")
@@ -102,20 +106,36 @@ def split_by_species_even(metadata, k, min_group_size):
     np.random.shuffle(shuffled_groups)
     fold_groups = [[] for _ in range(k)]
     for i, group_name in enumerate(shuffled_groups):
-        fold_groups[i % k].append(group_name)
+        # Split each group evenly across folds
+        group = groups[group_name]
+        group_members = group['accession'].tolist()
+        np.random.shuffle(group_members)
+        for j, member in enumerate(group_members):
+            fold_groups[j % k].append(member)
 
+    # Generate folds
     for i in range(k):
-        val_groups = fold_groups[i]
-        test_groups = fold_groups[(i + 1) % k]
-        train_groups = [g for j in range(k) if j not in {i, (i + 1) % k} for g in fold_groups[j]]
-
-        val_accessions = metadata[metadata["species_even"].isin(val_groups)]['accession'].tolist()
-        test_accessions = metadata[metadata["species_even"].isin(test_groups)]['accession'].tolist()
-        train_accessions = metadata[metadata["species_even"].isin(train_groups)]['accession'].tolist()
+        val_accessions = fold_groups[i]
+        test_accessions = fold_groups[(i + 1) % k]
+        train_accessions = [acc for j in range(k) if j not in {i, (i + 1) % k} for acc in fold_groups[j]]
 
         fold_indices[i]['val'] = np.array(val_accessions, dtype=str)
         fold_indices[i]['test'] = np.array(test_accessions, dtype=str)
         fold_indices[i]['train'] = np.array(train_accessions, dtype=str)
+        # Add small groups to train
+        fold_indices[i]['train'] = np.concatenate((fold_indices[i]['train'], list(small_accessions)), axis=0)
+
+        # Ensure all folds have unique accessions
+        print(set(fold_indices[i]['train']) & set(fold_indices[i]['val']))
+        assert len(set(fold_indices[i]['train']) & set(fold_indices[i]['val'])) == 0, "Train and Val folds overlap."
+        assert len(set(fold_indices[i]['train']) & set(fold_indices[i]['test'])) == 0, "Train and Test folds overlap."
+        assert len(set(fold_indices[i]['val']) & set(fold_indices[i]['test'])) == 0, "Val and Test folds overlap."
+    
+    # Convert to numpy arrays
+    for i in range(k):
+        fold_indices[i]['val'] = np.array(fold_indices[i]['val'], dtype=str)
+        fold_indices[i]['test'] = np.array(fold_indices[i]['test'], dtype=str)
+        fold_indices[i]['train'] = np.array(fold_indices[i]['train'], dtype=str)
 
     return fold_indices
 
@@ -137,9 +157,6 @@ def main():
     parser.add_argument("-k", type=int, help="Number of folds for k-fold cross-validation.", default=7)
     parser.add_argument("--min_group_size", type=int, help="Minimum group size for splitting.", default=5)
     args = parser.parse_args()
-
-    if args.split_style == "species_even":
-        raise NotImplementedError("species_even split style is not implemented yet.")
 
     # Set up logging
     logging.basicConfig(level=logging.INFO)
