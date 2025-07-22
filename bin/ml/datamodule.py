@@ -130,6 +130,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
                  targets:str='genera',
                  k:int=None,
                  num_turns:int=1,
+                 balance='accession',
     ):
         """"
         
@@ -145,6 +146,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
         self.targets = targets
         self.k_fold_split = k
         self.num_turns = num_turns
+        self.balance = balance
         if not self.targets in ['genera', 'species']:
             raise ValueError(f"Expected targets to be 'genera' or 'species', but got {self.targets}")
 
@@ -167,6 +169,8 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
             train_accessions_path = accessions_path / f'train_fold_{k}.pt'
             val_accessions_path = accessions_path / f'val_fold_{k}.pt'
             test_accessions_path = accessions_path / f'test_fold_{k}.pt'
+        else:
+            print(f"Using standard split method: {self.split_method}")
 
         if train_accessions_path:
             if wipe_test_sets:
@@ -198,7 +202,9 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
                                                 transform=self.transform,
                                                 cast_to_classification=self.cast_to_classification,
                                                 targets=self.targets,
-                                                num_turns=self.num_turns
+                                                num_turns=self.num_turns,
+                                                n_workers=self.num_workers,
+                                                balance=self.balance,
                                                 )
         if stage == 'fit':
             # self.train_set, self.val_set = random_split(

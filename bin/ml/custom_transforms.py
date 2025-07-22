@@ -135,6 +135,43 @@ class NormalizeIntensity(object):
 
         raise ValueError(f"Expected a 1D or 2D tensor with m/z and intensity values. Got shape {spectrum.shape}")
 
+class L1NormalizeIntensity(object):
+    """Normalizes intensity values along a specified dimension using the L1 norm,
+    while preserving other dimensions such as m/z.
+    
+    Args:
+        dim (int): The dimension to normalize (default is -1, the last dimension).
+        
+    Returns:
+        torch.Tensor: The tensor with normalized intensities along the specified dimension.
+    """
+    
+    def __init__(self):
+        pass
+
+    def __call__(self, spectrum: torch.Tensor) -> torch.Tensor:
+        if spectrum.ndim == 1:
+            if torch.sum(spectrum) == 0:
+                return spectrum
+
+            norm = torch.norm(spectrum, p=1)
+            spectrum = spectrum / norm
+            return spectrum
+
+        if spectrum.ndim == 2:
+            if torch.sum(spectrum[:, 1]) == 0:
+                return spectrum
+                raise ValueError(f"Expected a 2D tensor with at least two columns (m/z and intensity). Got shape {spectrum.shape}")
+
+            if spectrum.shape[1] != 2:
+                raise ValueError(f"Expected a 2D tensor with m/z and intensity values. Got shape {spectrum.shape}")
+
+            norm = torch.norm(spectrum[:, 1], p=1)
+            spectrum[:, 1] = spectrum[:, 1] / norm
+            return spectrum
+
+        raise ValueError(f"Expected a 1D or 2D tensor with m/z and intensity values. Got shape {spectrum.shape}")   
+
 class BinarizeIntensity(object):
     """Binarizes the intensity values of the spectrum. If the intensity is greater than threshold, it is set to 1; otherwise, set it to 0.
     

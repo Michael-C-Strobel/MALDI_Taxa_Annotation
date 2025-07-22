@@ -27,6 +27,7 @@ from models.CLIP_MALDI import CLIP_MALDI
 from models.CLIP_MALDI_classifier import CLIP_MALDI_Classifier
 from models.prototypical_transformer import PrototyicalTransformer
 from models.logistic_regression_classifier import MultinomialLogisticClassifier
+from models.MaldiTransformer.MaldiTransformerWrapper import MaldiTransformerWrapper
 
 from datamodule import SingleSpectrum_DataModule
 from tqdm import tqdm
@@ -37,6 +38,7 @@ IMPLEMENTED_MODELS = {'Prototyical_Transformer',    # TODO: Spell it right once 
                       'CLIP_Transformer',
                       'cosine_1', 'cosine_3', 'cosine_5', 'cosine_7', 'cosine_10',
                       'BinaryTransformerPredictionHead',
+                      'MaldiTransformerWrapper',
                       }
 
 # Models that only predict in a paired setting
@@ -141,7 +143,15 @@ def setup_model(model_name: str,
                                         SquareRootTransform(),
                                         NormalizeIntensity(),
                                     ])
+    elif model_name == "MaldiTransformerWrapper":
+        model = MaldiTransformerWrapper.load_from_checkpoint(checkpoint_path=checkpoint_path)
 
+        trans = transforms.Compose([
+            SquareRootTransform(),
+            SelectTopKPeaks(150),
+            NormalizeIntensity(),
+            PadToLength(150, padding_value=-1.0),
+        ])
 
     else:
         raise ValueError(f"Model {model_name} not implemented, please check the model name")

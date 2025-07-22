@@ -12,7 +12,7 @@ conda activate ./ml_maldi_nn_conda_env/
 current_dir=$(pwd)
 
 cd bin/ml
-PYTHON_SCRIPT="hparam_opt.py"
+PYTHON_SCRIPT="train.py"
 
 
 # Params
@@ -39,7 +39,8 @@ python "$PYTHON_SCRIPT" \
   --batch_size "$BATCH_SIZE" \
   --n_epochs "$N_EPOCHS" \
   --target "$TARGET" \
-  --split_method "$SPLIT_METHOD"
+  --split_method "$SPLIT_METHOD" \
+  -k 0 
 
 # Display a message when the script finishes
 echo "Optuna hyperparameter tuning finished."

@@ -74,8 +74,12 @@ def generate_metadata_file(input_paths:List[Path], output_file:Path)->None:
     for input_path in input_paths:
         if metadata is None:
             metadata = pd.read_csv(input_path)
+            # Add the original file path as a column
+            metadata['file_path'] = input_path.as_posix()
         else:
-            metadata = pd.concat([metadata, pd.read_csv(input_path)])
+            _new_data = pd.read_csv(input_path)
+            _new_data['file_path'] = input_path.as_posix()
+            metadata = pd.concat([metadata, _new_data])
 
     # Create required columns
     metadata['Strain name'] = metadata['code']
@@ -86,6 +90,9 @@ def generate_metadata_file(input_paths:List[Path], output_file:Path)->None:
     metadata = metadata.loc[~ metadata['species'].str.lower().str.contains('mix!')]
 
     metadata = enrich_with_ncbi_taxonomy(metadata)
+
+    # Some sanity checks
+    # assert "2c6d74a0-068f-4b62-876b-c09e6ec283a3_MALDI1" in metadata['code'].values, "Expected strain '2c6d74a0-068f-4b62-876b-c09e6ec283a3_MALDI1' not found in metadata."
 
     metadata.to_csv(output_file, index=False)
 

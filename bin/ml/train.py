@@ -61,6 +61,8 @@ class DelayedCheckpoint(ModelCheckpoint):
 def get_path_info(dataset: str, args: argparse.Namespace) -> Union[str, str, str, str]:
     """Returns the paths for the dataset and logs based on the dataset name."""
     if dataset == 'idbac':
+        if args.maldi_nn_preprocessing:
+            raise ValueError("maldi_nn_preprocessing is not supported for IDBac dataset.")
         SPECTRA_PATH = '../../data/idbac_db/preprocessing'
         METADATA_PATH = '../../data/idbac_db/raw/ammended_db.csv'
         ML_PROCESSING_PATH = '../../data/idbac_db/processed_data'
@@ -68,8 +70,11 @@ def get_path_info(dataset: str, args: argparse.Namespace) -> Union[str, str, str
             log_dir = os.path.join('./lightning_logs_idbac_for_score', f'{args.target}/{args.split_method}') # /{args.model_type}?
         else:
             log_dir=  os.path.join('./lightning_logs_idbac_optuna', f'{args.target}/{args.split_method}') # /{args.model_type}?
-    elif dataset == 'driams':
+    elif dataset == 'driams':            
         SPECTRA_PATH = '../../data/driams/preprocessing'
+        if args.maldi_nn_preprocessing:
+            print("**Using MALDI-Transformer preprocessing for DRIAMS dataset.**")
+            SPECTRA_PATH = '../../data/driams/processed_data/MaldiTransformer/spectra'
         METADATA_PATH = '../../data/driams/preprocessing/merged_metadata.csv'
         if args.split_method == 'species_even':
             METADATA_PATH = '../../data/driams/preprocessing/merged_metadata_code_accessions.csv'
@@ -413,7 +418,7 @@ def initialize_model(SPECTRA_PATH: str,
             split_method=args.split_method,
             targets=args.target,
             k=args.k,
-            prefer_hard=True
+            prefer_hard=True,
         )
         datamodule.setup('fit')
         logger_name = f'CLIP_Transformer'
@@ -469,7 +474,8 @@ def initialize_model(SPECTRA_PATH: str,
 
         datamodule.setup('fit')
         logger_name = f'Transformer_MulitLoss'
-    elif args.model_type == "MaldiTransformerWrapper":
+    elif args.model_type == "MaldiTransformerWrapper" or \
+            args.model_type == "MaldiTransformerWrapperMethodData":
         modeltype = MaldiTransformerWrapper
 
         if args.target == 'genera' and 'idbac' in SPECTRA_PATH:
@@ -494,13 +500,13 @@ def initialize_model(SPECTRA_PATH: str,
             "dropout": 0.2,
             "p": 0.15,                  # depends on model size
             "clf": True,
-            "clf_train_p": 0.01,        # depends on model size
+            "clf_train_p": 1 / 100,        # depends on model size
             "lmbda": 1.0,               # depends on model size
             "lr": 0.0005,               # depends on model size
             "weight_decay": 0,
             "lr_decay_factor": 1,
             "warmup_steps": 2500,
-            "proportional": False,      # depends on model size
+            "proportional": False,      # Disabled by default
         }
         
         spectrum_embedder_size =  "M"   # "S", "M", "L", "XL", "M" metrics are reported in manuscript
@@ -513,14 +519,14 @@ def initialize_model(SPECTRA_PATH: str,
         trainer_args = {
             'gradient_clip_val': 1.0,
             'precision': "bf16-mixed",
-
+            'val_check_interval': 5_000,
+            'check_val_every_n_epoch': None
         }
 
         trans = transforms.Compose([
-                    SquareRootTransform(),
-                    SelectTopKPeaks(150),
-                    NormalizeIntensity(),
-                    PadToLength(150, padding_value=-1.0),
+                    L1NormalizeIntensity(),
+                    SelectTopKPeaks(200),
+                    PadToLength(200, padding_value=-1.0),
                 ])
 
         datamodule = SingleSpectrum_DataModule(
@@ -533,11 +539,15 @@ def initialize_model(SPECTRA_PATH: str,
             targets=args.target,
             batch_size=args.batch_size,
             cast_to_classification=True,
-            num_turns=292, # Based on DRIAMS-A CV Fold 0: # spectra in train / # unique accessions = 16096/55
+            k=args.k,  # k-fold
+            balance='strain',
         )
         datamodule.setup('fit')
 
         logger_name = 'MaldiTransformerWrapper'
+        if args.model_type == "MaldiTransformerWrapperMethodData":
+            logger_name = 'MaldiTransformerWrapperMethodData'
+            assert args.maldi_nn_preprocessing, "maldi_nn_preprocessing must be True for MaldiTransformerWrapperMethodData"
     elif args.model_type == 'BinaryTransformerPredictionHead':
         trial_hyperparameters.update(clip_common_params)
         if not args.train_for_score:
@@ -689,6 +699,7 @@ def train_for_score(args: argparse.Namespace, hparam_path: str) -> None:
 
     trainer = Trainer(
         max_epochs=args.n_epochs,
+        max_steps=args.n_steps,
         log_every_n_steps=1,
         logger=logger,
         devices=[0],
@@ -741,7 +752,13 @@ def main():
         "--n_epochs",
         type=int,
         default=2000,
-        help="The maximum number of epochs for training each trial.",
+        help="The maximum number of epochs for training each trial. Specify either n_epochs or n_steps (and set n_epochs=-1)",
+    )
+    parser.add_argument(
+        "--n_steps",
+        type=int,
+        default=-1,
+        help="The number of steps to train each trial. If -1, automatically calculated."
     )
     parser.add_argument(
         "--target",
@@ -780,8 +797,16 @@ def main():
         default=None,
         required=False
     )
+    parser.add_argument(
+        "--maldi_nn_preprocessing",
+        help="Use MALDI-Transformer preprocessing for DRIAMS dataset.",
+        action='store_true',
+    )
 
     args = parser.parse_args()
+
+    if args.n_epochs != -1 and args.n_steps:
+        raise ValueError("Cannot specify both n_epochs and n_steps. Use n_epochs=-1 to specify n_steps.")
 
     # Save sqlite of study to log folder
     log_dir = os.path.join(

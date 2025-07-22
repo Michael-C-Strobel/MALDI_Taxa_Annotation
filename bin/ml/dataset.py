@@ -74,7 +74,7 @@ class single_MALDI_TOF_DS(Dataset):
     
 
         balance = str(balance).lower()
-        if balance not in ['accession', 'genus', 'species']:
+        if balance not in ['accession', 'strain']:
             raise ValueError(f"Invalid balance method. Expected one of ['accession', 'class'], got '{balance}'")
         if balance == 'class':
             raise NotImplementedError("Class balancing not yet implemented")
@@ -93,6 +93,10 @@ class single_MALDI_TOF_DS(Dataset):
 
         metadata_table = pd.read_csv(metadata_table)
         metadata_table.dropna(subset=[self.target_col], inplace=True)
+
+        ### DEBUG REMOVE ANY SPECIES THAT OCCURS LESS THAN 5 TIMES
+        # print("************************* DEBUG: Removing species that occur less than 5 times *************************")
+        # metadata_table = metadata_table[metadata_table['species'].map(metadata_table['species'].value_counts()) >= 5]
 
         if self.cast_to_classification:
             # Sort unique values in 'genus' column, annotate with number
@@ -170,10 +174,12 @@ class single_MALDI_TOF_DS(Dataset):
             self.preprocess()
 
         self.all_accessions = self.metadata_table.loc[self.metadata_table['accession'].str.lower() != 'nan', 'accession'].unique().astype(str)
+        self.all_strain_names = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions), 'Strain name'].unique().astype(str)
         print(f"Found a total of {len(self.all_accessions)} accessions in the metadata table")
         if (not self.singletons_as_anchors) and self.nce:
             # Remove accessions with only one strain
             self.all_accessions = [x for x in self.all_accessions if self.metadata_table[self.metadata_table['accession'] == x]['Strain name'].nunique() > 1]
+            self.all_strain_names = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions), 'Strain name'].unique().astype(str)
             print("Removing singletons from accessions")
             print("New number of accessions", len(self.all_accessions))
         
@@ -190,18 +196,10 @@ class single_MALDI_TOF_DS(Dataset):
         self.n_classes = len(self.metadata_table[self.target_col].unique())
 
         print("Prefetching accession to genus")
-        self.accession_to_genus = {}
-        for accession in tqdm(self.all_accessions):
-            # Get the class for this accession
-            _class = self.metadata_table[self.metadata_table['accession'] == accession][self.target_col].values[0]
-            self.accession_to_genus[accession] = _class
+        self.accession_to_genus = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)].set_index('accession')['genus'].to_dict()
 
         print("Prefetching accession to species")
-        self.accession_to_species = {}
-        for accession in tqdm(self.all_accessions):
-            # Get the class for this accession
-            _class = self.metadata_table[self.metadata_table['accession'] == accession]['species'].values[0]
-            self.accession_to_species[accession] = _class
+        self.accession_to_species = self.metadata_table.loc[self.metadata_table['accession'].isin(self.all_accessions)].set_index('accession')['species'].to_dict()
 
         print("Prefetching accession to class")
         if self.target_col == 'genus':
@@ -212,12 +210,18 @@ class single_MALDI_TOF_DS(Dataset):
             raise ValueError(f"Invalid target column: {self.target_col}")
 
         print("Prefetching accession to strain")
-        self.accession_to_strain_names = {}
-        for accession in tqdm(self.metadata_table['accession'].unique()):
-            # Get the class for this accession
-            rows = self.metadata_table[self.metadata_table['accession'] == accession]['Strain name'].values
-            self.accession_to_strain_names[accession] = rows
-        
+        # self.accession_to_strain_names = {}
+        # for accession in tqdm(self.metadata_table['accession'].unique()):
+        #     # Get the class for this accession
+        #     rows = self.metadata_table[self.metadata_table['accession'] == accession]['Strain name'].values
+        #     self.accession_to_strain_names[accession] = rows
+        self.accession_to_strain_names = (
+            self.metadata_table
+            .groupby('accession')['Strain name']
+            .apply(lambda x: np.array(x.values))
+            .to_dict()
+        )
+
         print("Prefetching strain name to metadata")
         assert self.metadata_table['Strain name'].is_unique, "Strain names are not unique"
         _metadata_table = self.metadata_table.copy()
@@ -278,16 +282,28 @@ class single_MALDI_TOF_DS(Dataset):
         return self.strain_name_to_metadata[sampled_row]
     
     def __len__(self):
-        return len(self.all_accessions) * self.num_turns
+        if self.balance == 'accession':
+            return len(self.all_accessions) * self.num_turns
+        elif self.balance == 'strain':
+            # Count unique strains
+            return len(self.all_strain_names) * self.num_turns
+        else:
+            raise ValueError(f"Invalid balance method: {self.balance}. Expected one of ['accession', 'strain']")
 
     def __getitem__(self, idx):
         # For DRIAMS, use the species name as the accession
         # strain_name will be the hash
-        accession = self.all_accessions[idx % len(self.all_accessions)]
-        sampled_row = self.sample_strain_from_accession(accession)
-        strain_name = sampled_row['Strain name']
-        database_id = sampled_row['database_id']
-        
+        if self.balance == 'accession':
+            accession = self.all_accessions[idx % len(self.all_accessions)]
+            sampled_row = self.sample_strain_from_accession(accession)
+            strain_name = sampled_row['Strain name']
+            database_id = sampled_row['database_id']
+        elif self.balance == 'strain':
+            strain_name = self.all_strain_names[idx % len(self.all_strain_names)]
+            mdata = self.strain_name_to_metadata[strain_name]
+            accession = mdata['accession']
+            database_id = mdata['database_id']
+            
         if self.in_memory:
             # They're already transformed
             spectrum = self.spectra[strain_name]
@@ -638,14 +654,18 @@ class single_MALDI_TOF_DS(Dataset):
     
     def subset(self, accessions:List):
         #  Make a copy, in this way the sliced similarities can be used to identify the subset
-        indices = [i for i, x in enumerate(self.all_accessions) if x in accessions]
+        if self.balance == 'accession':
+            indices = [i for i, x in enumerate(self.all_accessions) if x in accessions]
+        else:
+            strain_name_to_accession = self.metadata_table.set_index('Strain name')['accession'].to_dict()
+            indices = [i for i, x in enumerate(self.all_strain_names) if strain_name_to_accession.get(x) in accessions]
         subset_dataset = copy.deepcopy(self)
 
         relevant_accessions = [x for x in self.all_accessions if x in accessions]
 
         print("Debug: only incluiding accessions in subset that actually exist")
         print("Original accessions", len(accessions))
-        print("Missing accessions", set(accessions) - set(self.all_accessions))
+        print("Accessions in splits but not found in training data", len(set(accessions) - set(self.all_accessions)))
         accessions = np.intersect1d(accessions, self.all_accessions)
         print("New accessions", len(accessions))
 

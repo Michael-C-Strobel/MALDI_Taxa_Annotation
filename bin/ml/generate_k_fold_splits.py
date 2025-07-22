@@ -10,6 +10,7 @@ def split_by_genera(metadata, k, min_group_size):
     fold_indices = {i: {'train': [], 'val': [], 'test': []} for i in range(k)}
     groups = metadata.groupby("genus")
 
+    # Filter out small groups and add to every train fold
     small_groups = set()
     for name, group in groups:
         if len(group) <= max(min_group_size, k):
@@ -17,6 +18,7 @@ def split_by_genera(metadata, k, min_group_size):
             for i in range(k):
                 fold_indices[i]['train'].extend(group['accession'].tolist())
 
+    # Split the remaining groups among folds
     groups = {name: group for name, group in groups if name not in small_groups}
     logging.info(f"Removed {len(small_groups)} small groups from {len(groups) + len(small_groups)} total groups.")
     assert len(groups) > 0, "All groups are small, no folds can be generated."
@@ -27,6 +29,7 @@ def split_by_genera(metadata, k, min_group_size):
     for i, group_name in enumerate(shuffled_groups):
         fold_groups[i % k].append(group_name)
 
+    # Generate folds
     for i in range(k):
         val_groups = fold_groups[i]
         test_groups = fold_groups[(i + 1) % k]
@@ -47,21 +50,31 @@ def split_by_species(metadata, k, min_group_size):
     fold_indices = {i: {'train': [], 'val': [], 'test': []} for i in range(k)}
     genus_groups = metadata.groupby("genus")
 
+    small_species_for_all_train = set()
+
     for genus, genus_df in genus_groups:
         species_groups = genus_df.groupby("species")
 
+        # Identify large species
         large_species = [name for name, grp in species_groups if len(grp) > max(min_group_size, k)]
+        # If we have fewer species than folds, assign all accessions to train
         if len(large_species) < k:
             for i in range(k):
                 fold_indices[i]['train'].extend(genus_df['accession'].tolist())
             continue
 
+        # Identify small species
+        small_species = [name for name, grp in species_groups if len(grp) <= max(min_group_size, k)]
+        small_species_for_all_train.update(small_species)
+
+        # Shuffle species and distribute them across folds
         shuffled_species = large_species.copy()
         np.random.shuffle(shuffled_species)
         fold_species = [[] for _ in range(k)]
         for i, sp in enumerate(shuffled_species):
             fold_species[i % k].append(sp)
 
+        # Generate folds
         for i in range(k):
             val_species = fold_species[i]
             test_species = fold_species[(i + 1) % k]
@@ -79,6 +92,21 @@ def split_by_species(metadata, k, min_group_size):
         fold_indices[i]['val'] = np.array(fold_indices[i]['val'], dtype=str)
         fold_indices[i]['test'] = np.array(fold_indices[i]['test'], dtype=str)
         fold_indices[i]['train'] = np.array(fold_indices[i]['train'], dtype=str)
+        # Add small species to train
+        fold_indices[i]['train'] = np.concatenate((fold_indices[i]['train'], list(small_species_for_all_train)), axis=0)    
+
+    # Assert no train-val-test overlap
+    for i in range(k):
+        assert len(set(fold_indices[i]['train']) & set(fold_indices[i]['val'])) == 0, "Train and Val folds overlap."
+        assert len(set(fold_indices[i]['train']) & set(fold_indices[i]['test'])) == 0, "Train and Test folds overlap."
+        assert len(set(fold_indices[i]['val']) & set(fold_indices[i]['test'])) == 0, "Val and Test folds overlap."
+
+    # Assert no repeat accessions in test folds 
+    for i in range(k):
+        test_accessions = fold_indices[i]['test']
+        for j in range(k):
+            if i != j:
+                assert len(set(test_accessions) & set(fold_indices[j]['test'])) == 0, f"Test folds {i} and {j} overlap."
 
     return fold_indices
 

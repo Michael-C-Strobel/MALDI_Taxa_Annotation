@@ -25,6 +25,8 @@ def main():
     dataset = h5torch.Dataset(str(input_h5torch_path))
 
     for x in tqdm(dataset):
+        id = Path(str(x["0/loc"])).stem
+
         mz_array = torch.tensor(x["0/mz"])
         intensity_array = torch.tensor(x["0/intensity"])
         assert len(mz_array) == len(intensity_array), "Length of mz and intensity arrays must match."
@@ -33,7 +35,6 @@ def main():
             continue
 
         stacked_array = torch.stack((mz_array, intensity_array), dim=-1)
-        id = Path(str(x["0/loc"])).stem
 
         torch.save(stacked_array, output_pt_dir / f"{id}.pt")
 

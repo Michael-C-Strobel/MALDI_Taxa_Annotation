@@ -74,6 +74,8 @@ class MaldiTransformerWrapper(MaldiTransformer):
         #     num_classes=n_classes, top_k=5, average="micro"
         # )
 
+        print(f"Got learning rate {lr} and weight decay {weight_decay}")
+
     def forward(self, batch):
         z = self.transformer(batch)
         mlm_logits = self.output_head(z[:, 1:]).squeeze(-1)
@@ -88,8 +90,8 @@ class MaldiTransformerWrapper(MaldiTransformer):
         
         # Create a MaldiTransformer-Like Batch (slow in model but effective)
         _batch = dict()
-        _batch["intensity"] = mz.to(self.dtype)
-        _batch["mz"]        = intensity.to(self.dtype)
+        _batch["intensity"] = intensity.to(self.dtype)
+        _batch["mz"]        = mz.to(self.dtype)
         _batch["loc"]       = None                  # Other metadata
         _batch["species"]   = y                     # Species labels (probably integers?)
         batch = _batch
@@ -116,6 +118,25 @@ class MaldiTransformerWrapper(MaldiTransformer):
             on_step=True,   # Enable per step logging (different from original)
             on_epoch=True,  # Enable per epoch logging
         )
+
+        # Log each component of the loss seperately
+        self.log(
+            "train_mlm_loss",
+            mlm_loss,
+            batch_size=len(mlm_logits_train),
+            on_step=True,   # Enable per step logging (different from original)
+            on_epoch=True,
+            sync_dist=True,
+        )
+        self.log(
+            "train_clf_loss",
+            clf_loss,
+            batch_size=indexer.sum(),
+            on_step=True,   # Enable per step logging (different from original)
+            on_epoch=True,
+            sync_dist=True,
+        )
+
         return mlm_loss + clf_loss * (
             self.lmbda
             if ((torch.rand(1) < self.clf_train_p).item() and self.clf)
@@ -129,8 +150,8 @@ class MaldiTransformerWrapper(MaldiTransformer):
         
         # Create a MaldiTransformer-Like Batch (slow in model but effective)
         _batch = dict()
-        _batch["intensity"] = mz.to(self.dtype)
-        _batch["mz"]        = intensity.to(self.dtype)
+        _batch["intensity"] = intensity.to(self.dtype)
+        _batch["mz"]        = mz.to(self.dtype)
         _batch["loc"]       = None                  # Other metadata
         _batch["species"]   = y                     # Species labels (probably integers?)
         batch = _batch
@@ -242,6 +263,31 @@ class MaldiTransformerWrapper(MaldiTransformer):
                 logits_train,
                 trues_train,
             )
+
+    def embed_step(self, batch):
+        inputs = batch[0]
+
+        if len(inputs.shape) == 2:
+            # Add a batch dimension ( S, B, F)
+            inputs = inputs.unsqueeze(0)
+
+        # Run the model in inference mode
+        self.eval() 
+        with torch.no_grad():
+            mz = inputs[:, :, 0].to(self.dtype)
+            intensity = inputs[:, :, 1].to(self.dtype)
+
+            # Create a MaldiTransformer-Like Batch (slow in model but effective)
+            _batch = dict()
+            _batch["intensity"] = mz
+            _batch["mz"] = intensity
+            _batch["loc"] = None
+            _batch["species"] = None  # No species labels needed for embedding
+            batch = _batch
+
+            mlm_logits, clf_logits = self(batch)
+
+        return clf_logits.squeeze()
 
     def modified_shuffler(self, batch):
         """Implementation of the same shuffler, that avoids nan values (padding tokens)"""

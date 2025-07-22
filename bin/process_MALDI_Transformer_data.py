@@ -11,6 +11,7 @@ import h5torch
 import h5py
 from importlib.resources import files
 import logging
+from glob import glob
 
 
 def DRIAMS_raw_spectra_to_h5torch(DRIAMS_ROOT, outfile):
@@ -20,7 +21,9 @@ def DRIAMS_raw_spectra_to_h5torch(DRIAMS_ROOT, outfile):
     print("(1) gathering all spectra files ...")
     ids = []
     for ix, (root, dirs, files_) in enumerate(os.walk(DRIAMS_ROOT, followlinks=True)):  # MODIFIED (follow symlinks)
-        if "raw" in root:
+        relative_to_driams_root = root.replace(str(DRIAMS_ROOT), "").lstrip("/")
+        
+        if "raw" in relative_to_driams_root:    # MODIFIED (ignore "raw" in higher directories)
             for f in files_:  # walk through all raw files
                 if f.endswith(".txt"):
                     k = root + "/" + f
@@ -103,7 +106,7 @@ def DRIAMS_raw_spectra_to_h5torch(DRIAMS_ROOT, outfile):
 
     f = h5torch.File(outfile, "w")
 
-    f.register(species, "central")
+    f.register(species, "central")  # Note to self: species is central
     f.register(loc, 0, name="loc")
     f.register(species_labels, "unstructured", name="species_labels")
     f.register(spectrum_split.astype(bytes), "unstructured", name="split")
@@ -149,7 +152,7 @@ def DRIAMS_raw_spectra_to_h5torch(DRIAMS_ROOT, outfile):
 def process_data(input_raw_path, output_dir):
     # Convert raw spectra to h5torch format
     logging.info("Converting raw spectra to h5torch format...")
-    # DRIAMS_raw_spectra_to_h5torch(input_raw_path, output_dir / "raw_spectra.h5torch")
+    DRIAMS_raw_spectra_to_h5torch(input_raw_path, output_dir / "raw_spectra.h5torch")
 
     # Convert raw data to peaks
     logging.info("Converting raw spectra to peaks...")

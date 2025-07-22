@@ -12,7 +12,7 @@ conda activate ./ml_maldi_nn_conda_env/
 current_dir=$(pwd)
 
 cd bin/ml
-PYTHON_SCRIPT="hparam_opt.py"
+PYTHON_SCRIPT="train.py"
 
 
 # Params
