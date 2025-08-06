@@ -75,7 +75,9 @@ class SimpleSelfAttention(nn.Module):
         self.prepend_cls = prepend_cls
         self.no_attn_mask = no_attn_mask
         self.concat_pos = concat_pos
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, dim))
+        self.fixed_cls_encoding = True
+        if not self.fixed_cls_encoding
+            self.cls_token = nn.Parameter(torch.zeros(1, 1, dim))
 
         _dim = dim
         if self.concat_pos:
@@ -101,8 +103,10 @@ class SimpleSelfAttention(nn.Module):
         self.output_head = nn.Linear(_dim, output_head_dim)
 
     def forward(self, spectrum):
+        # Spectrum (B x L x 2) where last dimension is [mz, intensity]
         cls_appended = False
-        if self.reduce == 'cls' or self.prepend_cls is not None:
+
+        if (self.reduce == 'cls' or self.prepend_cls is not None) and (self.fixed_cls_encoding):
             # Prepend a CLS token
             # assert cls_token_val.item() != self.padding_value, "CLS token value is the same as padding value"
             # cls_token_val = torch.tensor([-2], device=spectrum.device)
@@ -134,9 +138,19 @@ class SimpleSelfAttention(nn.Module):
         if padding is not None:
             if torch.isnan(z)[~padding].any():
                 raise ValueError("Nan values in z that aren't in padding")
+            
         z = self.positional_encoding(z, pos=spectrum[:,:,0])    # Use m/z values as positions
         if self.concat_pos:
             z = self.proj(z)    # Reduce dim by half
+
+        if (self.prepend_cls or self.reduce == 'cls') and (not self.fixed_cls_encoding):
+            cls_tokens = self.cls_token.expand(z.shape[0], -1, -1)
+            z = torch.cat([cls_tokens, z], dim=1)  # Prepend CLS token
+
+            if padding is not None:
+                # Add a false padding value for the CLS token
+                cls_padding = torch.zeros((z.shape[0], 1), dtype=torch.bool, device=z.device)
+                padding = torch.cat([cls_padding, padding], dim=1)
 
         if padding is not None:
             if torch.isnan(z)[~padding].any():
