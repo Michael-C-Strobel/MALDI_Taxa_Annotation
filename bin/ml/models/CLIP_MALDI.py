@@ -76,8 +76,11 @@ class SimpleSelfAttention(nn.Module):
         self.no_attn_mask = no_attn_mask
         self.concat_pos = concat_pos
         self.fixed_cls_encoding = True
-        if not self.fixed_cls_encoding
+        if not self.fixed_cls_encoding:
             self.cls_token = nn.Parameter(torch.zeros(1, 1, dim))
+        else:
+            self.cls_token = torch.tensor([-2], device=spectrum.device)
+            assert cls_token_val.item() != self.padding_value, "CLS token value is the same as padding value"
 
         _dim = dim
         if self.concat_pos:
@@ -108,10 +111,7 @@ class SimpleSelfAttention(nn.Module):
 
         if (self.reduce == 'cls' or self.prepend_cls is not None) and (self.fixed_cls_encoding):
             # Prepend a CLS token
-            # assert cls_token_val.item() != self.padding_value, "CLS token value is the same as padding value"
-            # cls_token_val = torch.tensor([-2], device=spectrum.device)
-            # cls_tokens = torch.ones(spectrum.shape[0], 1, spectrum.shape[2], device=spectrum.device) * cls_token_val
-            cls_tokens = self.cls_token.expand(spectrum.shape[0], -1, -1)  # B x 1 x D
+            cls_tokens = torch.ones(spectrum.shape[0], 1, spectrum.shape[2], device=spectrum.device) * cls_token_val
             spectrum = torch.cat([cls_tokens, spectrum], dim=1)
             cls_appended = True
 
