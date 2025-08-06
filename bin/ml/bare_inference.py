@@ -73,13 +73,18 @@ def setup_model(model_name: str,
         model = CLIP_MALDI_Classifier.load_from_checkpoint(checkpoint_path=checkpoint_path)
         if model.hparams.encoder != 'transformer':
             raise ValueError(f"Model {model_name} is not a transformer model.")
-        trans =  transforms.Compose([
-                                SelectMassRange(3_000, 20_000),
-                                SquareRootTransform(),
-                                NormalizeIntensity(),
-                                SelectTopKPeaks(150),
-                                # PadToLength(150, padding_value=-1.0),
-                                ])
+        # trans =  transforms.Compose([
+        #                         SelectMassRange(3_000, 20_000),
+        #                         SquareRootTransform(),
+        #                         NormalizeIntensity(),
+        #                         SelectTopKPeaks(150),
+        #                         # PadToLength(150, padding_value=-1.0),
+        #                         ])
+        trans = transforms.Compose([
+                SelectMassRange(3000, 20000),
+                NormalizeIntensity(),
+                SelectTopKPeaks(150),
+        ])
     elif model_name == 'Multinomial_Logistic_Classifier':
         model = MultinomialLogisticClassifier.load_from_checkpoint(checkpoint_path=checkpoint_path)
         # Calculate bin size based on hparam tuned input_dim

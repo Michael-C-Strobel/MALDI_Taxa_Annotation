@@ -255,11 +255,15 @@ class single_MALDI_TOF_DS(Dataset):
         n_workers = self.n_workers
         if n_workers == -1:
             n_workers = os.cpu_count()
-        chunk_size = max(1, len(strain_names) // (n_workers * 2))
+        if n_workers is None or n_workers < 1:
+            _n_workers = 1
+        else:
+            _n_workers = n_workers
+        chunk_size = max(1, len(strain_names) // (_n_workers * 2))
         strain_name_chunks = [strain_names[i:i + chunk_size] for i in range(0, len(strain_names), chunk_size)]
 
-        results = Parallel(n_jobs=self.n_workers)(
-            delayed(_fetch)(chunk) for chunk in tqdm(strain_name_chunks, desc=f"Loading Spectra into Memory with {self.n_workers} cpus")
+        results = Parallel(n_jobs=_n_workers)(
+            delayed(_fetch)(chunk) for chunk in tqdm(strain_name_chunks, desc=f"Loading Spectra into Memory with {_n_workers} cpus")
         )
         results = [item for sublist in results for item in sublist]
 

@@ -65,7 +65,8 @@ class SimpleSelfAttention(nn.Module):
         output_head_dim=64,
         padding_value=None,
         prepend_cls=False,
-        no_attn_mask=False
+        no_attn_mask=False,
+        concat_pos=False,
     ):
         super().__init__()
 
@@ -73,11 +74,18 @@ class SimpleSelfAttention(nn.Module):
         self.padding_value = padding_value
         self.prepend_cls = prepend_cls
         self.no_attn_mask = no_attn_mask
+        self.concat_pos = concat_pos
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, dim))
+
+        _dim = dim
+        if self.concat_pos:
+            self.proj = nn.Linear(dim*2, dim)
+            # _dim *= 2
 
         # This is particularly unfaithful to the source code
         self.transformer = nn.TransformerEncoder(
             nn.TransformerEncoderLayer(
-                d_model=dim,
+                d_model=_dim,
                 nhead=n_heads,
                 dim_feedforward=dim * 4,
                 dropout=dropout,
@@ -88,17 +96,18 @@ class SimpleSelfAttention(nn.Module):
         )
 
         self.reduce = reduce
-        self.positional_encoding = SinusoidalPositionalEncoding(dim)
+        self.positional_encoding = SinusoidalPositionalEncoding(dim, concat=concat_pos)
 
-        self.output_head = nn.Linear(dim, output_head_dim)
+        self.output_head = nn.Linear(_dim, output_head_dim)
 
     def forward(self, spectrum):
         cls_appended = False
         if self.reduce == 'cls' or self.prepend_cls is not None:
             # Prepend a CLS token
-            cls_token_val = torch.tensor([-2], device=spectrum.device)
-            assert cls_token_val.item() != self.padding_value, "CLS token value is the same as padding value"
-            cls_tokens = torch.ones(spectrum.shape[0], 1, spectrum.shape[2], device=spectrum.device) * cls_token_val
+            # assert cls_token_val.item() != self.padding_value, "CLS token value is the same as padding value"
+            # cls_token_val = torch.tensor([-2], device=spectrum.device)
+            # cls_tokens = torch.ones(spectrum.shape[0], 1, spectrum.shape[2], device=spectrum.device) * cls_token_val
+            cls_tokens = self.cls_token.expand(spectrum.shape[0], -1, -1)  # B x 1 x D
             spectrum = torch.cat([cls_tokens, spectrum], dim=1)
             cls_appended = True
 
@@ -126,6 +135,8 @@ class SimpleSelfAttention(nn.Module):
             if torch.isnan(z)[~padding].any():
                 raise ValueError("Nan values in z that aren't in padding")
         z = self.positional_encoding(z, pos=spectrum[:,:,0])    # Use m/z values as positions
+        if self.concat_pos:
+            z = self.proj(z)    # Reduce dim by half
 
         if padding is not None:
             if torch.isnan(z)[~padding].any():
@@ -165,70 +176,6 @@ class SimpleSelfAttention(nn.Module):
             else:
                 z_org = z
             return z_org, z, padding
-        else:
-            raise ValueError("Invalid reduction method")
-
-    def _apply_reduction(self, z, padding, cls_appended):
-        """ Apply the chosen reduction method while properly handling padding. """
-        if cls_appended:
-            z = z[:, 1:, :]  # Remove CLS token from sequence
-
-        if padding is not None:
-            mask = ~padding.squeeze(-1)  # Convert to True for valid tokens
-
-        if self.reduce == "sum":
-            return self.output_head(z.sum(dim=1)), z, padding
-
-        elif self.reduce == "mean":
-            if padding is not None:
-                valid_counts = mask.sum(dim=1, keepdim=True).clamp(min=1)  # Avoid division by zero
-                return self.output_head((z * mask.unsqueeze(-1)).sum(dim=1) / valid_counts), z, padding
-            return self.output_head(z.mean(dim=1)), z, padding
-
-        elif self.reduce == "max":
-            if padding is not None:
-                z[~mask] = float('-inf')  # Mask out padding before max
-            return self.output_head(z.max(dim=1).values), z, padding
-
-        elif self.reduce == "cls":
-            return self.output_head(z[:, 0, :]), z, padding
-
-        elif self.reduce == "none":
-            return z, z, padding
-
-        else:
-            raise ValueError("Invalid reduction method")
-
-    def _apply_reduction(self, z, padding, cls_appended):
-        """ Apply the chosen reduction method while properly handling padding. """
-        if cls_appended and self.reduce != "cls":
-            z = z[:, 1:, :]  # Remove CLS token from sequence
-            if padding is not None:
-                padding = padding[:, 1:]  # Remove CLS padding mask as well
-
-        if padding is not None:
-            mask = ~padding.squeeze(-1)  # Convert to True for valid tokens, shape [B, L]
-
-        if self.reduce == "sum":
-            return self.output_head(z.sum(dim=1)), z, padding
-
-        elif self.reduce == "mean":
-            if padding is not None:
-                valid_counts = mask.sum(dim=1, keepdim=True).clamp(min=1)  # Avoid division by zero
-                return self.output_head((z * mask.unsqueeze(-1)).sum(dim=1) / valid_counts), z, padding
-            return self.output_head(z.mean(dim=1)), z, padding
-
-        elif self.reduce == "max":
-            if padding is not None:
-                z = z.masked_fill(~mask.unsqueeze(-1), float('-inf'))  # Use masked_fill to avoid shape mismatches
-            return self.output_head(z.max(dim=1).values), z, padding
-
-        elif self.reduce == "cls":
-            return self.output_head(z[:, 0, :]), z, padding
-
-        elif self.reduce == "none":
-            return z, z, padding
-
         else:
             raise ValueError("Invalid reduction method")
 
@@ -402,6 +349,7 @@ class CLIP_MALDI(L.LightningModule):
         self.padding_value = self.hparams.get('padding_value', None)
         self.ss_task = self.hparams.get('ss_task', None)
         self.rcon_head_dim = self.hparams.get('rcon_head_dim', None)
+        self.concat_pos = self.hparams.get('concat_pos', False)
         if self.ss_task == 'recon':
             assert self.rcon_head_dim is None, "Reconstruction head dimension must be specified for reconstruction task"
         else:
@@ -414,7 +362,7 @@ class CLIP_MALDI(L.LightningModule):
         
         if not pretrained_embedder:
             # self.embedder = Embedder(self.input_dim, self.hidden_dim, self.hidden_layers, self.dropout_rate)
-            self.transformer_reduction = 'max'
+            self.transformer_reduction = 'cls'
             self.embedder = SimpleSelfAttention(2,  # depth
                                                 self.hidden_dim,
                                                 n_heads=10,
@@ -422,7 +370,8 @@ class CLIP_MALDI(L.LightningModule):
                                                 output_head_dim=128,
                                                 padding_value=self.padding_value,
                                                 reduce=self.transformer_reduction,
-                                                prepend_cls=True)
+                                                prepend_cls=True,
+                                                concat_pos=self.concat_pos)
             if self.ss_task == 'recon':
                 if self.rcon_head_dim != 1700: 
                     raise NotImplementedError("Reconstruction head dimension must be 1700")

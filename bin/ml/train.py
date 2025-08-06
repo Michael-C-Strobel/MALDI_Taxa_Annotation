@@ -214,6 +214,7 @@ def initialize_model(SPECTRA_PATH: str,
             'ss_task': None,
             'rcon_head_dim': 1700,  # Fixed
             'warmup_steps': 2000,  # Fixed
+            'concat_pos': True,
         }
 
     # If we're training for score, load them and don't change them
@@ -390,21 +391,27 @@ def initialize_model(SPECTRA_PATH: str,
         
         trial_hyperparameters.update(trial_hyperparameters)
         model = CLIP_MALDI(trial_hyperparameters)
-        print("*******************************")
-        print("*******************************")
-        print("*******************************")
-        print("Warning: Binarizing Intensities")
-        print("*******************************")
-        print("*******************************")
-        print("*******************************")
-        time.sleep(5)
+        # print("*******************************")
+        # print("*******************************")
+        # print("*******************************")
+        # print("Warning: Binarizing Intensities")
+        # print("*******************************")
+        # print("*******************************")
+        # print("*******************************")
+        # time.sleep(5)
+        # trans = transforms.Compose([
+        #         SelectMassRange(3000, 20000),
+        #         L1NormalizeIntensity(),
+        #         SelectTopKPeaks(150),
+        #         PadToLength(150, padding_value=-1.0),
+        #     ]
+        # )
         trans = transforms.Compose([
-            SquareRootTransform(),
-            SelectTopKPeaks(150),
-            BinarizeIntensity(),  # *************
-            NormalizeIntensity(),
-            PadToLength(150, padding_value=-1.0),
-        ])
+                SelectMassRange(3000, 20000),
+                NormalizeIntensity(),
+                SelectTopKPeaks(150),
+                PadToLength(150, padding_value=-1.0),
+            ])
         print("*******************************")
         print("Got k = ", args.k)
         print("*******************************")
@@ -805,7 +812,7 @@ def main():
 
     args = parser.parse_args()
 
-    if args.n_epochs != -1 and args.n_steps:
+    if args.n_epochs != -1 and args.n_steps != -1:
         raise ValueError("Cannot specify both n_epochs and n_steps. Use n_epochs=-1 to specify n_steps.")
 
     # Save sqlite of study to log folder
