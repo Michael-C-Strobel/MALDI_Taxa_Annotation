@@ -390,7 +390,25 @@ def initialize_model(SPECTRA_PATH: str,
             trial_hyperparameters = get_trial_hyperparameters(trial, args, trial_hyperparameters)
         
         trial_hyperparameters.update(trial_hyperparameters)
+        if args.pretrained_model_path: trial_hyperparameters['lr'] = 1e-6
+
         model = CLIP_MALDI(trial_hyperparameters)
+        if args.pretrained_model_path:
+            if not os.path.exists(args.pretrained_model_path):
+                raise FileNotFoundError(f"No pretrained model found at {args.pretrained_model_path}")
+            print("Loading pretrained model from:", args.pretrained_model_path)
+            model.load_state_dict(torch.load(args.pretrained_model_path, map_location=model.device)['state_dict'])
+            # Freeze the first half of layers
+            params = list(model.named_parameters())
+            # print(params)
+            num_to_freeze = int(0.75 * len(params))
+            # print('num_to_freeze', num_to_freeze)
+
+            for name, param in params[:num_to_freeze]:
+                param.requires_grad = False
+                print(f"Froze: {name}")
+
+
         # print("*******************************")
         # print("*******************************")
         # print("*******************************")
@@ -808,6 +826,11 @@ def main():
         "--maldi_nn_preprocessing",
         help="Use MALDI-Transformer preprocessing for DRIAMS dataset.",
         action='store_true',
+    )
+    parser.add_argument(
+        "--pretrained_model_path",
+        help="Path to a pretrained model to use for fine-tuning.",
+        type=str,
     )
 
     args = parser.parse_args()

@@ -278,6 +278,47 @@ def get_paired_inference_df(model, datamodule, inference_set: str, target: str) 
     print(embedding_df.head())
     return embedding_df
 
+def generate_onnx_wrapper(model, output_dir: Path, model_name: str) -> None:
+    """
+    Generate an ONNX wrapper for the model.
+    Args:
+        model: The model to wrap.
+        output_dir (Path): The directory to save the ONNX model.
+        model_name (str): The name of the model.
+    """
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True, exist_ok=True)
+    
+    onnx_path = output_dir / f"{model_name}.onnx"
+    
+    # Check if model has get_onnx_embedder_wrapper method
+    if hasattr(model, 'get_onnx_embedder_wrapper'):
+        wrapper = model.get_onnx_embedder_wrapper()
+        if wrapper is None:
+            raise ValueError(f"Model {model_name} does not have an ONNX wrapper")
+        scripted_wrapper = torch.jit.script(wrapper)
+        
+        dummy_input = torch.randn(1, 150, 2).to(model.device)  
+
+        torch.onnx.export(
+            wrapper,
+            dummy_input,
+            onnx_path,
+            export_params=True,
+            opset_version=15,
+            do_constant_folding=True,
+            input_names=['input'],
+            output_names=['output'],
+            dynamic_axes={
+                'input': {0: 'batch_size', 1: 'seq_len'},
+            },
+        )
+        print(f"ONNX model saved to {onnx_path}")
+    else:
+        raise ValueError(f"Model {model_name} does not have an ONNX wrapper method")
+        
+
+
 def main():
     parser = argparse.ArgumentParser(description="General inference script for all models")
     parser.add_argument("--model", type=str, required=True, help="Model name")
@@ -421,6 +462,10 @@ def main():
         k=args.k,
     )
     datamodule.setup('test', paired=paired)
+
+    # Save an onnx wrapper for the model
+    if args.model.split('_')[0] != 'cosine':
+        generate_onnx_wrapper(model, output_dir, args.model)
 
     if paired:
         inferred_df = get_paired_inference_df(model, datamodule, args.inference_set, args.target)
