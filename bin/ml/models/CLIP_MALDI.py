@@ -75,12 +75,14 @@ class SimpleSelfAttention(nn.Module):
         self.prepend_cls = prepend_cls
         self.no_attn_mask = no_attn_mask
         self.concat_pos = concat_pos
-        self.fixed_cls_encoding = True
+        self.fixed_cls_encoding = False
+        self.cls_token_val = -2
+
         if not self.fixed_cls_encoding:
             self.cls_token = nn.Parameter(torch.zeros(1, 1, dim))
         else:
-            self.cls_token = torch.tensor([-2], device=spectrum.device)
-            assert cls_token_val.item() != self.padding_value, "CLS token value is the same as padding value"
+            self.cls_token = torch.tensor([self.cls_token_val], device=self.device)
+            assert self.cls_token_val != self.padding_value, "CLS token value is the same as padding value"
 
         _dim = dim
         if self.concat_pos:
@@ -96,6 +98,7 @@ class SimpleSelfAttention(nn.Module):
                 dropout=dropout,
                 activation="gelu",
                 batch_first=True,
+                norm_first=False
             ),
             num_layers=depth,
         )
@@ -111,12 +114,12 @@ class SimpleSelfAttention(nn.Module):
 
         if (self.reduce == 'cls' or self.prepend_cls is not None) and (self.fixed_cls_encoding):
             # Prepend a CLS token
-            cls_tokens = torch.ones(spectrum.shape[0], 1, spectrum.shape[2], device=spectrum.device) * cls_token_val
+            cls_tokens = torch.ones(spectrum.shape[0], 1, spectrum.shape[2], device=spectrum.device) * self.cls_token_val
             spectrum = torch.cat([cls_tokens, spectrum], dim=1)
             cls_appended = True
 
         if self.padding_value is not None:
-            padding = (spectrum[:,:,0] == self.padding_value).bool()    # True indicates padding
+            padding = (spectrum[:,:,0] == self.padding_value).to(torch.bool)    # True indicates padding
             # print(f"Found a total of {torch.sum(padding)} padding values, {torch.sum(padding)/padding.numel() }%")
         else:
             padding = None
@@ -376,7 +379,7 @@ class CLIP_MALDI(L.LightningModule):
         
         if not pretrained_embedder:
             # self.embedder = Embedder(self.input_dim, self.hidden_dim, self.hidden_layers, self.dropout_rate)
-            self.transformer_reduction = 'cls'
+            self.transformer_reduction = 'max'
             self.embedder = SimpleSelfAttention(2,  # depth
                                                 self.hidden_dim,
                                                 n_heads=10,
@@ -675,6 +678,23 @@ class CLIP_MALDI(L.LightningModule):
             embeddings, _, _ = self.embedder.forward(inputs)
 
         return embeddings
+    
+    def get_onnx_embedder_wrapper(self):
+        """
+        Returns a wrapper for the embedder that can be used in ONNX export.
+        This is useful for exporting the model to ONNX format.
+        """
+        class ONNXEmbedderWrapper(nn.Module):
+            def __init__(self, embedder):
+                super().__init__()
+                self.embedder = embedder
+
+            def forward(self, x):
+                return self.embedder(x)[0]
+
+        self.embedder.eval()
+        with torch.no_grad():
+            return ONNXEmbedderWrapper(self.embedder)
 
     def on_validation_epoch_end(self):
         self.val_metrics.reset()
