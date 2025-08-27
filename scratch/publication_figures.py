@@ -9,13 +9,22 @@ from pathlib import Path
 from typing import List, Tuple, Dict
 from tqdm.notebook import tqdm
 from joblib import Parallel, delayed
+import traceback
 
 # %%
-# Set font size to large
-plt.rcParams.update({'font.size': 20})
 # Set the style of seaborn
 sns.set(style="white")
 sns.set_palette("Set2")
+
+# Set font size to large
+plt.rcParams.update({
+    'font.size': 20,           # Base font size
+    'axes.labelsize': 22,      # x/y label font size
+    'axes.titlesize': 24,      # title font size
+    'legend.fontsize': 20,     # legend font size
+    'xtick.labelsize': 20,     # x-axis tick labels
+    'ytick.labelsize': 20      # y-axis tick labels
+})
 
 # %%
 os.getcwd()
@@ -34,6 +43,17 @@ NAME_MAPPINGS = {
     'BinaryTransformerPredictionHead': 'Binary Transformer Prediction Head',
     'Euclidean': 'Euclidean Distance',
     'maldi_transformer': 'MALDI Transformer',
+    'cosine_1': 'Cosine Similarity (1 Da)',
+    'cosine_3': 'Cosine Similarity (3 Da)',
+    'cosine_5': 'Cosine Similarity (5 Da)',
+    'cosine_7': 'Cosine Similarity (7 Da)',
+    'cosine_10': 'Cosine Similarity (10 Da)',
+    'cosine_1_intensity_agnostic': 'Cosine Similarity (1 Da, Int. Agn.)',
+    'cosine_3_intensity_agnostic': 'Cosine Similarity (3 Da, Int. Agn.)',
+    'cosine_5_intensity_agnostic': 'Cosine Similarity (5 Da, Int. Agn.)',
+    'cosine_7_intensity_agnostic': 'Cosine Similarity (7 Da, Int. Agn.)',
+    'cosine_10_intensity_agnostic': 'Cosine Similarity (10 Da, Int. Agn.)',
+    'cosine_intensity_agnostic_between_species': 'Cosine Similarity (10 Da, Int. Agn., Between Species)',
 }
 
 level_heirarchy = {
@@ -63,7 +83,7 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
     binary_transformer_prediction_head_path = None
     maldi_transformer_path = None
 
-    DRIAMS_MAX_INDEX=7
+    DRIAMS_MAX_INDEX=6 # Exclude 7th (index=6) fold, as it's used for parameter tuning
     IDBAC_MAX_INDEX=3
 
     # inference/{args.target}/{args.split_type}/"
@@ -100,7 +120,7 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
                 metadata_path = Path('../data/driams/preprocessing/merged_metadata.csv')
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_A_for_score')
                 clip_transformer_path = [
-                    _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_0' / 'inference' / target / split_type for i in range(0,DRIAMS_MAX_INDEX)
+                    _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_11' / 'inference' / target / split_type for i in range(0,DRIAMS_MAX_INDEX)
 
                 ]
                 clip_transformer_classifer_path = None
@@ -120,7 +140,7 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
                 metadata_path = Path('../data/idbac_db/raw/ammended_db.csv')
 
                 clip_transformer_path = [
-                     _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_0' / 'inference' / target / split_type for i in range(0,IDBAC_MAX_INDEX)
+                     _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_2' / 'inference' / target / split_type for i in range(0,IDBAC_MAX_INDEX)
                 ]
                 clip_transformer_classifer_path = None
                 cosine_path = [_base_dir / 'cosine_10' / target / split_type / f'k={i}' for i in range(0,IDBAC_MAX_INDEX)]
@@ -302,7 +322,7 @@ def gather_embeddings_cosine_only(dataset:str, target:str, split_type:str):
     base_dir = Path('../bin/ml/')
 
     if dataset.lower() == 'driams-a':
-        base_dir = base_dir / 'lightning_logs_DRIAMS_A'
+        base_dir = base_dir / 'lightning_logs_DRIAMS_A_for_score'
     elif dataset.lower() == 'idbac-kb':
         base_dir = base_dir / 'lightning_logs'
     else:
@@ -327,7 +347,11 @@ def gather_embeddings_cosine_only(dataset:str, target:str, split_type:str):
         elif split_type == 'species':
             if dataset.lower() == 'driams-a':
                 metadata_path = Path('../data/driams/preprocessing/merged_metadata.csv')
-                raise NotImplementedError("This configuration is not implemented")
+                cosine_1_path = [base_dir / 'cosine_1' / target / split_type / f"k={i}" for i in range(0, 6)]
+                cosine_3_path = [base_dir / 'cosine_3' / target / split_type / f"k={i}" for i in range(0, 6)]
+                cosine_5_path = [base_dir / 'cosine_5' / target / split_type / f"k={i}" for i in range(0, 6)]
+                cosine_7_path = [base_dir / 'cosine_7' / target / split_type / f"k={i}" for i in range(0, 6)]
+                cosine_10_path = [base_dir / 'cosine_10' / target / split_type / f"k={i}" for i in range(0, 6)]
             elif dataset.lower() == 'idbac-kb':
                 metadata_path = Path('../data/idbac_db/raw/ammended_db.csv')
                 cosine_1_path = [base_dir / 'cosine_1' / target / split_type]
@@ -570,7 +594,7 @@ def evaluate_top_k_recall(
     test_labels = test_df['true_label'].values
     strain_names = test_df['strain_name'].values
     predicted_k_labels = train_labels[sorted_indices]
-
+    
     # Accuracy per k
     accuracies = []
     genera_counts = []
@@ -813,7 +837,7 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
             method=key,
             distance_metric=distance_metric,
             normalize=True,
-            max_k=1, #10
+            max_k=10,
             average=average,
             within_test=within_test,
             require_cross_species=require_cross_species,
@@ -838,7 +862,7 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
                 'label_to_counts_k': res.get('label_to_counts_k', None),
             })
 
-    return pd.DataFrame(final_results)
+    # return pd.DataFrame(final_results)
 
     if 'multinomial_classifier' in embeddings:
         print("Adding static recall calculation for multinomial classifier...")
@@ -869,25 +893,34 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
         print(f"{model}: {avg_acc:.4f}")
 
     print("***********Using weighted averages.")
+    print(accuracies_df)
+    accuracies_df['genera_counts'] = accuracies_df['genera_counts'].apply(lambda x: x if isinstance(x, int) else len(x) if isinstance(x, list) else np.nan)
 
-    # Line plot
-    fig = plt.figure(figsize=(12, 8))
-    sns.lineplot(data=accuracies_df, 
-                x='k', 
-                y='accuracy',
-                hue='model',
-                style='model',
-                weights='genera_counts' if average == 'macro' else None,
-                markers=True,
-                dashes=False,
-                errorbar="ci",)
-    plt.title(f"Train-Test Recall for {dataset} - {target} - {split_type}")
-    plt.xlabel('Number of Neighbors Considered (k)')
-    plt.ylabel('Macro Recall')
-    plt.legend(title='Model')
-    plt.ylim(0, 1)
-    plt.grid(True)
-    plt.show()
+    fig=None
+    try:
+        # Line plot
+        fig = plt.figure(figsize=(12, 8))
+        sns.lineplot(data=accuracies_df, 
+                    x='k', 
+                    y='accuracy',
+                    hue='model',
+                    style='model',
+                    weights='genera_counts' if average == 'macro' else None,
+                    markers=True,
+                    dashes=False,
+                    errorbar="ci",)
+        plt.title(f"Train-Test Recall for {dataset} - {target} - {split_type}")
+        plt.xlabel('Number of Neighbors Considered (k)')
+        plt.ylabel('Macro Recall')
+        plt.legend(title='Model')
+        plt.ylim(0, 1)
+        plt.grid(True)
+        plt.show()
+    except Exception as e:
+        # Print the traceback using traceback
+        print(f"An error occurred while plotting: {e}")
+        traceback.print_exc()
+        pass
 
     return fig, accuracies_df
 
@@ -1705,6 +1738,12 @@ def _compute_interpolated_curves(df1, df2, method, data_idx, interp_points, metr
             print(f"Method {method} is using intensity agnostic embeddings")
             df1['embedding'] = df1['embedding'].apply(lambda x: (x > 0.02).astype(int))
             df2['embedding'] = df2['embedding'].apply(lambda x: (x > 0.02).astype(int))
+        
+        if method == 'cosine_intensity_agnostic_between_species':
+            print("Using cosine intensity agnostic embeddings for between species")
+            df1['embedding'] = df1['embedding'].apply(lambda x: (x > 0.02).astype(int))
+            df2['embedding'] = df2['embedding'].apply(lambda x: (x > 0.02).astype(int))
+            between_species = True
 
         fpr, tpr, roc_auc_val, prec, rec, pr_auc_val = _binary_similarity_curves(df1, df2, metric, max_pairs, between_species=between_species)
         fdr = 1 - prec
@@ -1777,7 +1816,7 @@ def static_precision_recall_roc(df1, df2, target, split_type, method, max_pairs=
 
     return precision, recall, fpr
 
-
+import re
 def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=None,
                        cosine_ablation=False, n_jobs=-1, between_species=False):
     if cosine_ablation:
@@ -1788,16 +1827,63 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
     if between_species:
         assert target == 'genera', "Between species accuracy is only applicable for genus-level predictions"
 
-    # Add a "Cosine (Intensity Agnostic)" method
-    embeddings['cosine_intensity_agnostic'] = {
-        'train': [None for _ in range(len(embeddings['cosine']['train']))],
-        'test': [None for _ in range(len(embeddings['cosine']['test']))]
+    colors = {
+        'cosine': '#fc8d62',
+        'cosine_intensity_agnostic': '#e78ac3',
+        'clip_transformer': '#66c2a5',
+        'multinomial_classifier': '#8da0cb',
+        'cosine_10': '#fc8d62',
+        'cosine_7': '#e78ac3',
+        'cosine_5': '#66c2a5',
+        'cosine_3': '#8da0cb',
+        'cosine_1': "#ffc82f",
+        'cosine_10_intensity_agnostic': '#fc8d62',
+        'cosine_7_intensity_agnostic': '#e78ac3',
+        'cosine_5_intensity_agnostic': '#66c2a5',
+        'cosine_3_intensity_agnostic': '#8da0cb',
+        'cosine_1_intensity_agnostic': "#ffc82f",
     }
-    for i in range(len(embeddings['cosine_intensity_agnostic']['test'])):
-        embeddings['cosine_intensity_agnostic']['train'][i] = embeddings['cosine']['train'][i].copy(deep=True)
-        embeddings['cosine_intensity_agnostic']['test'][i] = embeddings['cosine']['test'][i].copy(deep=True)
-        embeddings['cosine_intensity_agnostic']['train'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['train'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
-        embeddings['cosine_intensity_agnostic']['test'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['test'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
+
+    # Add a "Cosine (Intensity Agnostic)" method
+    if not cosine_ablation:
+        embeddings['cosine_intensity_agnostic'] = {
+            'train': [None for _ in range(len(embeddings['cosine']['train']))],
+            'test': [None for _ in range(len(embeddings['cosine']['test']))]
+        }
+        for i in range(len(embeddings['cosine_intensity_agnostic']['test'])):
+            embeddings['cosine_intensity_agnostic']['train'][i] = embeddings['cosine']['train'][i].copy(deep=True)
+            embeddings['cosine_intensity_agnostic']['test'][i] = embeddings['cosine']['test'][i].copy(deep=True)
+            embeddings['cosine_intensity_agnostic']['train'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['train'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
+            embeddings['cosine_intensity_agnostic']['test'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['test'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
+    else:
+        if True:
+            # For each cosine_[0-9]+ method, add a cosine_intensity_agnostic version
+            for key in list(embeddings.keys()):
+                if re.match(r'cosine_[0-9]+', key):
+                    print(f"Adding intensity agnostic version for {key}")
+                    embeddings[f"{key}_intensity_agnostic"] = {
+                        'train': [None for _ in range(len(embeddings[key]['train']))],
+                        'test': [None for _ in range(len(embeddings[key]['test']))]
+                    }
+                    for i in range(len(embeddings[f"{key}_intensity_agnostic"]['test'])):
+                        embeddings[f"{key}_intensity_agnostic"]['train'][i] = embeddings[key]['train'][i].copy(deep=True)
+                        embeddings[f"{key}_intensity_agnostic"]['test'][i] = embeddings[key]['test'][i].copy(deep=True)
+                        embeddings[f"{key}_intensity_agnostic"]['train'][i]['embedding'] = embeddings[f"{key}_intensity_agnostic"]['train'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
+                        embeddings[f"{key}_intensity_agnostic"]['test'][i]['embedding'] = embeddings[f"{key}_intensity_agnostic"]['test'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
+                # Debug, remove the old one
+                del embeddings[key]
+
+    # TEMP DUPLICATE INTENSITY AGNOSTIC, MAKE BETWEEN SPECIES
+    # if not cosine_ablation:
+    #     embeddings['cosine_intensity_agnostic_between_species'] = {
+    #         'train': [None for _ in range(len(embeddings['cosine_intensity_agnostic']['train']))],
+    #         'test': [None for _ in range(len(embeddings['cosine_intensity_agnostic']['test']))]
+    #     }
+    #     for i in range(len(embeddings['cosine_intensity_agnostic_between_species']['test'])):
+    #         embeddings['cosine_intensity_agnostic_between_species']['train'][i] = embeddings['cosine_intensity_agnostic']['train'][i].copy(deep=True)
+    #         embeddings['cosine_intensity_agnostic_between_species']['test'][i] = embeddings['cosine_intensity_agnostic']['test'][i].copy(deep=True)
+    #         embeddings['cosine_intensity_agnostic_between_species']['train'][i]['embedding'] = embeddings['cosine_intensity_agnostic_between_species']['train'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
+    #         embeddings['cosine_intensity_agnostic_between_species']['test'][i]['embedding'] = embeddings['cosine_intensity_agnostic_between_species']['test'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
 
     # Add a "Euclidean" method
     # embeddings['Euclidean'] = {
@@ -1830,11 +1916,13 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
     print("Found methods:", list(embeddings.keys()))
 
     for method, data_list in embeddings.items():
+        print("running method:", method)
         if method == 'metadata':
             continue
 
         if method == 'cosine' or method == 'cosine_intensity_agnostic' \
-            or method == 'clip_transformer' or method == 'clip_transformer_genus_genus':
+            or method == 'clip_transformer' or method == 'clip_transformer_genus_genus' \
+            or re.match(r'cosine_[0-9]+', method) or method == 'cosine_intensity_agnostic_between_species':
              print(f"Method using {method} cosine distance metric")
              metric = 'cosine'
         else:
@@ -1893,14 +1981,17 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
             name = NAME_MAPPINGS.get(method, method)
 
             roc_ax.errorbar([fpr_mean], [recall_mean], xerr=[fpr_std], yerr=[recall_std],
-                            fmt='o', capsize=4, label=f"{name} (FPR={fpr_mean:.2f})")
+                            fmt='o', capsize=4, label=f"{name} (FPR={fpr_mean:.2f})",
+                            color=colors.get(method))
 
             print(f"[{method}] Plotting mean P={precision_mean:.2f}, R={recall_mean:.2f}")
             pr_ax.errorbar([recall_mean], [precision_mean], xerr=[recall_std], yerr=[precision_std],
-                        fmt='o', capsize=4, label=f"{name} (P={precision_mean:.2f}, R={recall_mean:.2f})")
+                        fmt='o', capsize=4, label=f"{name} (P={precision_mean:.2f}, R={recall_mean:.2f})",
+                        color=colors.get(method))
 
             fdr_ax.errorbar([recall_mean], [1 - precision_mean], xerr=[recall_std], yerr=[precision_std],
-                            fmt='o', capsize=4, label=f"{name} (FDR={1 - precision_mean:.2f})")
+                            fmt='o', capsize=4, label=f"{name} (FDR={1 - precision_mean:.2f})",
+                            color=colors.get(method))
 
             # Add a fill between to keep the colors consistent
             roc_ax.fill_between([], [], alpha=0.2)
@@ -1932,38 +2023,40 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
             pr_mean, pr_std = pr_curves.mean(axis=0), pr_curves.std(axis=0)
             fdr_mean, fdr_std = fdr_curves.mean(axis=0), fdr_curves.std(axis=0)
 
+            print(pr_mean)
+
             roc_auc_val = auc(interp_points, roc_mean)
             pr_auc_val = auc(interp_points, pr_mean)
             fdr_auc_val = auc(interp_points, fdr_mean)
 
-            roc_ax.plot(interp_points, roc_mean, label=f"{NAME_MAPPINGS[method]} (auc={roc_auc_val:.2f})")
-            roc_ax.fill_between(interp_points, roc_mean - roc_std, roc_mean + roc_std, alpha=0.2)
+            roc_ax.plot(interp_points, roc_mean, label=f"{NAME_MAPPINGS[method]}", color=colors.get(method))  #  (auc={roc_auc_val:.2f})
+            roc_ax.fill_between(interp_points, roc_mean - roc_std, roc_mean + roc_std, alpha=0.2, color=colors.get(method))
 
-            pr_ax.plot(interp_points, pr_mean, label=f"{NAME_MAPPINGS[method]} (auc={pr_auc_val:.2f})")
-            pr_ax.fill_between(interp_points, pr_mean - pr_std, pr_mean + pr_std, alpha=0.2)
+            pr_ax.plot(interp_points, pr_mean, label=f"{NAME_MAPPINGS[method]}", color=colors.get(method))    #  (auc={pr_auc_val:.2f})
+            pr_ax.fill_between(interp_points, pr_mean - pr_std, pr_mean + pr_std, alpha=0.2, color=colors.get(method))
 
-            fdr_ax.plot(interp_points, fdr_mean, label=f"{NAME_MAPPINGS[method]} (auc={fdr_auc_val:.2f})")
-            fdr_ax.fill_between(interp_points, fdr_mean - fdr_std, fdr_mean + fdr_std, alpha=0.2)
+            fdr_ax.plot(interp_points, fdr_mean, label=f"{NAME_MAPPINGS[method]}", color=colors.get(method)) #  (auc={fdr_auc_val:.2f})
+            fdr_ax.fill_between(interp_points, fdr_mean - fdr_std, fdr_mean + fdr_std, alpha=0.2, color=colors.get(method))
 
             # Print the Method, and Standard Deviation at 5 points
             print(f"[{method}] ROC AUC: {roc_auc_val:.3f}, PR AUC: {pr_auc_val:.3f}, FDR AUC: {fdr_auc_val:.3f}")
-            for i in [0, 25, 50, 75, 99]:
+            for i in [0, 25, 50, 74, 79, 84, 89, 99]:
                 print(f"[{method}] ROC at {interp_points[i]:.2f}: {roc_mean[i]:.3f} ± {roc_std[i]:.3f}")
                 print(f"[{method}] PR at {interp_points[i]:.2f}: {pr_mean[i]:.3f} ± {pr_std[i]:.3f}")
                 print(f"[{method}] FDR at {interp_points[i]:.2f}: {fdr_mean[i]:.3f} ± {fdr_std[i]:.3f}")
 
     # Finalize ROC
     roc_ax.plot([0, 1], [0, 1], 'k--')
-    roc_ax.set(xlabel='False Positive Rate', ylabel='True Positive Rate', title='ROC Curve')
-    roc_ax.legend()
+    roc_ax.set(xlabel='False Positive Rate', ylabel='True Positive Rate') # , title='ROC Curve'
+    roc_ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
 
     # Finalize PR
-    pr_ax.set(xlabel='Recall', ylabel='Precision', title='Precision-Recall Curve')
-    pr_ax.legend(loc='lower left')
+    pr_ax.set(xlabel='Recall', ylabel='Precision') # , title='Precision-Recall Curve'
+    pr_ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
 
     # Finalize FDR
-    fdr_ax.set(xlabel='Recall', ylabel='False Discovery Rate', title='FDR Curve')
-    fdr_ax.legend()
+    fdr_ax.set(xlabel='Recall', ylabel='False Discovery Rate') # , title='FDR vs Recall'
+    fdr_ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
 
     return {
         'roc': roc_fig,
@@ -2227,11 +2320,9 @@ def plot_nn_accuracy_vs_train_taxa_size(dataset, target, split_type, n_jobs=-1, 
         embeddings['cosine_intensity_agnostic']['train'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['train'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
         embeddings['cosine_intensity_agnostic']['test'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['test'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
 
-    embeddings['clip_transformer_euclidean'] = embeddings['clip_transformer'].copy()
-
     # Only do cosine_intensity_agnostic and clip_transformer methods
     for key in list(embeddings.keys()):
-        if key not in {'cosine_intensity_agnostic', 'clip_transformer', 'clip_transformer_euclidean'}:
+        if key not in {'cosine_intensity_agnostic', 'clip_transformer'}:
             del embeddings[key]
 
     tasks = []
@@ -2317,21 +2408,14 @@ def plot_nn_accuracy_vs_train_taxa_size(dataset, target, split_type, n_jobs=-1, 
     print(f"Time taken to compute accuracies: {time() - start_time:.2f} seconds")
 
     accuracies_df = pd.DataFrame(accuracies)
-    return accuracies_df
+    assert accuracies_df['k'].nunique() == 1, "There should be only one k value per model in the results."
 
-    #### DEBUG
-    # First average by model within k,
-    # then average by model across k
-    # This is to ensure that we have a single accuracy per model
-    temp = accuracies_df.groupby(['model', 'k',])['accuracy'].mean().reset_index()
-    temp = temp.groupby('model')['accuracy'].mean().reset_index()
-    print(temp)
+    print("CV Size Weighted K=1 Recall:")
+    print(accuracies_df.groupby(['model'])['accuracy'].mean())
 
-    # Print the macro-averagead accuracy for each model
-    macro_averaged_accuracies = accuracies_df.groupby('model')['accuracy'].mean().reset_index()
-    macro_averaged_accuracies.rename(columns={'accuracy': 'macro_accuracy'}, inplace=True)
-    print("Macro-averaged accuracies:")
-    print(macro_averaged_accuracies)
+    print("Independent of CV Size K=1 Recall:")
+    print(accuracies_df.groupby(['model', 'cv_fold'])['accuracy'].mean().reset_index().groupby('model')['accuracy'].mean())
+
 
     # Plot 
     # x: train class size
@@ -2640,10 +2724,7 @@ _ = top_k_boxplot_per_method_by_label(
 _ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=6, macro=False)
 
 # %%
-_ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=6, macro=False)
-
-# %%
-_ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=6, macro=True)
+_ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=12, macro=True)
 
 # %%
 _ = top_k_precision_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=5, average='macro')
@@ -2653,6 +2734,9 @@ _ = top_k_precision_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_j
 
 # %%
 _ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=4)
+
+# %%
+_ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=4, between_species=True)
 
 # %%
 _ = nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=16, average='micro', num_samples_per_k=5)
@@ -2673,11 +2757,9 @@ _ = nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=16
 # %%
 _ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4)
 
-
 # %%
 # DRIAMS Plots
 _ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4)
-
 
 # %%
 _ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4, between_species=True)
@@ -2690,8 +2772,8 @@ _ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=False, n_jobs=
 _ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=12, num_samples_per_k=5, average='macro')
 
 # %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=False, n_jobs=12, num_samples_per_k=5, average='macro')
 _ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=12, num_samples_per_k=5, average='macro')
+_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=False, n_jobs=12, num_samples_per_k=5, average='macro')
 
 # %%
 _ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=12, num_samples_per_k=5, average='macro', require_cross_species=True)
@@ -2730,6 +2812,25 @@ plt.ylabel('Frequency')
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
+# %%
+plot_nn_accuracy_vs_train_taxa_size(
+    dataset='IDBac-KB',
+    target='genera',
+    split_type='species',
+    n_jobs=6,
+    within_test=False
+)
+
+# %%
+plot_nn_accuracy_vs_train_taxa_size(
+    dataset='driams-a',
+    target='genera',
+    split_type='species',
+    n_jobs=6,
+    within_test=False,
+    n_bins=10
+)
 
 # %%
 _temp_df = plot_nn_accuracy_vs_train_taxa_size(
@@ -3066,6 +3167,15 @@ _ = nn_accuracy_plot('IDBac-kb', 'genera', 'species', within_test=True, n_jobs=1
 _ = binary_curves_plot('IDBac-kb', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4)
 
 # %%
+_ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=500_000, n_jobs=2, cosine_ablation=True)
+
+# %%
+_ = binary_curves_plot('IDBac-kb', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4, cosine_ablation=True)
+
+# %%
+_ = binary_curves_plot('IDBac-kb', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4, between_species=True)
+
+# %%
 _ = binary_curves_plot('IDBac-kb', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=4)
 
 # %%
@@ -3135,6 +3245,9 @@ train_test_curves_nn_plot('driams-a', 'genera', 'species')
 
 # %%
 _ = binary_curves_plot('DRIAMS-A', 'genera', 'genera', test_only=True, max_pairs=1_000_000)
+
+# %%
+_ = binary_curves_plot('DRIAMS-A', 'genera', 'genera', test_only=True, max_pairs=1_000_000, between_species=True)
 
 # %%
 _ = binary_curves_plot('DRIAMS-A', 'genera', 'genera', test_only=True, max_pairs=500_000)
