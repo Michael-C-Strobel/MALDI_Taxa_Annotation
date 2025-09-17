@@ -339,7 +339,7 @@ class BinSpectrum(torch.nn.Module):
 class CLIP_MALDI(L.LightningModule):
     """ 
     """
-    def __init__(self, hyperparameters, pretrained_embedder=None):
+    def __init__(self, hyperparameters, pretrained_embedder=None, transformer_reduction='max'):
         super().__init__()
 
         for key in hyperparameters.keys():
@@ -372,14 +372,13 @@ class CLIP_MALDI(L.LightningModule):
         else:
             self.rcon_head_dim = None
 
-
+        self.transformer_reduction = transformer_reduction
 
         if self.dropout_rate > 1.0 or self.dropout_rate < 0.0:
             raise ValueError("Dropout rate must be between 0.0 and 1.0")
         
         if not pretrained_embedder:
             # self.embedder = Embedder(self.input_dim, self.hidden_dim, self.hidden_layers, self.dropout_rate)
-            self.transformer_reduction = 'max'
             self.embedder = SimpleSelfAttention(2,  # depth
                                                 self.hidden_dim,
                                                 n_heads=10,

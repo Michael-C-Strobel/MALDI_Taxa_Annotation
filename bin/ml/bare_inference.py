@@ -39,6 +39,7 @@ IMPLEMENTED_MODELS = {'Prototyical_Transformer',    # TODO: Spell it right once 
                       'cosine_1', 'cosine_3', 'cosine_5', 'cosine_7', 'cosine_10',
                       'BinaryTransformerPredictionHead',
                       'MaldiTransformerWrapper',
+                      'MaldiTransformerWrapperMethodData'
                       }
 
 # Models that only predict in a paired setting
@@ -148,14 +149,13 @@ def setup_model(model_name: str,
                                         SquareRootTransform(),
                                         NormalizeIntensity(),
                                     ])
-    elif model_name == "MaldiTransformerWrapper":
+    elif model_name == "MaldiTransformerWrapper" or model_name == "MaldiTransformerWrapperMethodData":
         model = MaldiTransformerWrapper.load_from_checkpoint(checkpoint_path=checkpoint_path)
 
         trans = transforms.Compose([
-            SquareRootTransform(),
-            SelectTopKPeaks(150),
-            NormalizeIntensity(),
-            PadToLength(150, padding_value=-1.0),
+            L1NormalizeIntensity(),
+            SelectTopKPeaks(200),
+            PadToLength(200, padding_value=-1.0),
         ])
 
     else:
@@ -331,6 +331,11 @@ def main():
     parser.add_argument("--new_paths", action='store_true', help="Use new paths for the data")
     parser.add_argument("--run_for_score", action='store_true', help="Run for score")
     parser.add_argument("--k", "-k", type=int, required=False, help="CV Fold", default=None)
+    parser.add_argument(
+        "--maldi_nn_preprocessing",
+        help="Use MALDI-Transformer preprocessing for DRIAMS dataset.",
+        action='store_true',
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
@@ -406,11 +411,16 @@ def main():
         if args.split_type == 'species_even':
             metadata_path = '../../data/driams/preprocessing/merged_metadata_code_accessions.csv'
         ml_processing_path = '../../data/driams/processed_data'
+        if args.maldi_nn_preprocessing:
+            print("Using MALDI-NN Preprocessing", flush=True)
+            spectra_path = '../../data/driams/processed_data/MaldiTransformer/spectra'
     elif args.dataset == 'IDBac':
         spectra_path = '../../data/idbac_db/preprocessing'
         metadata_path = '../../data/idbac_db/raw/ammended_db.csv'
         ml_processing_path = '../../data/idbac_db/processed_data'
-    else:
+        if args.maldi_nn_preprocessing:
+            raise ValueError("MALDI-Transformer preprocessing not supported for IDBac dataset")
+        spectra_path = '../../data/driams/processed_data/MaldiTransformer/spectra'
         raise ValueError(f"Dataset {args.dataset} not supported")
         
     logging.info("Output directory: %s", output_dir)
@@ -465,7 +475,10 @@ def main():
 
     # Save an onnx wrapper for the model
     if args.model.split('_')[0] != 'cosine':
-        generate_onnx_wrapper(model, output_dir, args.model)
+        try:
+            generate_onnx_wrapper(model, output_dir, args.model)
+        except Exception as e:
+            print(e)
 
     if paired:
         inferred_df = get_paired_inference_df(model, datamodule, args.inference_set, args.target)

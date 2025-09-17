@@ -102,6 +102,7 @@ class single_MALDI_TOF_DS(Dataset):
             # Sort unique values in 'genus' column, annotate with number
             self.class_to_int = {genus: i for i, genus in enumerate(sorted(metadata_table[self.target_col].unique()))}
             self.int_to_class = {i: genus for genus, i in self.class_to_int.items()}
+            print(f"Got maximum class number {max(self.class_to_int.values())}")
 
         if 'accession' not in metadata_table.columns:
             metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
@@ -668,10 +669,10 @@ class single_MALDI_TOF_DS(Dataset):
         relevant_accessions = [x for x in self.all_accessions if x in accessions]
 
         print("Debug: only incluiding accessions in subset that actually exist")
-        print("Original accessions", len(accessions))
+        print("Original accessions", len(np.unique(accessions)))
         print("Accessions in splits but not found in training data", len(set(accessions) - set(self.all_accessions)))
         accessions = np.intersect1d(accessions, self.all_accessions)
-        print("New accessions", len(accessions))
+        print("New accessions", len(np.unique(accessions)))
 
         # Remove any accessions whose spectra were removed
         # subset_dataset.similarities = subset_dataset.similarities.loc[accessions, accessions]

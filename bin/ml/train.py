@@ -4,6 +4,7 @@ from models.Sentence_MALDI import Sentence_MALDI
 from models.CLIP_MALDI import CLIP_MALDI
 from models.mlp_binary_classifier import MLPBinaryClassifier
 from models.CLIP_MALDI_classifier import CLIP_MALDI_Classifier
+from models.Cross_Encoder import Cross_Encoder
 from models.logistic_regression_classifier import MultinomialLogisticClassifier
 from models.prototypical_transformer import PrototyicalTransformer as PrototypicalTransformer
 from models.Transformer_MultiLoss import Transformer_MulitLoss
@@ -178,7 +179,17 @@ def get_trial_hyperparameters(trial: optuna.Trial, args: argparse.Namespace, tri
         )
     elif args.model_type == 'BinaryTransformerPredictionHead':
         raise ValueError("BinaryTransformerPredictionHead is not supported for tuning.")
-
+    elif args.model_type == 'Cross_Encoder':
+        trial_hyperparameters.update(
+            {
+                'hidden_dim': trial.suggest_int('hidden_dim', 100, 500, step=10),
+                'hidden_layers': trial.suggest_int('hidden_layers', 2, 5),
+                'weight_decay': trial.suggest_float('weight_decay', 1e-6, 1e-3, log=True),
+                'dropout': trial.suggest_float('dropout', 0.1, 0.5),
+                'tau': trial.suggest_float('tau', 0.05, 0.15),
+                'lr': trial.suggest_float('lr', 1e-5, 1e-3, log=True),
+            }
+        )
     else:
         raise ValueError(f"Model type '{args.model_type}' is not supported for tuning.")
     
@@ -198,7 +209,7 @@ def initialize_model(SPECTRA_PATH: str,
     trans = None
     trainer_args = {}
 
-    parameter_free_methods = ('MaldiTransformerWrapper', 'BinaryTransformerPredictionHead')
+    parameter_free_methods = ('MaldiTransformerWrapper', 'BinaryTransformerPredictionHead', 'MaldiTransformerWrapperMethodData')
 
     trial_hyperparameters: Dict[str, Any] = {
         'TARGET': args.target,
@@ -321,7 +332,7 @@ def initialize_model(SPECTRA_PATH: str,
         if args.target == 'genera' and 'idbac' in SPECTRA_PATH:
             trial_hyperparameters['n_classes'] = 96
         elif args.target == 'genera' and 'driams' in SPECTRA_PATH:
-            trial_hyperparameters['n_classes'] = 182
+            trial_hyperparameters['n_classes'] = 233
         elif args.target == 'species' and 'driams' in SPECTRA_PATH:
             trial_hyperparameters['n_classes'] = 723
         else:
@@ -630,7 +641,54 @@ def initialize_model(SPECTRA_PATH: str,
         )
         datamodule.setup('fit')
         logger_name = f'BinaryTransformerPredictionHead'
+
+    elif args.model_type == "Cross_Encoder":
+        trial_hyperparameters.update(clip_common_params)
+        if not args.train_for_score:
+            trial_hyperparameters = get_trial_hyperparameters(trial, args, trial_hyperparameters)
         
+        trial_hyperparameters.update(trial_hyperparameters)
+        if args.pretrained_model_path: trial_hyperparameters['lr'] = 1e-6
+
+        model = Cross_Encoder(trial_hyperparameters)
+        if args.pretrained_model_path:
+            if not os.path.exists(args.pretrained_model_path):
+                raise FileNotFoundError(f"No pretrained model found at {args.pretrained_model_path}")
+            print("Loading pretrained model from:", args.pretrained_model_path)
+            model.load_state_dict(torch.load(args.pretrained_model_path, map_location=model.device)['state_dict'])
+            # Freeze the first half of layers
+            params = list(model.named_parameters())
+            # print(params)
+            num_to_freeze = int(0.75 * len(params))
+            # print('num_to_freeze', num_to_freeze)
+
+            for name, param in params[:num_to_freeze]:
+                param.requires_grad = False
+                print(f"Froze: {name}")
+
+        trans = transforms.Compose([
+                SelectMassRange(3000, 20000),
+                NormalizeIntensity(),
+                SelectTopKPeaks(150),
+                PadToLength(150, padding_value=-1.0),
+            ])
+        print("*******************************")
+        print("Got k = ", args.k)
+        print("*******************************")
+        datamodule = CLIP_DataModule(
+            SPECTRA_PATH,
+            METADATA_PATH,
+            ML_PROCESSING_PATH,
+            num_workers=7,
+            transforms=trans,
+            batch_size=args.batch_size,
+            split_method=args.split_method,
+            targets=args.target,
+            k=args.k,
+            prefer_hard=True,
+        )
+        datamodule.setup('fit')
+        logger_name = f'Cross_Encoder'
     else:
         raise ValueError(f"Model type '{args.model_type}' is not supported for tuning.")
     
@@ -727,6 +785,7 @@ def train_for_score(args: argparse.Namespace, hparam_path: str) -> None:
         max_steps=args.n_steps,
         log_every_n_steps=1,
         logger=logger,
+        # accelerator='cpu',
         devices=[0],
         callbacks=callbacks,
         **trainer_args,
@@ -751,6 +810,8 @@ def main():
             'Transformer_MulitLoss',
             'BinaryTransformerPredictionHead',
             'MaldiTransformerWrapper',
+            'MaldiTransformerWrapperMethodData',
+            'Cross_Encoder',
         ],
         help="The type of model to tune.",
     )
