@@ -5,6 +5,7 @@ import shutil
 import numpy as np
 import torch
 from pathlib import Path
+from tqdm import tqdm
 
 def read_blast_result(file):
     headers = ['query_id', 'subject_id', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
@@ -44,17 +45,18 @@ def postprocess_files(input_dir: Path, output_dir: Path):
     if not output_spectra_dir.exists():
         output_spectra_dir.mkdir(parents=True)
 
-    for strain_name, spectrum_as_tensor in convert_spectra_to_tensor(input_dir / 'baseline_corrected.json'):
-        torch.save(spectrum_as_tensor, output_spectra_dir / f'{strain_name}.pt')
+    # for strain_name, spectrum_as_tensor in tqdm(convert_spectra_to_tensor(input_dir / 'baseline_corrected.json')):
+    #     torch.save(spectrum_as_tensor, output_spectra_dir / f'{strain_name}.pt')
 
     # Convert blast results to feather file
     all_blast_results = list((input_dir / 'blast_results').glob('*.txt'))
-    blast_results = [read_blast_result(file) for file in all_blast_results]
-    pident_matrix = pd.concat(blast_results)
-    pident_matrix['query_genbank'] = pident_matrix['query_id'].str.split('.').str[0]
-    pident_matrix['subject_genbank'] = pident_matrix['subject_id'].str.split('.').str[0]
-    
-    pident_matrix.to_feather(output_dir / 'similarities.feather')
+    if len(all_blast_results) > 0:
+        blast_results = [read_blast_result(file) for file in all_blast_results]
+        pident_matrix = pd.concat(blast_results)
+        pident_matrix['query_genbank'] = pident_matrix['query_id'].str.split('.').str[0]
+        pident_matrix['subject_genbank'] = pident_matrix['subject_id'].str.split('.').str[0]
+        
+        pident_matrix.to_feather(output_dir / 'similarities.feather')
 
 def main():
     parser = argparse.ArgumentParser(description="Finalize processing of files")

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Enable exit on error
+set -e
+
 cd ..
 
 # Activate conda environment
@@ -16,8 +19,8 @@ python3 process_data.py --input_file "../data/idbac_db/raw/spectra.json" \
 
 # Label Generation
 
-# echo "This script will use your github user.email to get an API key for the NCBI API. Use ctrl+C to abort"
-# sleep 1
+echo "This script will use your github user.email to get an API key for the NCBI API. Use ctrl+C to abort"
+sleep 1
 
 # email=$(git config user.email) # Will use your email for the API key
 
@@ -26,7 +29,7 @@ python3 process_data.py --input_file "../data/idbac_db/raw/spectra.json" \
 #                                 --output_dir "../data/idbac_db/raw/fasta_files/"  \
 #                                 --email $email
 
-# # Blast
+# # # Blast
 # echo "Running BLAST"
 # cd $current_dir/scripts/
 # pwd

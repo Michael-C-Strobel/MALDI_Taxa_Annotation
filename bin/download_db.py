@@ -63,15 +63,15 @@ def get_remote_checksum(checksum_url: str):
 def download(output_path: str = 'all_spectra.json'):
     # First, let's see if our database is up to date
     local_checksum = None
-    if Path(output_path).exists():
-        local_checksum = calculate_checksum(output_path)
-        print(f"Local checksum: {local_checksum}")
+    # if Path(output_path).exists():
+    #     local_checksum = calculate_checksum(output_path)
+    #     print(f"Local checksum: {local_checksum}")
     
-    remote_checksum = get_remote_checksum(checksum_url)
+    # remote_checksum = get_remote_checksum(checksum_url)
 
-    if local_checksum == remote_checksum:
-        print("Database is up to date")
-        return False
+    # if local_checksum == remote_checksum:
+    #     print("Database is up to date")
+    #     return False
 
     # Retry setup for resilience
     session = requests.Session()
@@ -89,7 +89,7 @@ def download(output_path: str = 'all_spectra.json'):
         # Write JSON to file in chunks, with a progress bar
         with open(output_path, 'wb') as f:
             # Set up progress bar
-            with tqdm(total=total_size, unit='B', unit_scale=True, desc="Downloading Database:") as progress_bar:
+            with tqdm(total=total_size, unit='B', unit_scale=True, desc="Downloading Database") as progress_bar:
                 for chunk in response.iter_content(chunk_size=8192):  # 8 KB chunks
                     if chunk:  # Filter out keep-alive new chunks
                         f.write(chunk)
@@ -120,7 +120,9 @@ def sanitize_file(input_path:str, output_path:str):
     # Iterate over lines looking for NaN, make a string
     with open(input_path, 'r') as infile, open(output_path, 'w') as outfile:
         for line in tqdm(infile, total=total_lines, desc="Sanitizing file"):
-            outfile.write(line.replace('NaN', '"NaN"'))
+            # Replace NaN with "NaN" only if not already surrounded by quotes
+            sanitized_line = re.sub(r'(?<!")NaN(?!")', '"NaN"', line)
+            outfile.write(sanitized_line)
 
 def split_spectrum_metadata(input_path: str, output_spec_path: str, output_meta_path: str):
     # Open input file and two output files
@@ -168,7 +170,7 @@ def convert_to_csv(json_path:str, csv_path:str):
     # Write the DataFrame to a CSV file
 
     ### TEMPOORARY: Replace DSM 40841 in the Genbank accession column
-    df = df.with_column(pl.col('Genbank accession').replace('DSM 40841', 'DQ026642.1'))
+    df = df.with_columns(pl.col('Genbank accession').replace('DSM 40841', 'DQ026642.1'))
 
     df.write_csv(csv_path)
 
@@ -201,7 +203,7 @@ def main():
     # Sanitize the file (Only temporarily needed)
     logging.info('Sanitizing file...')
     sanitized_path = db_json_path.with_name('sanitized.json')
-    # sanitize_file(db_json_path, sanitized_path)
+    sanitize_file(db_json_path, sanitized_path)
 
     # Split into spectra and metadata
     logging.info('Splitting file...')

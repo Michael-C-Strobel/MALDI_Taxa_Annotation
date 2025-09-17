@@ -9,11 +9,12 @@ from torchmetrics.classification import BinaryAUROC, MulticlassAccuracy
 from .autoencoder import BCE_Metric
 
 class SinusoidalPositionalEncoding(nn.Module):  # TODO: Somehow creating nan vals
-    def __init__(self, dim):
+    def __init__(self, dim, concat=False):
         super().__init__()
         # Register div_term as a buffer to avoid being updated by the optimizer
         div_term = torch.exp(torch.arange(0, dim, 2).float() * (-np.log(10000.0) / dim))
         self.register_buffer("div_term", div_term)
+        self.concat = concat
 
     def forward(self, x, pos):#, mask):
         """
@@ -40,7 +41,10 @@ class SinusoidalPositionalEncoding(nn.Module):  # TODO: Somehow creating nan val
             #     print('mask.shape', mask.shape)
             #     raise ValueError("Nan values in pe")
 
-        return x + pe
+        if self.concat:
+            return torch.cat((x, pe), dim=-1)  # Concatenate along the last dimension
+        else:
+            return x + pe
     
 # Adapted From: https://github.com/gdewael/maldi-nn/blob/92464a1325b273efa639fbf31de5372a5d672a72/maldi_nn/nn.py#L48
 class Transformer(nn.Module):

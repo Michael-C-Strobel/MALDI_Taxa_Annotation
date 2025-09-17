@@ -4,6 +4,7 @@ import torchmetrics
 import torch.nn.functional as F
 import torch
 import lightning as L
+import logging
 
 class CustromBinaryMetric(torchmetrics.Metric):
     """This metric calculates the binary accuracy of a model's same genus/different genus classification.
@@ -83,11 +84,46 @@ class Embedder(nn.Module):
             x = layer(x)
         return x
 
+def clip_contrastive_loss(image_embeds, text_embeds, temperature=0.07):
+    """
+    Compute the contrastive loss between image and text embeddings.
+
+    Parameters:
+    - image_embeds (torch.Tensor): A tensor of shape (batch_size, embed_size) containing image embeddings.
+    - text_embeds (torch.Tensor): A tensor of shape (batch_size, embed_size) containing text embeddings.
+    - temperature (float): A temperature scaling factor for the similarity computation.
+
+    Returns:
+    - loss (torch.Tensor): The computed contrastive loss value.
+    """
+    # Normalize embeddings to unit length
+    image_embeds = F.normalize(image_embeds, p=2, dim=-1)
+    text_embeds = F.normalize(text_embeds, p=2, dim=-1)
+    
+    # Compute cosine similarity between all image-text pairs
+    similarity_matrix = torch.matmul(image_embeds, text_embeds.T)  # (batch_size, batch_size)
+
+    # Apply temperature scaling
+    similarity_matrix /= temperature
+    
+    # Create labels: for each image, the corresponding text is the positive pair
+    labels = torch.arange(image_embeds.size(0), device=image_embeds.device)
+    
+    # Compute cross-entropy loss using the similarity matrix
+    # We concatenate the positive pairs for image-text and text-image
+    loss_image_to_text = F.cross_entropy(similarity_matrix, labels)
+    loss_text_to_image = F.cross_entropy(similarity_matrix.T, labels)
+    
+    # Final loss is the sum of both directions (image -> text and text -> image)
+    loss = (loss_image_to_text + loss_text_to_image) / 2.0
+    
+    return loss
+
 class Sentence_MALDI(L.LightningModule):
     """ This is an MLP (for now) implementation that loosely follows the SBERT setup. See:
     Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks, Figure 1 For More Details.
     """
-    def __init__(self, hyperparameters):
+    def __init__(self, hyperparameters, pretrained_embedder=None):
         super().__init__()
 
         for key in hyperparameters.keys():
@@ -109,11 +145,15 @@ class Sentence_MALDI(L.LightningModule):
         self.hidden_dim = self.hparams['hidden_dim']
         self.hidden_layers = self.hparams['hidden_layers']
         self.dropout_rate = self.hparams.get('dropout', 0.0)  # Default dropout rate is 0.0
+        self.tau = self.hparams.get('tau', 1.0)  # Softmax temperature at train-time
         
         if self.dropout_rate > 1.0 or self.dropout_rate < 0.0:
             raise ValueError("Dropout rate must be between 0.0 and 1.0")
         
-        self.embedder = Embedder(self.input_dim, self.hidden_dim, self.hidden_layers, self.dropout_rate)
+        if not pretrained_embedder:
+            self.embedder = Embedder(self.input_dim, self.hidden_dim, self.hidden_layers, self.dropout_rate)
+        else:
+            self.embedder = pretrained_embedder
         self.classifier = Classifier(self.hidden_dim*3, self.hidden_dim, 3, self.output_dim)
 
         # Training metrics
@@ -164,12 +204,12 @@ class Sentence_MALDI(L.LightningModule):
         pos_preds = self.classifier(pos_inputs)
         neg_preds = self.classifier(neg_inputs)
 
-        return pos_preds, neg_preds
+        return pos_preds, neg_preds, (anchors, positives, negatives)
         
 
     def training_step(self, batch, batch_idx):
         # Batch is a list of:
-        # spectra: (anchor, postive, negative)
+        # spectra: (anchor, positive, negative)
         # metadata: (anchor_metadata, positive_metadata, negative_metadata)
         # similarity: (None, pos_sim, neg_sim)
 
@@ -182,47 +222,46 @@ class Sentence_MALDI(L.LightningModule):
         positives = [x[1] for x in spectra]
         negatives = [x[2] for x in spectra]
 
-        anchor_metadata = [x[0] for x in metadata]
-        positive_metadata = [x[1] for x in metadata]
-        negative_metadata = [x[2] for x in metadata]
-        
         pos_similarities = torch.tensor([x[1] for x in similarities], device=self.device)
-        neg_similarities = torch.tensor([x[2] for x in similarities])
+        neg_similarities = torch.tensor([x[2] for x in similarities], device=self.device)
 
         # Forward pass
-        pos_preds, neg_preds = self(torch.stack(anchors), torch.stack(positives), torch.stack(negatives))
+        pos_preds, neg_preds, embeds = self.forward(torch.stack(anchors), torch.stack(positives), torch.stack(negatives))
+        anchor_embeds, positive_embeds, negative_embeds = embeds
 
-        # Calculate loss
+        # Apply temperature scaling
+        pos_preds /= self.tau
+        neg_preds /= self.tau
+
+        # Convert similarities to classification targets
         pos_targets = self.transform_to_classification(pos_similarities)
         neg_targets = torch.ones_like(neg_similarities, device=self.device, dtype=torch.long) * (self.output_dim - 1)
 
+        # Compute loss with class weighting
         if self.output_dim != 2:
-                    # Underweight the negative samples (since they are guarenteed 50%, other classes split the remaining 50%)
             class_weights = torch.ones(self.output_dim, device=self.device)
-            class_weights[-1] = 0.1
+            class_weights[-1] = 0.1  # Underweight negative samples
             pos_loss = F.cross_entropy(pos_preds, pos_targets, weight=class_weights)
             neg_loss = F.cross_entropy(neg_preds, neg_targets, weight=class_weights)
+            # pos_cosine_embedding_loss = 0.0
+            # neg_cosine_embedding_loss = 0.0
+            logging.warning(f"Cosine embedding is not used in training")
         else:
-            pos_loss = F.cross_entropy(pos_preds, pos_targets,)
-            neg_loss = F.cross_entropy(neg_preds, neg_targets,)
-        
-        
-        loss = pos_loss + neg_loss
+            pos_loss = F.cross_entropy(pos_preds, pos_targets)
+            neg_loss = F.cross_entropy(neg_preds, neg_targets)
+            # pos_cosine_embedding_loss = F.cosine_embedding_loss(anchor_embeds, positive_embeds, torch.ones(positive_embeds.shape[0], device=self.device))
+            # neg_cosine_embedding_loss = F.cosine_embedding_loss(anchor_embeds, negative_embeds, -torch.ones(negative_embeds.shape[0], device=self.device))
+
+        # Final loss
+        loss = pos_loss + neg_loss #+ (0.05 * pos_cosine_embedding_loss) + (0.05 * neg_cosine_embedding_loss)
+
+        # Logging
         preds = torch.cat((pos_preds, neg_preds), dim=0)
         targets = torch.cat((pos_targets, neg_targets), dim=0)
-
-        print('preds: ', torch.argmax(preds, dim=1))
-        print('targets: ', targets)
 
         batch_value = self.train_metrics(torch.argmax(preds, dim=1), targets)
         self.log_dict(batch_value, on_epoch=True)
         self.log('train_loss', loss, on_step=True, on_epoch=True)
-
-        if False:   # Handy for debugging
-            avg_pred_mag = torch.mean(torch.abs(pred_sim))
-            avg_real_mag = torch.mean(torch.abs(similarity))
-            self.log('train_avg_pred_magnitude', avg_pred_mag, on_step=True, on_epoch=True)
-            self.log('train_avg_real_magnitude', avg_real_mag, on_step=True, on_epoch=True)
 
         return loss
     
@@ -247,7 +286,7 @@ class Sentence_MALDI(L.LightningModule):
         neg_similarities = torch.tensor([x[2] for x in similarities])
 
         # Forward pass
-        pos_preds, neg_preds = self(torch.stack(anchors), torch.stack(positives), torch.stack(negatives))
+        pos_preds, neg_preds, _ = self(torch.stack(anchors), torch.stack(positives), torch.stack(negatives))
 
         # Calculate loss
         pos_targets = self.transform_to_classification(pos_similarities)
@@ -290,7 +329,7 @@ class Sentence_MALDI(L.LightningModule):
         embed_b = self.embedder(spectrum_b)
 
         # input = torch.cat((embed_a, embed_b, torch.abs(embed_a - embed_b)), dim=1)
-        # preds = F.softmax(self.classifier(input))
+        # preds = F.softmax(self.classifier(input), dim=1)
         # # Reverse prediction classes
         # preds = torch.flip(preds, dims=[1])
         # # Return probability of same genus

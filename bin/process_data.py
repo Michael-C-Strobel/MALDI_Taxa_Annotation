@@ -221,16 +221,16 @@ def main():
         output_mzML_dir.mkdir(parents=True, exist_ok=True)
     
 
-    # if input_file.suffix == '.json':
-    #     logging.info("Writing mzML files from JSON to %s", output_mzML_dir)
-    #     write_mzML_files_from_json(input_file, output_mzML_dir)
+    if input_file.suffix == '.json':
+        logging.info("Writing mzML files from JSON to %s", output_mzML_dir)
+        write_mzML_files_from_json(input_file, output_mzML_dir)
 
-    # elif input_file.suffix == '.txt' and args.driams_csv:
-    #     if "*" not in str(input_file):
-    #         raise ValueError("Expected a glob pattern in the input file")
-    #     write_mzML_files_from_txt(input_file, Path(args.driams_csv), output_mzML_dir, args.n_jobs)
-    # else:
-    #     raise ValueError('Input file must be a JSON or DRIAMS txt file')
+    elif input_file.suffix == '.txt' and args.driams_csv:
+        if "*" not in str(input_file):
+            raise ValueError("Expected a glob pattern in the input file")
+        write_mzML_files_from_txt(input_file, Path(args.driams_csv), output_mzML_dir, args.n_jobs)
+    else:
+        raise ValueError('Input file must be a JSON or DRIAMS txt file')
 
     # Process the mzML files with MALDIquant
     output_path = Path(args.output_dir)

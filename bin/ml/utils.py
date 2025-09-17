@@ -3,6 +3,7 @@ from pathlib import Path
 from torch import Tensor
 import numpy as np
 import sys
+import logging
 
 def mirror_plot_1d(spectrum_a, spectrum_b, output_path, tolerance, **kwargs):
     fig = plt.figure(figsize=(10, 6))
@@ -119,6 +120,10 @@ def mirror_plot(spectrum_a: np.array, spectrum_b: np.array, output_path: Path, t
     if len(spectrum_a.shape) != len(spectrum_b.shape):
         raise ValueError("Spectrum A and Spectrum B must have the same number of dimensions.")
     
+    if len(spectrum_a.shape) == 0 or len(spectrum_b.shape) == 0:
+        print("Warning: Spectrum A or Spectrum B is a scalar. Cannot plot.")
+        return
+
     if len(spectrum_a.shape) == 1:
         mirror_plot_1d(spectrum_a, spectrum_b, output_path, tolerance, **kwargs)
 
@@ -145,8 +150,13 @@ def shannon_entropy(spectrum: np.array, padding_value:float=-1, bin_size:float=1
     
     spectrum = np.array(spectrum)
 
+    if len(spectrum.shape) == 0:
+        return None
+
     if len(spectrum.shape) == 1 or min(spectrum[:, 1]) == 0:
-        print("Spectrum is likely already binned. Entropy calculation will be incorrect.", file=sys.stderr)
+        if not hasattr(shannon_entropy, "_warned"):
+            shannon_entropy._warned = True
+            logging.warning("Spectrum is likely already binned. Entropy calculation will be incorrect.")
         binned_spectrum = spectrum[:]
     else:
         spectrum = spectrum[spectrum[:, 0] != padding_value] # Remove padding
@@ -187,7 +197,10 @@ def estimate_convexity(spectrum: np.array, rescale:bool=False) -> tuple:
         spectrum = spectrum.numpy()
 
     if not isinstance(spectrum, np.ndarray):
-        raise ValueError(f"Expected a numpy array, instead got {type(spectrum)}.")
+        try:
+            spectrum = np.array(spectrum)
+        except Exception as e:
+            raise ValueError(f"Expected a numpy array, instead got {type(spectrum)}.")
     
     if len(spectrum.shape) != 2:
         raise ValueError("Expected a 2D array with m/z and intensity values.")

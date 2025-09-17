@@ -12,7 +12,7 @@ process_mzML_file <- function(input_file, output_file) {
     spectra <- smoothIntensity(spectra, method="SavitzkyGolay", halfWindowSize=20L)
     
     # Remove baseline
-    spectra <- removeBaseline(spectra, method="SNIP", iterations=50)  # Reduced iterations for performance
+    spectra <- removeBaseline(spectra, method="SNIP", iterations=50)
     
     # Detect peaks
     peaks = detectPeaks( spectra,
@@ -21,10 +21,10 @@ process_mzML_file <- function(input_file, output_file) {
                          SNR=4
                         )
     
-    # Bin peaks
+    # Bin peaks (only has an effect if replicates are present)
     peaks <- binPeaks(peaks, tolerance=0.001, method="strict")
     
-    # Filter peaks
+    # Filter peaks (only has an effect if replicates are present)
     peaks <- filterPeaks(peaks, minFrequency=0.70)
     
     # Trim peaks
