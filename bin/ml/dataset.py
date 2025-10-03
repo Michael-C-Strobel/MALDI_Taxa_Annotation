@@ -65,9 +65,22 @@ class single_MALDI_TOF_DS(Dataset):
                 n_workers:int=-1,
                 prefer_hard:bool=False,
                 singletons_as_anchors:bool=True,):
+
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
+
+        root_dir = Path(root_dir)
+        if not root_dir.exists():
+            # Process it
+            print(f"Root dir {root_dir} does not exist, processing...")
+            self.preprocess()
+
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+        if len(self.all_spectra) == 0:
+            print(f"No spectra found in {root_dir}/spectra, processing...")
+            self.preprocess()
+            self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+
         self.cast_to_classification = cast_to_classification
         self.prefer_hard = prefer_hard
         self.singletons_as_anchors = singletons_as_anchors
@@ -105,11 +118,15 @@ class single_MALDI_TOF_DS(Dataset):
             print(f"Got maximum class number {max(self.class_to_int.values())}")
 
         if 'accession' not in metadata_table.columns:
+            print("Column 'accession' not found in metadata table, trying 'Genbank accession'")
             metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
         else:
             metadata_table['accession'] = metadata_table['accession'].astype(str).str.strip()
         metadata_table['accession'] = metadata_table['accession'].astype(str)
+        initial_len = len(metadata_table)
         metadata_table = metadata_table.loc[metadata_table['Strain name'].isin(all_spectra_names)]
+        filtered_len = len(metadata_table)
+        print("Filtered metadata table from", initial_len, "to", filtered_len, "based on available spectra")
         metadata_table = metadata_table.drop_duplicates(subset='Strain name')   # Some strains occur twice due to multuple csv files
 
         self.metadata_table = metadata_table
@@ -753,6 +770,10 @@ class Paired_MALDI_TOF_DS(Dataset):
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+        if len(self.all_spectra) == 0:
+            print("No spectra found, running initial setup.")
+            self.preprocess()
+            self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
 
         if targets not in ['genera', 'species']:
             raise ValueError(f"Expected targets to be 'genera' or 'species', but got {targets}")
@@ -765,10 +786,14 @@ class Paired_MALDI_TOF_DS(Dataset):
         all_spectra_names = [x.stem for x in self.all_spectra]
 
         metadata_table = pd.read_csv(metadata_table)
+        print(f"DEBUG 767: metadata table contains {len(metadata_table)} rows")
+
         if 'Genbank accession' in metadata_table.columns and \
             'accession' not in metadata_table.columns:
             metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
         metadata_table = metadata_table.loc[metadata_table['Strain name'].isin(all_spectra_names)]
+
+        print(f"DEBUG 773: metadata table contains {len(metadata_table)} rows")
 
         self.metadata_table = metadata_table
         self.transform = transform
@@ -842,7 +867,7 @@ class Paired_MALDI_TOF_DS(Dataset):
             self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 21)   # Data leakage in the _absolute_ strictest sense
             self.sliced_similarities = self._preslice_similarities(temp_similarities)
 
-
+        print(f"DEBUG 5: metadata table contains {len(self.metadata_table)} rows")
         self.all_accessions = self.metadata_table.loc[self.metadata_table['accession'].notna(), 'accession'].unique().astype(str)
         print(f"Found {len(self.all_accessions)} accessions in the metadata table.")
 

@@ -81,7 +81,7 @@ class MaldiTransformerWrapper(MaldiTransformer):
         mlm_logits = self.output_head(z[:, 1:]).squeeze(-1)
 
         clf_logits = self.transformer.output_head(z[:, 0, :])
-        return mlm_logits, clf_logits
+        return mlm_logits, clf_logits, z[:, 0, :]
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -157,7 +157,7 @@ class MaldiTransformerWrapper(MaldiTransformer):
         batch = _batch
         batch = self.shuffler(batch)
 
-        mlm_logits, clf_logits = self(batch)
+        mlm_logits, clf_logits, _ = self(batch)
 
         mlm_logits_train = self.train_indices_select(mlm_logits, batch["train_indices"])
         trues_train = self.train_indices_select(
@@ -228,7 +228,7 @@ class MaldiTransformerWrapper(MaldiTransformer):
 
         batch = self.shuffler(batch)
 
-        mlm_logits, clf_logits = self(batch)
+        mlm_logits, clf_logits, _ = self(batch)
 
         logits_train = self.train_indices_select(mlm_logits, batch["train_indices"])
         trues_train = self.train_indices_select(
@@ -285,9 +285,15 @@ class MaldiTransformerWrapper(MaldiTransformer):
             _batch["species"] = None  # No species labels needed for embedding
             batch = _batch
 
-            mlm_logits, clf_logits = self(batch)
+            mlm_logits, clf_logits, z = self(batch)
 
-        return clf_logits.squeeze()
+        # Softmax over clf_logits to get probabilities
+        # return F.softmax(clf_logits, dim=-1)
+    
+        # Return predicted labels
+        # return F.one_hot(torch.argmax(clf_logits, dim=-1), num_classes=1000)
+
+        return   z.squeeze() #clf_logits.squeeze() # Return the embedding, rather than logit prediction
 
     def modified_shuffler(self, batch):
         """Implementation of the same shuffler, that avoids nan values (padding tokens)"""

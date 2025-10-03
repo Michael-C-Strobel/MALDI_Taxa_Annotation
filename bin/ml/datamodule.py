@@ -172,17 +172,17 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
         else:
             print(f"Using standard split method: {self.split_method}")
 
-        if train_accessions_path:
+        if train_accessions_path.exists():
             if wipe_test_sets:
                 (train_accessions_path).unlink(missing_ok=True)
             else:
                 self.train_accessions = torch.load(train_accessions_path, weights_only=False)
-        if val_accessions_path:
+        if val_accessions_path.exists():
             if wipe_test_sets:
                 (val_accessions_path).unlink(missing_ok=True)
             else:
                 self.val_accessions = torch.load(val_accessions_path, weights_only=False)
-        if test_accessions_path:
+        if test_accessions_path.exists():
             if wipe_test_sets:
                 (test_accessions_path).unlink(missing_ok=True)
             else:

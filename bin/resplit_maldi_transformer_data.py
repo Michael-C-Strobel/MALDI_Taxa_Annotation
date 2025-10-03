@@ -6,6 +6,7 @@ import h5torch
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
+import sys
 
 def gather_k_folds(split_dir):
 
@@ -147,11 +148,32 @@ def resplit_maldi_transformer_data(input_h5torch_path, output_h5torch_dir, metad
 
             print(f"Found a total of {len(mz_array)} valid spectra for fold {fold_iter}.")
 
-            f.register(old_f["central"][valid_indices], "central")  # Central is a ref to species by numerical id
+            species_labels = np.array(old_f["unstructured/species_labels"])[old_f["central"][valid_indices]]
+            # Decode from bytes to str if needed
+            species_labels = [s.decode('utf-8') if isinstance(s, bytes) else s for s in species_labels]
+            print("Sample species_labels:", species_labels[:5])
+            print("Sample non-nan species_labels:", [s for s in species_labels if s != 'nan'][:5])
+
+            # Use split species labels as genus labels
+            genus_labels = [x.split(' ')[0].encode('utf-8') for x in species_labels]
+            print("Sample genus_labels:", genus_labels[:5])
+
+            unique_genera = np.array(sorted(list(set(genus_labels))))
+            genera_as_int = {genus: i for i, genus in enumerate(unique_genera)}
+            # Ensure 'nan' has a home
+            if b'nan' not in genera_as_int:
+                genera_as_int[b'nan'] = len(genera_as_int)
+                unique_genera = np.append(unique_genera, b'nan')
+            genus_indices = np.array([genera_as_int[genus] for genus in genus_labels])
+
+
+            f.register(genus_indices, "central")  # Central is a ref to genus (was species) by numerical id
             f.register(mz_array, 0, name="mz", mode='vlen')
             f.register(intensity_array, 0, name="intensity", mode='vlen')
             f.register(old_f["0/loc"][valid_indices], 0, name="loc")
-            f.register(old_f["unstructured/species_labels"], "unstructured", name="species_labels") # Leave species unmodified (index is used as mapping for central)
+            f.register(old_f["central"][valid_indices], 0, name="species_central")
+            f.register(old_f["unstructured/species_labels"], "unstructured", name="species_labels") # Leave species unmodified (index is used as mapping for species_central)
+            f.register(unique_genera, "unstructured", name="genus_labels")
             # Add new splits
             f.register(np.array(tt_splits), "unstructured", name="split")
 
@@ -160,6 +182,10 @@ def resplit_maldi_transformer_data(input_h5torch_path, output_h5torch_dir, metad
 
             fold_iter += 1
             f.close()
+
+            print("********** SOMEONE ONLY MADE ME DO THE FIRST FOLD, EXITING EARLY **********")
+            sys.exit()
+
     finally:
         if f is not None:
             f.close()

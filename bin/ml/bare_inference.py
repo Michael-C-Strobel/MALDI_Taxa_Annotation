@@ -152,11 +152,14 @@ def setup_model(model_name: str,
     elif model_name == "MaldiTransformerWrapper" or model_name == "MaldiTransformerWrapperMethodData":
         model = MaldiTransformerWrapper.load_from_checkpoint(checkpoint_path=checkpoint_path)
 
-        trans = transforms.Compose([
-            L1NormalizeIntensity(),
+        # trans = transforms.Compose([
+        #     L1NormalizeIntensity(),
+        #     SelectTopKPeaks(200),
+        # ])
+        trans=transforms.Compose([
             SelectTopKPeaks(200),
-            PadToLength(200, padding_value=-1.0),
         ])
+        trans=None
 
     else:
         raise ValueError(f"Model {model_name} not implemented, please check the model name")
@@ -323,7 +326,7 @@ def main():
     parser = argparse.ArgumentParser(description="General inference script for all models")
     parser.add_argument("--model", type=str, required=True, help="Model name")
     parser.add_argument("--version", type=int, required=False, help="Model version")
-    parser.add_argument("--dataset", "-ds", type=str, required=True, help="Dataset name", choices=['DIRAMS-A', 'IDBac'])
+    parser.add_argument("--dataset", "-ds", type=str, required=True, help="Dataset name", choices=['DRIAMS-A', 'DRIAMS-B', 'DRIAMS-C', 'DRIAMS-D', 'RKI', 'IDBac'])
     parser.add_argument("--target", type=str, required=True, help="Target to predict", choices=['genera', 'species'])
     parser.add_argument("--split_type", type=str, required=False, help="Split type", choices=['genera', 'species', 'species_even'], default='genera')
     parser.add_argument("--inference_set", type=str, required=True, help="Inference set name", choices=['train', 'val', 'test', 'all'])
@@ -343,8 +346,8 @@ def main():
     if not args.model in IMPLEMENTED_MODELS:
         raise ValueError(f"Model {args.model} not implemented, please check the model name")
     
-    if args.checkpoint_path is not None and args.k is not None:
-        raise ValueError("Either checkpoint_path or k must be specified, not both")
+    if args.checkpoint_path is not None and args.version is not None:
+        raise ValueError("Either checkpoint_path or version must be specified, not both")
 
     checkpoint_path = None
 
@@ -354,15 +357,31 @@ def main():
             if args.model is None or args.version is None:
                 raise ValueError("Either version or checkpoint_path  must be specified")
             
-        if args.checkpoint_path is not None:
+        if args.checkpoint_path is None:
             if args.version is not None:
                 raise ValueError("Either version or checkpoint_path  must be specified")
         
    
-    if args.dataset == 'DIRAMS-A':
+    if args.dataset == 'DRIAMS-A':
         _checkpoint_root_dir = Path('./lightning_logs_DRIAMS_A/')
         if args.run_for_score:
             _checkpoint_root_dir = Path('./lightning_logs_DRIAMS_A_for_score/')
+    elif args.dataset == 'DRIAMS-B':
+        _checkpoint_root_dir = Path('./lightning_logs_DRIAMS_B/')
+        if args.run_for_score:
+            _checkpoint_root_dir = Path('./lightning_logs_DRIAMS_B_for_score/')
+    elif args.dataset == 'DRIAMS-C':
+        _checkpoint_root_dir = Path('./lightning_logs_DRIAMS_C/')
+        if args.run_for_score:
+            _checkpoint_root_dir = Path('./lightning_logs_DRIAMS_C_for_score/')
+    elif args.dataset == 'DRIAMS-D':
+        _checkpoint_root_dir = Path('./lightning_logs_DRIAMS_D/')
+        if args.run_for_score:
+            _checkpoint_root_dir = Path('./lightning_logs_DRIAMS_D_for_score/')
+    elif args.dataset == 'RKI':
+        _checkpoint_root_dir = Path('./lightning_logs_RKI/')
+        if args.run_for_score:
+            _checkpoint_root_dir = Path('./lightning_logs_RKI_for_score/')
     elif args.dataset == 'IDBac':
         _checkpoint_root_dir = Path('./lightning_logs/')
         if args.run_for_score:
@@ -374,7 +393,7 @@ def main():
         checkpoint_path = Path(args.checkpoint_path)
         if not checkpoint_path.exists():
             raise ValueError(f"Checkpoint path {checkpoint_path} does not exist")
-        output_dir = checkpoint_path.parent / f"../inference/{args.target}/{args.split_type}/"
+        output_dir = checkpoint_path.parent / f"../inference/{args.dataset}/{args.target}/{args.split_type}/"
 
     else:
         k_fold_insert = ""
@@ -405,7 +424,7 @@ def main():
 
     output_dir.mkdir(parents=True, exist_ok=True)
    
-    if args.dataset == 'DIRAMS-A':
+    if args.dataset == 'DRIAMS-A':
         spectra_path = '../../data/driams/preprocessing'
         metadata_path = '../../data/driams/preprocessing/merged_metadata.csv'
         if args.split_type == 'species_even':
@@ -414,6 +433,41 @@ def main():
         if args.maldi_nn_preprocessing:
             print("Using MALDI-NN Preprocessing", flush=True)
             spectra_path = '../../data/driams/processed_data/MaldiTransformer/spectra'
+    elif args.dataset == 'DRIAMS-B':
+        spectra_path = '../../data/driams-B/preprocessing/'
+        metadata_path = '../../data/driams-B/preprocessing/merged_metadata.csv'
+        if args.split_type == 'species_even':
+            metadata_path = '../../data/driams-B/preprocessing/merged_metadata_code_accessions.csv'
+        ml_processing_path = '../../data/driams-B/processed_data'
+        if args.maldi_nn_preprocessing:
+            print("Using MALDI-NN Preprocessing", flush=True)
+            spectra_path = '../../data/driams-B/processed_data/MaldiTransformer/spectra'
+    elif args.dataset == 'DRIAMS-C':
+        spectra_path = '../../data/driams-C/preprocessing/'
+        metadata_path = '../../data/driams-C/preprocessing/merged_metadata.csv'
+        if args.split_type == 'species_even':
+            metadata_path = '../../data/driams-C/preprocessing/merged_metadata_code_accessions.csv'
+        ml_processing_path = '../../data/driams-C/processed_data'
+        if args.maldi_nn_preprocessing:
+            print("Using MALDI-NN Preprocessing", flush=True)
+            spectra_path = '../../data/driams-C/processed_data/MaldiTransformer/spectra'
+    elif args.dataset == 'DRIAMS-D':
+        spectra_path = '../../data/driams-D/preprocessing/'
+        metadata_path = '../../data/driams-D/preprocessing/merged_metadata.csv'
+        if args.split_type == 'species_even':
+            metadata_path = '../../data/driams-D/preprocessing/merged_metadata_code_accessions.csv'
+        ml_processing_path = '../../data/driams-D/processed_data'
+        if args.maldi_nn_preprocessing:
+            print("Using MALDI-NN Preprocessing", flush=True)
+            spectra_path = '../../data/driams-D/processed_data/MaldiTransformer/spectra'
+    elif args.dataset == 'RKI':
+        spectra_path = '../../data/RKI/processed/'
+        metadata_path = '../../data/RKI/processed/rki_metadata.csv'
+        if args.split_type == 'species_even':
+            raise NotImplementedError("species_even split not implemented for RKI dataset")
+        ml_processing_path = '../../data/RKI/processed_to_pt/'
+        if args.maldi_nn_preprocessing:
+            raise NotImplementedError("MALDI-Transformer preprocessing not supported for RKI dataset")
     elif args.dataset == 'IDBac':
         spectra_path = '../../data/idbac_db/preprocessing'
         metadata_path = '../../data/idbac_db/raw/ammended_db.csv'
@@ -421,7 +475,12 @@ def main():
         if args.maldi_nn_preprocessing:
             raise ValueError("MALDI-Transformer preprocessing not supported for IDBac dataset")
         spectra_path = '../../data/driams/processed_data/MaldiTransformer/spectra'
-        raise ValueError(f"Dataset {args.dataset} not supported")
+    else:
+        raise ValueError(f"Dataset '{args.dataset}' not supported")
+    
+    assert os.path.exists(spectra_path), f"spectra_path {spectra_path} does not exist"
+    assert os.path.exists(metadata_path), f"metadata_path {metadata_path} does not exist"
+    # assert os.path.exists(ml_processing_path), f"ml_processing_path {ml_processing_path} does not exist"   # Don't asset this, dataset creates automatically
         
     logging.info("Output directory: %s", output_dir)
     logging.info("Checkpoint path: %s", checkpoint_path)
