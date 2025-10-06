@@ -220,6 +220,8 @@ def main():
     # Get taxonomy
     df = pd.read_csv(db_summary_path)
     df = populate_taxonomies(df)
+    # Save everything with a 'genus' and 'Genbank accession'
+    df = df[~df['genus'].isna() & ~df['Genbank accession'].isna()]
     df.to_csv(args.cleaned_csv_output, index=False)
 
 
