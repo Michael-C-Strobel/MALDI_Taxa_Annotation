@@ -244,7 +244,12 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
             return self.train_test_stats
         else:
             return self.train_test_stats
-
+        
+    def __len__(self):
+        if self.stage == 'test':
+            return len(self.predict_set)
+        else:
+            raise NotImplementedError("Length is only implemented for 'test' stage.")
     
 
 def test_dataloader():

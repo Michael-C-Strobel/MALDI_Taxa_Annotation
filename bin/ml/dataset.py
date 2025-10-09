@@ -357,8 +357,15 @@ class single_MALDI_TOF_DS(Dataset):
             return spectrum, metadata
             
     def get_by_strain_name(self, strain_name):
-        accession = self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]
-        spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
+        accession = self.strain_name_to_metadata[strain_name]['accession']
+        # print('accession:', accession)
+        if self.in_memory:
+            # print("Found that this was in memory", flush=True)
+            spectrum = self.spectra[strain_name]
+            # print("spectrum:", spectrum.shape, flush=True)
+        else:
+            # print("Found that this was no memory", flush=True)
+            spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
         
         metadata = {}
 
@@ -1336,8 +1343,8 @@ class ExhaustiveMALDI_TOF_DS(IterableDataset):
     def __iter__(self):
         return iter(self.sampler)
 
-    # def __len__(self):
-    #     return self.len
+    def __len__(self):
+        return self.sampler.__len__()
 
     def __getitem__(self, idx):
         spectrum_a, spectrum_b, similarity, metadata = next(self.sampler)
@@ -1372,6 +1379,7 @@ class ExhaustiveSampler():
                     strain_a, meta_a = self.data.get_by_strain_name(self.all_strains[i])
                     strain_b, meta_b = self.data.get_by_strain_name(self.all_strains[j])
                 except Exception as e:
+                    raise e
                     continue
                 
                 try:
@@ -1411,11 +1419,9 @@ class ExhaustiveSampler():
             self.__iter__()
         return next(self._iterator)
     
-    # def __len__(self):
-    #     x =  self.num_strains
-    #     return x * (x + 1) // 2
-        
-    
+    def __len__(self):
+        return self.num_strains * (self.num_strains - 1) // 2
+
 class ExhaustiveSingleSampler():
     def __init__(self, data: single_MALDI_TOF_DS, accessions: torch.Tensor):
         self.data = data
@@ -1466,6 +1472,9 @@ class ExhaustiveSingleSampler():
         if self._iterator is None:
             self.__iter__()
         return next(self._iterator)
+
+    def __len__(self):
+        return self.num_strains
 
 
 @pytest.fixture
