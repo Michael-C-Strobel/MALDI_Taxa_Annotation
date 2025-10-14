@@ -30,11 +30,13 @@ plt.rcParams.update({
 os.getcwd()
 
 # %%
+import functools
 NAME_MAPPINGS = {
     'clip_transformer': "Contrastive Transformer",
     'clip_transformer_euclidean': "Contrastive Transformer (Euclidean)",
     'clip_transformer_intensity_agnostic': "Contrastive Transformer (Int. Agn.)",
     'clip_transformer_classifier': "Classifier Embeddings",
+    'cross_encoder': 'Cross Encoder',
     'cosine': "Cosine Similarity",
     'prototypical_transformer': "Prototypical Transformer",
     'cosine_intensity_agnostic': "Cosine Similarity (Int. Agn.)",
@@ -57,6 +59,10 @@ NAME_MAPPINGS = {
     'maldi_transformer_ts': 'MALDI Transformer Reproduced',
 }
 
+PAIRED_MODELS = {
+    'cross_encoder',
+}
+
 colors = {
     'cosine': '#fc8d62',
     'cosine_intensity_agnostic': '#e78ac3',
@@ -74,6 +80,7 @@ colors = {
     'cosine_1_intensity_agnostic': "#ffc82f",
     'Theoretical Max': "#727272",
     'maldi_transformer_ts': '#a6d854',
+    'cross_encoder': "#ff2f2f",
 }
 
 level_heirarchy = {
@@ -82,11 +89,14 @@ level_heirarchy = {
     'species_even': 1,
 }
 
-def gather_embeddings(dataset:str, target:str, split_type:str):
+@functools.lru_cache(maxsize=10)
+def gather_embeddings_helper(dataset:str, target:str, split_type:str):
     base_dir = Path('../bin/ml/')
 
     if dataset.lower() == 'driams-a':
         base_dir = base_dir / 'lightning_logs_DRIAMS_A'
+    elif dataset.lower() == 'idbac-all':
+        base_dir = base_dir / 'lightning_logs_idbac_for_score'
     elif dataset.lower() == 'driams-b':
         base_dir = base_dir / 'lightning_logs_DRIAMS_B_for_score'
     elif dataset.lower() == 'driams-c':
@@ -111,6 +121,7 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
     binary_transformer_prediction_head_path = None
     maldi_transformer_path = None
     maldi_transformer_ts_path = None # "their script"
+    cross_encoder_path = None
 
     DRIAMS_MAX_INDEX=6 # Exclude 7th (index=6) fold, as it's used for parameter tuning
     IDBAC_MAX_INDEX=3
@@ -169,6 +180,10 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
                 maldi_transformer_ts_path = [
                     _base_dir / '../MALDI-Transformer_Reproduction' / f'k={i}' / 'malditrfvanilla_M_200_0.15_0.01_0.0005' / 'version_1' / 'inference' / 'DRIAMS-A' / target / split_type for i in [0,]
                 ]
+                print("Warning - using screwy data for Cross_Encoder")
+                cross_encoder_path =  [
+                    _base_dir / target / split_type / f'k={i}' / 'Cross_Encoder' / 'version_0' / 'inference' / target / split_type for i in range(0,DRIAMS_MAX_INDEX)
+                ]
 
 
             elif dataset.lower() == 'idbac-kb':
@@ -187,6 +202,19 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
                 # binary_transformer_prediction_head_path = [
                 #     _base_dir / target / split_type / f'k={i}' / 'Binary_Transformer_Prediction_Head' / 'version_0' / 'inference' / target / split_type for i in range(0,3)
                 # ]
+            elif dataset.lower() == 'idbac-all':
+                metadata_path = Path('../data/idbac_db/preprocessing/db_with_taxonomy_and_replicates.csv')
+                _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_A_for_score')
+                clip_transformer_path = [
+                    _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_11' / 'inference' / 'IDBac' / 'all' for i in range(0, DRIAMS_MAX_INDEX)
+                ]
+                clip_transformer_genus_genus_path = None
+                clip_transformer_classifer_path = None
+                prototypical_transformer_path = None
+
+                # Different root for cosine
+                _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_idbac_for_score')
+                cosine_path = [_base_dir / 'cosine_10' / 'all']
             elif dataset.lower() == 'driams-b':
                 metadata_path = Path('../data/driams-B/preprocessing/merged_metadata.csv')
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_A_for_score')
@@ -324,7 +352,7 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
     output_dict = {}
     # cosine_path = None
 
-    if dataset.lower() in ['driams-b', 'driams-c', 'driams-d', 'rki']:
+    if dataset.lower() in ['driams-b', 'driams-c', 'driams-d', 'rki', 'idbac-all']:
         if clip_transformer_path:
             output_dict['clip_transformer'] = {}
             output_dict['clip_transformer']['train'] = [pd.read_feather(x / 'all_inference.feather') for x in clip_transformer_path]
@@ -378,6 +406,11 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
             print("*** DANGEROUS USING TRIANING SET")
             output_dict['maldi_transformer_ts']['train'] = [pd.read_feather(x / 'train_inference.feather') for x in maldi_transformer_ts_path]
             output_dict['maldi_transformer_ts']['test'] = [pd.read_feather(x / 'train_inference.feather') for x in maldi_transformer_ts_path]
+        if cross_encoder_path:
+            output_dict['cross_encoder'] = {}
+            print("Warning -- Cross-Encoder is returning test for it's train data")
+            output_dict['cross_encoder']['train'] = [pd.read_feather(x / 'test_inference.feather') for x in cross_encoder_path]
+            output_dict['cross_encoder']['test'] = [pd.read_feather(x / 'test_inference.feather') for x in cross_encoder_path]
 
     # Augment the metadata with the true labels
     if target == 'genera':
@@ -398,54 +431,95 @@ def gather_embeddings(dataset:str, target:str, split_type:str):
     accession_to_species = metadata_table.set_index('accession')['species'].to_dict()
 
     for key, train_test_dict in output_dict.items():
-        for i in range(len(output_dict[key]['test'])):
-            output_dict[key]['train'][i]['accession'] = output_dict[key]['train'][i]['accession'].apply(lambda x: x[0])   # For some reason it's a list of a single string
-            output_dict[key]['train'][i]['true_label'] = output_dict[key]['train'][i]['accession'].apply(lambda x: accession_to_label.get(x, None))
-            output_dict[key]['test'][i]['accession'] = output_dict[key]['test'][i]['accession'].apply(lambda x: x[0])   # For some reason it's a list of a single string
-            output_dict[key]['test'][i]['true_label'] = output_dict[key]['test'][i]['accession'].apply(lambda x: accession_to_label.get(x, None))
+        print("getting key", key)
+        if key not in PAIRED_MODELS:
+            for i in range(len(output_dict[key]['test'])):
+                output_dict[key]['train'][i]['accession'] = output_dict[key]['train'][i]['accession'].apply(lambda x: x[0]).astype(str)   # For some reason it's a list of a single string
+                output_dict[key]['train'][i]['true_label'] = output_dict[key]['train'][i]['accession'].apply(lambda x: accession_to_label.get(x, None))
+                output_dict[key]['test'][i]['accession'] = output_dict[key]['test'][i]['accession'].apply(lambda x: x[0]).astype(str)   # For some reason it's a list of a single string
+                output_dict[key]['test'][i]['true_label'] = output_dict[key]['test'][i]['accession'].apply(lambda x: accession_to_label.get(x, None))
 
-            # Precast embedding to np.array for convenience
-            output_dict[key]['train'][i]['embedding'] = output_dict[key]['train'][i]['embedding'].apply(lambda x: np.array(x))
-            output_dict[key]['test'][i]['embedding'] = output_dict[key]['test'][i]['embedding'].apply(lambda x: np.array(x))
+                # Precast embedding to np.array for convenience
+                output_dict[key]['train'][i]['embedding'] = output_dict[key]['train'][i]['embedding'].apply(lambda x: np.array(x))
+                output_dict[key]['test'][i]['embedding'] = output_dict[key]['test'][i]['embedding'].apply(lambda x: np.array(x))
+
+
+                # Fix strain_name so it's no longer a list
+                output_dict[key]['train'][i]['strain_name'] = output_dict[key]['train'][i]['strain_name'].apply(lambda x: x[0])
+                output_dict[key]['test'][i]['strain_name'] = output_dict[key]['test'][i]['strain_name'].apply(lambda x: x[0])
+
+                # Manually annotate with 'genus' and 'species' columns
+                output_dict[key]['train'][i]['genus'] = output_dict[key]['train'][i]['accession'].apply(lambda x: accession_to_genus.get(x, None))
+                output_dict[key]['train'][i]['species'] = output_dict[key]['train'][i]['accession'].apply(lambda x: accession_to_species.get(x, None))
+                output_dict[key]['test'][i]['genus'] = output_dict[key]['test'][i]['accession'].apply(lambda x: accession_to_genus.get(x, None))
+                output_dict[key]['test'][i]['species'] = output_dict[key]['test'][i]['accession'].apply(lambda x: accession_to_species.get(x, None))
+
+                # Add metadata to the output dataframes
+                output_dict[key]['test'][i].target = target
+                output_dict[key]['train'][i].target = target
+                output_dict[key]['test'][i]._metadata += ('target',)
+                output_dict[key]['train'][i]._metadata += ('target',)
+
+            # if dataset.lower() == 'rki':
+            #     # Remove all species that overlap in DRIAMS-A metadata from test df
+
+            #     print("REMOVING ALL COMMON SPECTRA WITH DRIAMS-A", flush=True)
+
+            #     driams_a = pd.read_csv('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/data/driams/preprocessing/merged_metadata.csv')
+
+            #     for key in output_dict.keys():
+            #         for i in range(len(output_dict[key]['test'])):
+            #             df = output_dict[key]['test'][i]
+            #             if 'species' not in df.columns:
+            #                 continue
+            #             inital_len = len(df)
+            #             output_dict[key]['test'][i] = df[~df['species'].str.lower().isin(driams_a['genus'].str.lower())]      
+            #             print(f"Started with {inital_len} spectra, now we have {len(output_dict[key]['test'][i])} spectra after removing DRIAMS-A overlaps", flush=True)
+            # else:
+            #     print(f"NOT REMOVING ANYTHING BECAUSE WE ARE NOT USING RKI. GOT '{dataset.lower()}'", flush=True)
+        else: # Model is paired
+
+            output_dict[key]['test'][i].test = True
+            output_dict[key]['test'][i]._metadata += ('test',)
+
+            for cond in ['train', 'test']:
+                output_dict[key][cond][i].attrs.update({'test': cond == 'test'})
+                output_dict[key][cond][i].attrs.update({'paired': True})
+
+                for col in ['accession_a', 'accession_b']:
+                    print('1)', output_dict[key][cond][i][col].head(5))
+                    output_dict[key][cond][i][col] = output_dict[key][cond][i][col].astype(str)   # For some reason it's a list of a single string
+                    print('2a)', output_dict[key][cond][i][col].head(5))
+                    output_dict[key][cond][i][f'true_label_{col[-1]}'] = output_dict[key][cond][i][col].apply(lambda x: accession_to_label.get(x, None))
     
-            # Fix strain_name so it's no longer a list
-            output_dict[key]['train'][i]['strain_name'] = output_dict[key]['train'][i]['strain_name'].apply(lambda x: x[0])
-            output_dict[key]['test'][i]['strain_name'] = output_dict[key]['test'][i]['strain_name'].apply(lambda x: x[0])
 
-            # Manually annotate with 'genus' and 'species' columns
-            output_dict[key]['train'][i]['genus'] = output_dict[key]['train'][i]['accession'].apply(lambda x: accession_to_genus.get(x, None))
-            output_dict[key]['train'][i]['species'] = output_dict[key]['train'][i]['accession'].apply(lambda x: accession_to_species.get(x, None))
-            output_dict[key]['test'][i]['genus'] = output_dict[key]['test'][i]['accession'].apply(lambda x: accession_to_genus.get(x, None))
-            output_dict[key]['test'][i]['species'] = output_dict[key]['test'][i]['accession'].apply(lambda x: accession_to_species.get(x, None))
+                output_dict[key][cond][i]['genus_a'] = output_dict[key][cond][i]['accession_a'].apply(lambda x: accession_to_genus.get(x, None))
+                output_dict[key][cond][i]['species_a'] = output_dict[key][cond][i]['accession_a'].apply(lambda x: accession_to_species.get(x, None))
+                output_dict[key][cond][i]['genus_b'] = output_dict[key][cond][i]['accession_b'].apply(lambda x: accession_to_genus.get(x, None))
+                output_dict[key][cond][i]['species_b'] = output_dict[key][cond][i]['accession_b'].apply(lambda x: accession_to_species.get(x, None))
 
-            # Add metadata to the output dataframes
-            output_dict[key]['test'][i].target = target
-            output_dict[key]['train'][i].target = target
-            output_dict[key]['test'][i]._metadata += ('target',)
-            output_dict[key]['train'][i]._metadata += ('target',)
+                # Generate true_label column
+                if target == 'genera':
+                    output_dict[key][cond][i]['true_label'] = (output_dict[key][cond][i]['genus_a'] == output_dict[key][cond][i]['genus_b']).astype(int)
+                elif target == 'species':
+                    output_dict[key][cond][i]['true_label'] = (output_dict[key][cond][i]['species_a'] == output_dict[key][cond][i]['species_b']).astype(int)
 
-        if dataset.lower() == 'rki':
-            # Remove all species that overlap in DRIAMS-A metadata from test df
+                output_dict[key][cond][i].attrs.update({'target': target})
+        
+        print(f"{key}: {output_dict[key]['train'][i].columns}")
 
-            print("REMOVING ALL COMMON SPECTRA WITH DRIAMS-A", flush=True)
-
-            driams_a = pd.read_csv('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/data/driams/preprocessing/merged_metadata.csv')
-
-            for key in output_dict.keys():
-                for i in range(len(output_dict[key]['test'])):
-                    df = output_dict[key]['test'][i]
-                    if 'species' not in df.columns:
-                        continue
-                    inital_len = len(df)
-                    output_dict[key]['test'][i] = df[~df['species'].str.lower().isin(driams_a['species'].str.lower())]      
-                    print(f"Started with {inital_len} spectra, now we have {len(output_dict[key]['test'][i])} spectra after removing DRIAMS-A overlaps", flush=True)
-        else:
-            print(f"NOT REMOVING ANYTHING BECAUSE WE ARE NOT USING RKI. GOT '{dataset.lower()}'", flush=True)
 
     output_dict['metadata'] = metadata_table
     
     return output_dict
+
+import copy 
+def gather_embeddings(dataset:str, target:str, split_type:str):
+    return copy.deepcopy(gather_embeddings_helper(dataset, target, split_type))
         
+
+# %%
+gather_embeddings_helper.cache_clear()
 
 # %%
 def gather_embeddings_cosine_only(dataset:str, target:str, split_type:str):
@@ -809,6 +883,9 @@ def evaluate_top_k_recall_old(
         return output_dict
 
 # %%
+def get_hybrid_retrieval_df()
+
+# %%
 from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
 from sklearn.metrics import recall_score
 from collections import defaultdict
@@ -831,14 +908,10 @@ def _compute_top_k_recall(
     # predicted_k_labels = train_labels[sorted_indices]
     predicted_k_labels = []
     for i in range(len(test_labels)):
-        valid_mask = ~np.isnan(scores[i])
+        valid_mask = (~np.isnan(scores[i]) & ~np.isinf(scores[i]))
         # invalid_mask_sum = sum(np.isnan(scores[i]))
-        # if invalid_mask_sum >0:
-        #     print(f"Encountered {invalid_mask_sum} invalid scores")
         valid_sorted = [idx for idx in sorted_indices[i] if valid_mask[idx]]
         # Pad with a sentinel (e.g., None) if fewer than k valid predictions
-        # if (max_k - len(valid_sorted)) > 0:
-        #     print(f"Appending {(max_k - len(valid_sorted))} padding values")
         padded = valid_sorted[:max_k] + [None] * (max_k - len(valid_sorted))
         predicted_k_labels.append([train_labels[idx] if idx is not None else None for idx in padded])
     predicted_k_labels = np.array(predicted_k_labels, dtype=object)
@@ -892,7 +965,7 @@ def _compute_top_k_recall(
     # --- compute theoretical maximum recall ---
     is_in_train = []
     for i, true_label in enumerate(test_labels):
-        valid_scores = ~np.isnan(scores[i])
+        valid_scores = ~(np.isnan(scores[i]) | np.isinf(scores[i]))
         valid_labels = train_labels[valid_scores]
         is_in_train.append(true_label in valid_labels)
     is_in_train = np.array(is_in_train)
@@ -913,7 +986,7 @@ def _compute_top_k_recall(
     if return_failure_cases and len(failure_indices_per_k) > 0 and strain_names is not None:
         failure_cases = [
             {
-                'strain_name': strain_names[i],
+                'strain_name': strain_names[1][i],
                 'true_label': test_labels[i],
                 'predicted_labels': predicted_k_labels[i].tolist(),
                 'genera_counts': genera_counts
@@ -940,6 +1013,7 @@ def compute_scores(
 ):
     if within_test:
         train_df = test_df
+
 
     train_df = train_df[train_df['true_label'].notna()].sort_values('strain_name')
     test_df = test_df[test_df['true_label'].notna()].sort_values('strain_name')
@@ -972,9 +1046,10 @@ def compute_scores(
         # Diagonal to inf
         # print("Filling diagonal.")
         assert scores.shape[0] == scores.shape[1], "Expected scores to be square when running with within_test=True"
+        
         np.fill_diagonal(scores, -np.inf)
 
-    return scores, train_df['true_label'].values, test_df['true_label'].values, test_df['strain_name'].values
+    return scores, train_df['true_label'].values, test_df['true_label'].values, (train_df['strain_name'].values, test_df['strain_name'].values)
 
 
 def evaluate_top_k_recall(
@@ -1139,8 +1214,9 @@ def test_evaluate_top_k_recall_3():
 # test_evaluate_top_k_recall_3()
 
 
-def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False, macro=False, cross_species=False, db_dataset=None):
+def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False, macro=False, cross_species=False, db_dataset=None, legend=True):
     embeddings = gather_embeddings(dataset, target, split_type)
+    print(embeddings.keys())
 
     # Add intensity-agnostic embeddings
     print("Adding intensity-agnostic embeddings...")
@@ -1151,6 +1227,12 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
         embeddings['cosine_intensity_agnostic']['test'][i] = embeddings['cosine']['test'][i].copy(deep=True)
         embeddings['cosine_intensity_agnostic']['train'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['train'][i]['embedding'].apply(lambda x: (x>0.02).astype(int))
         embeddings['cosine_intensity_agnostic']['test'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['test'][i]['embedding'].apply(lambda x: (x>0.02).astype(int))
+
+    # DEBUG Keep only relevant embeddings
+    print("Removing all embeddings except clip_transformer, cosine_intensity_agnostic, cross_encoder...")
+    for key in list(embeddings.keys()):
+        if key not in {'clip_transformer', 'cosine_intensity_agnostic', 'cross_encoder'}:
+            del embeddings[key]
 
     if db_dataset is not None:
         if within_test:
@@ -1175,21 +1257,23 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
                 print(f"Warning: {method} not found in db_embeddings, skipping.")
                 del embeddings[method]
 
-    # DEBUG Keep only relevant embeddings
-    # for key in list(embeddings.keys()):
-    #     if key not in {'clip_transformer', 'cosine_intensity_agnostic'}:
-    #         del embeddings[key]
-
     # Prepare job arguments
     job_args = []
     for key in embeddings.keys():
-        if key in {'metadata', 'multinomial_classifier'}:
+        break   # DBEUG SKIPPING REGULAR COMPUTATIONS
+        if key in {'metadata', 'multinomial_classifier', 'cross_encoder'}:
             continue
         distance_metric = 'cosine' if key in {'clip_transformer', 'clip_transformer_genus_genus', 'cosine', 'cosine_intensity_agnostic'} else 'euclidean'
 
         for i in range(len(embeddings[key]['train'])):
             train_df = embeddings[key]['train'][i]
             test_df = embeddings[key]['test'][i]
+
+            # Subsample train_df and test_df to 5 spectra per genera
+            # if target == 'genera':
+            #     train_df = train_df.groupby('true_label').apply(lambda x: x.sample(n=min(5, len(x)), random_state=42)).reset_index(drop=True)
+            #     test_df = test_df.groupby('true_label').apply(lambda x: x.sample(n=min(5, len(x)), random_state=42)).reset_index(drop=True)
+
             job_args.append((key, train_df, test_df, distance_metric, i))
 
     average = 'macro' if macro else 'micro'
@@ -1211,6 +1295,92 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
         for key, train_df, test_df, distance_metric, cvf in tqdm(job_args)
     )
 
+    # Get top 50 hits with clip_transformer, then use cross_encoder to rerank
+    if 'clip_transformer' in embeddings and 'cross_encoder' in embeddings:
+        print("Calculating super score...")
+
+        print(len(embeddings['cross_encoder']['train']))
+        print(len(embeddings['clip_transformer']['test']))
+
+        job_args = []
+        for i in range(len(embeddings['clip_transformer']['test'])):
+            train_df = embeddings['cross_encoder']['train'][i]
+            test_df = embeddings['cross_encoder']['test'][i]
+
+            # Order the embeddings by strain_name for consistency
+            # train_df = train_df.sort_values(by='strain_name')
+            # test_df = test_df.sort_values(by='strain_name')
+            
+            if dataset.lower() == 'driams-a':
+                clip_embeddings_train = embeddings['clip_transformer']['train'][i].sort_values(by='strain_name')
+                clip_embeddings_test = embeddings['clip_transformer']['test'][i].sort_values(by='strain_name')
+            else:
+                clip_embeddings_train = embeddings['clip_transformer']['train'][0].sort_values(by='strain_name')
+                clip_embeddings_test = embeddings['clip_transformer']['test'][0].sort_values(by='strain_name')
+
+            clip_scores, train_labels, test_labels, strain_names = compute_scores(
+                clip_embeddings_train,
+                clip_embeddings_test,
+                distance_metric='cosine',
+                normalize=True,
+                within_test=within_test,
+                cross_species=cross_species,
+            )
+            print('strain_names', strain_names[0][:5])
+            print('strain_names.shape', strain_names[0].shape)
+
+            print('clip_scores.shape', clip_scores.shape)
+
+            print('train_labels', train_labels[:5])
+            print('test_labels', test_labels[:5])
+
+            print('"cross_encoder" test_df', test_df.head())
+
+            # test_df is the cross_encoder test set, we need to reverse all cols with _a, _b and reconcat to make it square
+            test_df_flipped = test_df.rename(columns=lambda x: x.replace('_a', '_temp').replace('_b', '_a').replace('_temp', '_b'))
+            test_df = pd.concat([test_df, test_df_flipped], ignore_index=True)
+            test_df = test_df.pivot(index='strain_name_a', columns='strain_name_b', values='binary_pred')
+            np.fill_diagonal(test_df.values, -np.inf)
+
+            # Count how many rows/cols are common with strain_names[0], strain_names[1]
+            common_strains_a = test_df.index.intersection(strain_names[0])
+            common_strains_b = test_df.columns.intersection(strain_names[1])
+            print(f"Test set dimensions: {len(strain_names[0])}, {len(strain_names[1])}")
+            print(f"Common strains in cross_encoder test set: {len(common_strains_a)} rows, {len(common_strains_b)} columns")
+            test_df = test_df.loc[common_strains_a, common_strains_b]
+
+            assert np.array_equal(train_labels, train_df['true_label'].values)
+            assert np.array_equal(test_labels, test_df['true_label'].values)
+            assert np.array_equal(strain_names, test_df['strain_name'].values)
+
+            # Top 50 indices
+            sorted_idx = np.argsort(-clip_scores, axis=1)   # Highest similarity first
+            top_idx = sorted_idx[:, :50]
+            # Get all other indices
+            other_idx = sorted_idx[:, 50:]
+
+            super_scores = clip_scores.copy()
+            super_scores[sorted_idx] = test_df[sorted_idx]
+            super_scores[other_idx] = -np.inf  # Mask out all but top 50
+
+            job_args.append((super_scores, train_labels, test_labels, strain_names, i))
+
+        super_results = Parallel(n_jobs=n_jobs)(
+            delayed(evaluate_top_k_recall)(
+                scores=scores,
+                train_labels=train_labels,
+                test_labels=test_labels,
+                strain_names=strain_names,
+                method='Super Score (Clip + Cosine)',
+                max_k=10,
+                average=average,
+                within_test=within_test,
+                metadata={'cv_fold': cvf},
+                cross_species=cross_species
+            )
+            for scores, train_labels, test_labels, strain_names, cvf in tqdm(job_args)
+        )
+        results.extend(super_results)
 
     # return results
     # print(results)
@@ -1287,8 +1457,26 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
         print(f"{model}: {avg_acc:.4f}")
 
     print("***********Using weighted averages.")
-    print(accuracies_df)
     accuracies_df['genera_counts'] = accuracies_df['genera_counts'].apply(lambda x: x if isinstance(x, int) else len(x) if isinstance(x, list) else np.nan)
+
+    #  Print the accuracies that the plot will use (weighted mean)
+    if average == 'macro':
+        weighted_means = (
+            accuracies_df
+            .groupby(['model_name', 'k'])
+            .apply(lambda g: np.average(g['accuracy'], weights=g['genera_counts']))
+            .reset_index(name='weighted_accuracy')
+        )
+        print(weighted_means)
+    else:
+        simple_means = (
+            accuracies_df
+            .groupby(['model_name', 'k'])
+            .agg(mean_accuracy=('accuracy', 'mean'))
+            .reset_index()
+        )
+        print(simple_means)
+    
 
     fig=None
     try:
@@ -1307,7 +1495,10 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
         plt.title(f"Train-Test Recall for {dataset} - {target} - {split_type}")
         plt.xlabel('Number of Neighbors Considered (k)')
         plt.ylabel('Macro Recall')
-        plt.legend(title='Model')
+        if legend:
+            plt.legend(title='Model')
+        else:
+            plt.legend([],[], frameon=False)
         plt.ylim(0, 1)
         plt.grid(True)
         plt.show()
@@ -1318,8 +1509,6 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
         pass
 
     return fig, accuracies_df
-
-
 
 # %%
 def top_k_barplot_per_method_by_label(dataset, target, split_type, k=1, n_jobs=-1, within_test=False):
@@ -2063,66 +2252,101 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
     Returns:
         fpr, tpr, roc_auc, precision, recall, pr_auc
     """
-    X = np.stack(df1['embedding'].values).astype(np.float32)
-    Y = np.stack(df2['embedding'].values).astype(np.float32)
-    # L2 Normalize per embedding
-    X = X / np.linalg.norm(X, axis=1, keepdims=True)
-    Y = Y / np.linalg.norm(Y, axis=1, keepdims=True)
-    # Check for NaN values
-    X = np.nan_to_num(X)
-    Y = np.nan_to_num(Y)
-    labels_X = np.array(df1['true_label'])
-    labels_Y = np.array(df2['true_label'])
+    print("df2.paired",  df2.attrs)
 
-    n, m = len(X), len(Y)
-    if n*m < max_pairs:
-        pair_indices = [(i, j) for i in range(n) for j in range(m)]
-        if between_species:
-            species_X = np.array(df1['species'])
-            species_Y = np.array(df2['species'])
-            pair_indices = [(i, j) for i, j in pair_indices if species_X[i] != species_Y[j]]
-            
+    if df2.attrs.get('paired'):
+        assert df2.test == True
+        y_true = df2['true_label'].values
+        sim    = df2['binary_pred'].values
+
+        print('y_true', y_true)
+        print('sim', sim)
     else:
-        # Generate them randomly
-        rng = np.random.default_rng(42)
-        _max_pairs = max_pairs
-        if between_species: # Sample some extra to give us buffer
-            _max_pairs = min(m*n, int(max_pairs * 10))
-        flat_indices = rng.choice(n * m, size=_max_pairs, replace=False)
-        pair_indices = [(i // m, i % m) for i in flat_indices]
-        if between_species:
-            # Require that the pairs are from different species
-            species_X = np.array(df1['species'])
-            species_Y = np.array(df2['species'])
-            pair_indices = [(i, j) for i, j in pair_indices if species_X[i] != species_Y[j]]
-            if len(pair_indices) < 0.9 * max_pairs:
-                print(f"Warning: Only {len(pair_indices)} pairs selected with different species.")
-            if len(pair_indices) > max_pairs:
-                # Subsample
-                pair_indices = rng.choice(pair_indices, size=max_pairs, replace=False).tolist()
+        X = np.stack(df1['embedding'].values).astype(np.float32)
+        Y = np.stack(df2['embedding'].values).astype(np.float32)
+        # L2 Normalize per embedding
+        X = X / np.linalg.norm(X, axis=1, keepdims=True)
+        Y = Y / np.linalg.norm(Y, axis=1, keepdims=True)
+        # Check for NaN values
+        X = np.nan_to_num(X)
+        Y = np.nan_to_num(Y)
+        labels_X = np.array(df1['true_label'])
+        labels_Y = np.array(df2['true_label'])
 
-    i1, i2 = zip(*pair_indices)
-    X1 = X[list(i1)]
-    X2 = Y[list(i2)]
-    l1 = labels_X[list(i1)]
-    l2 = labels_Y[list(i2)]
-    y_true = (l1 == l2).astype(int)
+        n, m = len(X), len(Y)
+        if n*m < max_pairs:
+            pair_indices = [(i, j) for i in range(n) for j in range(m)]
+            if between_species:
+                species_X = np.array(df1['species'])
+                species_Y = np.array(df2['species'])
+                pair_indices = [(i, j) for i, j in pair_indices if species_X[i] != species_Y[j]]
+                
+        else:
+            # Generate them randomly
+            rng = np.random.default_rng(42)
+            _max_pairs = max_pairs
+            if between_species: # Sample some extra to give us buffer
+                _max_pairs = min(m*n, int(max_pairs * 10))
+            flat_indices = rng.choice(n * m, size=_max_pairs, replace=False)
+            pair_indices = [(i // m, i % m) for i in flat_indices]
+            if between_species:
+                # Require that the pairs are from different species
+                species_X = np.array(df1['species'])
+                species_Y = np.array(df2['species'])
+                pair_indices = [(i, j) for i, j in pair_indices if species_X[i] != species_Y[j]]
+                if len(pair_indices) < 0.9 * max_pairs:
+                    print(f"Warning: Only {len(pair_indices)} pairs selected with different species.")
+                if len(pair_indices) > max_pairs:
+                    # Subsample
+                    pair_indices = rng.choice(pair_indices, size=max_pairs, replace=False).tolist()
 
-    if distance_metric == 'cosine':
-        sim = np.sum(X1 * X2, axis=1) / (np.linalg.norm(X1, axis=1) * np.linalg.norm(X2, axis=1))
-    elif distance_metric == 'euclidean':
-        sim = -np.linalg.norm(X1 - X2, axis=1)
-    else:
-        raise ValueError(f"Unsupported distance metric: {distance_metric}")
-    
-    # Set nan similarity scores to 0
-    sim[np.isnan(sim)] = 0.0
+        i1, i2 = zip(*pair_indices)
+        X1 = X[list(i1)]
+        X2 = Y[list(i2)]
+        l1 = labels_X[list(i1)]
+        l2 = labels_Y[list(i2)]
+        y_true = (l1 == l2).astype(int)
 
+        if distance_metric == 'cosine':
+            sim = np.sum(X1 * X2, axis=1) / (np.linalg.norm(X1, axis=1) * np.linalg.norm(X2, axis=1))
+        elif distance_metric == 'euclidean':
+            sim = -np.linalg.norm(X1 - X2, axis=1)
+        else:
+            raise ValueError(f"Unsupported distance metric: {distance_metric}")
+        
+    # Print # of nan similarity scores
     if np.isnan(sim).any():
-        raise ValueError("NaN values found in similarity scores.")
+        print(f"Warning: {np.isnan(sim).sum()} NaN similarity scores found out of {len(sim)}")
+        # Set nan similarity scores to 0
+        sim[np.isnan(sim)] = 0.0
 
     acc = (np.round(y_true.flatten(), 0) == np.round(sim.flatten(), 0)).sum()/len(y_true)
     print(f"DEBUG ** Computing PR ACC={acc}")
+
+    # Artificially reweight to 1/5 positives 
+    _y_true_flat = y_true.flatten()
+    _sim_flat = sim.flatten()
+    # Get all positives 
+    _true_pos = _y_true_flat[_y_true_flat == 1]
+    _sim_pos = _sim_flat[_y_true_flat == 1]
+    # Sample negatives to be 4x the number of positives
+    _true_neg = _y_true_flat[_y_true_flat == 0]
+    _sim_neg = _sim_flat[_y_true_flat == 0]
+    if len(_true_pos) > 0:
+        n_neg_samples = min(len(_true_neg), 4 * len(_true_pos))
+        rng = np.random.default_rng(42)
+        neg_indices = rng.choice(len(_true_neg), size=n_neg_samples, replace=False)
+        _true_neg_sampled = _true_neg[neg_indices]
+        _sim_neg_sampled = _sim_neg[neg_indices]
+
+        _y_true = np.concatenate([_true_pos, _true_neg_sampled])
+        _sim = np.concatenate([_sim_pos, _sim_neg_sampled])
+        # Show the artificial accuracy
+        acc = (np.round(_y_true.flatten(), 0) == np.round(_sim.flatten(), 0)).sum()/len(_y_true)
+        # Print the new class balance
+        print(f"DEBUG ** After reweighting, new class balance: {np.mean(_y_true)} (ACC={acc})")
+    else:
+        print("No positive samples found, skipping reweighting.")
 
     fpr, tpr, _ = roc_curve(y_true.flatten(), sim.flatten(), drop_intermediate=False)
     precision, recall, _ = precision_recall_curve(y_true.flatten(), sim.flatten())
@@ -2256,36 +2480,20 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
                 # Debug, remove the old one
                 del embeddings[key]
 
-    # TEMP DUPLICATE INTENSITY AGNOSTIC, MAKE BETWEEN SPECIES
-    # if not cosine_ablation:
-    #     embeddings['cosine_intensity_agnostic_between_species'] = {
-    #         'train': [None for _ in range(len(embeddings['cosine_intensity_agnostic']['train']))],
-    #         'test': [None for _ in range(len(embeddings['cosine_intensity_agnostic']['test']))]
-    #     }
-    #     for i in range(len(embeddings['cosine_intensity_agnostic_between_species']['test'])):
-    #         embeddings['cosine_intensity_agnostic_between_species']['train'][i] = embeddings['cosine_intensity_agnostic']['train'][i].copy(deep=True)
-    #         embeddings['cosine_intensity_agnostic_between_species']['test'][i] = embeddings['cosine_intensity_agnostic']['test'][i].copy(deep=True)
-    #         embeddings['cosine_intensity_agnostic_between_species']['train'][i]['embedding'] = embeddings['cosine_intensity_agnostic_between_species']['train'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
-    #         embeddings['cosine_intensity_agnostic_between_species']['test'][i]['embedding'] = embeddings['cosine_intensity_agnostic_between_species']['test'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
-
-    # Add a "Euclidean" method
-    # embeddings['Euclidean'] = {
-    #     'train': [None for _ in range(len(embeddings['cosine']['train']))],
-    #     'test': [None for _ in range(len(embeddings['cosine']['test']))]
-    # }
-    # for i in range(len(embeddings['Euclidean']['test'])):
-    #     embeddings['Euclidean']['train'][i] = embeddings['cosine']['train'][i].copy(deep=True)
-    #     embeddings['Euclidean']['test'][i] = embeddings['cosine']['test'][i].copy(deep=True)
+    for key in list(embeddings.keys()):
+        if key in PAIRED_MODELS and not test_only:
+            print(f"Removing paired model {key} from embeddings")
+            del embeddings[key]
 
 
     # DEBUG, MALDI_TRANSFORMER_TS and COSINE ONLY
     # for key in list(embeddings.keys()):
-    #     if key not in {'maldi_transformer_ts', 'cosine_10_intensity_agnostic'}:
+    #     if key not in {'cross_encoder', 'cosine_intensity_agnostic'}:
     #         print(f"Removing {key} from embeddings")
     #         del embeddings[key]
        
     # Print prior probability of equal and unequal taxa
-    a_key = [x for x in list(embeddings.keys()) if x != 'metadata'][0]
+    a_key = [x for x in list(embeddings.keys()) if x != 'metadata' and x not in PAIRED_MODELS][0]
     df = embeddings[a_key]['test'][0]
 
     total_pos = 0
@@ -2504,7 +2712,8 @@ def evaluate_top_k_precision(
     distance_metric: str = 'euclidean',
     normalize: bool = True,
     average: str = "micro",  # "micro" or "macro"
-    return_failure_cases: bool = False
+    return_failure_cases: bool = False,
+    within_test: bool = True,
 ) -> Tuple[float, List[Dict[str, str]]]:
     """
     Computes precision@k using either micro or macro averaging.
@@ -2535,6 +2744,10 @@ def evaluate_top_k_precision(
         similarities = -euclidean_distances(test_embeddings, train_embeddings)
     else:
         raise ValueError(f"Unknown distance metric: {distance_metric}")
+
+    if within_test:
+        assert train_df.shape[0] == test_df.shape[0], "Train and test must be the same size for within_test"
+        np.fill_diagonal(similarities, -np.inf)  # Exclude self in nearest neighbors
 
     test_labels = test_df['true_label'].values
     train_labels = train_df['true_label'].values
@@ -2626,7 +2839,7 @@ def top_k_precision_plot(dataset, target, split_type, n_jobs=-1, within_test=Fal
 
     results = Parallel(n_jobs=n_jobs)(
         delayed(evaluate_top_k_precision)(
-            train_df, test_df, k, method=key, distance_metric=distance_metric, average=average
+            train_df, test_df, k, method=key, distance_metric=distance_metric, average=average, within_test=within_test
         ) for key, train_df, test_df, k, distance_metric in tqdm(tasks)
     )
 
@@ -3113,22 +3326,22 @@ def dendrogram_from_embeddings(
     return fig
 
 # %%
-_ = top_k_boxplot_per_method_by_label(
-    dataset='driams-a',
-    target='genera',
-    split_type='genera',
-    within_test=False,
-    n_jobs=-1,
-)
+_ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=True, n_jobs=6, macro=False)
 
 # %%
-_ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=6, macro=False)
+d = gather_embeddings('DRIAMS-A', 'genera', 'species')['cross_encoder']['test'][0]
+
+# %%
+d.strain_name_a.nunique(), d.strain_name_b.nunique(), d.shape
+
+# %%
+d
 
 # %%
 _ = top_k_recall_plot('DRIAMS-A', 'genera', 'genera', cross_species=True, within_test=True, n_jobs=12, macro=True)
 
 # %%
-_ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=12, macro=True)
+_ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=12, macro=True, cross_species=False)
 
 # %%
 _ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=12, macro=False, cross_species=False)
@@ -3159,19 +3372,6 @@ _ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs
 # %%
 _ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=True)
 
-# %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=16, average='micro', num_samples_per_k=5)
-
-# %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=16, average='macro', num_samples_per_k=5)
-
-# %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=16, average='macro', num_samples_per_k=5, require_cross_species=True)
-
-# %%
-
-_ = nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=16, average='micro', num_samples_per_k=5, require_cross_species=True)
-
 # %% [markdown]
 # ## DRIAMS Plots Genera/Species
 
@@ -3183,7 +3383,7 @@ gather_embeddings('driams-a', 'genera', 'species')['multinomial_classifier']
 
 # %%
 # DRIAMS Plots
-_ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12)
+_ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=1)
 
 # %%
 _ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=True)
@@ -3686,6 +3886,13 @@ _ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pair
 # %%
 _ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=True)
 
+# %%
+top_k_recall_plot('DRIAMS-B', 'genera', 'species', within_test=True, n_jobs=6, macro=False, legend=False)
+top_k_recall_plot('DRIAMS-B', 'genera', 'species', within_test=True, n_jobs=6, macro=False, cross_species=True)
+
+# %%
+top_k_precision_plot('DRIAMS-B', 'genera', 'species', within_test=True, n_jobs=16, average='micro')
+
 # %% [markdown]
 # ## DRIAMS-C Plots
 # 
@@ -3696,6 +3903,13 @@ _ = binary_curves_plot('DRIAMS-C', 'genera', 'species', test_only=True, max_pair
 # %%
 _ = binary_curves_plot('DRIAMS-C', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=True)
 
+# %%
+top_k_recall_plot('DRIAMS-C', 'genera', 'species', within_test=True, n_jobs=6, macro=False, legend=False)
+top_k_recall_plot('DRIAMS-C', 'genera', 'species', within_test=True, n_jobs=6, macro=False, legend=False, cross_species=True)
+
+# %%
+top_k_precision_plot('DRIAMS-C', 'genera', 'species', within_test=True, n_jobs=16, average='macro')
+
 # %% [markdown]
 # ## DRIAMS-D Plots
 
@@ -3705,20 +3919,34 @@ _ = binary_curves_plot('DRIAMS-D', 'genera', 'species', test_only=True, max_pair
 # %%
 _ = binary_curves_plot('DRIAMS-D', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=True)
 
+# %%
+top_k_recall_plot('DRIAMS-D', 'genera', 'species', within_test=True, n_jobs=6, macro=False, legend=False)
+top_k_recall_plot('DRIAMS-D', 'genera', 'species', within_test=True, n_jobs=6, macro=False, legend=False, cross_species=True)
+
+# %%
+top_k_precision_plot('DRIAMS-D', 'genera', 'species', within_test=True, n_jobs=16, average='macro')
+
 # %% [markdown]
 # ## RKI Plots
 
 # %%
-_ = binary_curves_plot('RKI', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=1)
+_ = binary_curves_plot('RKI', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12)
 
 # %%
 _ = binary_curves_plot('RKI', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=True)
+
+# %%
+top_k_recall_plot('RKI', 'genera', 'species', within_test=True, n_jobs=12, macro=True, cross_species=False)
+top_k_recall_plot('RKI', 'genera', 'species', within_test=True, n_jobs=12, macro=True, cross_species=True)
 
 # %% [markdown]
 # ## Retrieval Across Datasets
 
 # %%
-top_k_recall_plot('DRIAMS-B', 'genera', 'species', within_test=False, n_jobs=6, macro=False, db_dataset='DRIAMS-D', cross_species=False)
+top_k_recall_plot('DRIAMS-B', 'genera', 'species', within_test=False, n_jobs=6, macro=True, db_dataset='DRIAMS-A', cross_species=False)
+
+# %%
+top_k_recall_plot('DRIAMS-B', 'genera', 'species', within_test=False, n_jobs=6, macro=True, db_dataset='DRIAMS-D', cross_species=False)
 
 # %%
 top_k_recall_plot('DRIAMS-B', 'genera', 'species', within_test=False, n_jobs=6, macro=True, db_dataset='DRIAMS-D', cross_species=True)
@@ -3732,11 +3960,20 @@ top_k_recall_plot('DRIAMS-C', 'genera', 'species', within_test=False, n_jobs=6, 
 # %%
 top_k_recall_plot('DRIAMS-D', 'genera', 'species', within_test=True, n_jobs=6, macro=False, cross_species=True)
 
-# %%
-top_k_recall_plot('RKI', 'genera', 'species', within_test=True, n_jobs=6, macro=False, cross_species=True, db_dataset='DRIAMS-D')
+# %% [markdown]
+# ## IDBac-All
 
 # %%
-nn_accuracy_plot('DRIAMS-C', 'genera', 'species', within_test=True, n_jobs=6, num_samples_per_k=5, average='macro', require_cross_species=True)
+_ = binary_curves_plot('idbac-all', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12)
+
+# %%
+_ = binary_curves_plot('idbac-all', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=True)
+
+# %% [markdown]
+# ## Other Stuff
+
+# %%
+top_k_recall_plot('RKI', 'genera', 'species', within_test=False, n_jobs=6, macro=True, cross_species=True, db_dataset='DRIAMS-D')
 
 # %%
 _ = similarity_histogram(
