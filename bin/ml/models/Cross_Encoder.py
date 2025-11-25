@@ -17,6 +17,7 @@ class Cross_Encoder(CLIP_MALDI):
     """
     def __init__(self, hyperparameters, pretrained_embedder=None):
         super().__init__(hyperparameters, pretrained_embedder, transformer_reduction='none')
+        self.is_binary_classifier = True
 
         self.max_in_batch_negatives = hyperparameters.get("max_in_batch_negatives", 4)
 
@@ -36,7 +37,6 @@ class Cross_Encoder(CLIP_MALDI):
             nn.ReLU(),
             nn.Linear(128, 1)
         )
-        
 
     def forward(self, anchors, others):
         # TODO Concat to product a single tensor
@@ -58,11 +58,142 @@ class Cross_Encoder(CLIP_MALDI):
 
         # Forward through the cross-attention module
         x, _, _ = self.cross_att(x)
+
+        # assert x.ndim == 2 and x.shape[1] == self.cross_att.output_head, (
+        #     f"cross_att output shape mismatch: expected (B, hidden_dim={self.cross_att.output_head_dim}), "
+        #     f"got {tuple(x.shape)} — check reduce='max' in SimpleSelfAttention."
+        # )
+
         # print("After attention shape", x.shape)
         x = self.postprocess(x)
         # print("After postprocess shape", x.shape)
 
         return x
+    
+    def mz_only_cosine(
+        self,
+        anchors,
+        others,
+    ):
+        """
+        Given a batch of spectra, compute the cosine similarity matrix based on the discretized precursor m/z values.
+        
+        Args:
+            anchors: Tensor of shape (B1, N1, 2) where each entry is (mz, intensity)
+            others: Tensor of shape (B2, N2, 2) where each entry is (mz, intensity)
+
+        Returns:
+            cosine_sim: Tensor of shape (B1, B2) with cosine similarity scores        
+        """
+        # Cast everything to an int 
+        resolution = 10 # 10 Da bins
+        anchors_mz = torch.round(anchors[:, :, 0] / resolution).long()
+        others_mz = torch.round(others[:, :, 0] / resolution).long()
+
+        max_mz = max(anchors_mz.max(), others_mz.max())
+
+        # Create binary vectors for each spectrum | TODO: Consider using sets?
+        anchors_bin = torch.zeros((anchors.shape[0], int(max_mz) + 1), device=anchors.device)
+        others_bin = torch.zeros((others.shape[0], int(max_mz) + 1), device=others.device)
+        anchors_bin.scatter_(1, anchors_mz, 1)
+        others_bin.scatter_(1, others_mz, 1)
+
+        # l2 Norm
+        anchors_bin = F.normalize(anchors_bin, p=2, dim=1)
+        others_bin = F.normalize(others_bin, p=2, dim=1)
+
+        # Compute cosine similarity
+        cosine_sim = torch.matmul(anchors_bin, others_bin.T)
+        return cosine_sim
+
+
+    def construct_inbatch_pairs(
+        self,
+        anchors,
+        positives,
+        anchor_class,
+        max_negatives=None,
+        hard_negatives=True
+    ):
+        """
+        Construct positive + in-batch negative pairs for cross-encoder training.
+        
+        Args:
+            anchors: Tensor of shape (B, F) anchor embeddings/spectra
+            positives: Tensor of shape (B, F) positive embeddings/spectra
+            anchor_class: list or tensor of length B indicating class for each anchor
+            max_negatives: int, maximum number of in-batch negatives per anchor
+            hard_negatives: bool, if True, sample negatives proportional to cosine similarity
+        
+        Returns:
+            anchors_flat: Tensor of shape (B*(1+N_neg), F)
+            candidates_flat: Tensor of shape (B*(1+N_neg), F)
+            N_neg: number of negatives used per anchor
+        """
+        B = anchors.shape[0]
+        N_neg = min(max_negatives or self.max_in_batch_negatives, B - 1)
+
+        all_anchor_pairs = []
+        all_candidate_pairs = []
+
+        for i in range(B):
+            # Positive pair
+            all_anchor_pairs.append(anchors[i])
+            all_candidate_pairs.append(positives[i])
+
+            # Candidate negatives: different class and not self
+            neg_candidates = [j for j in range(B) if j != i and anchor_class[j] != anchor_class[i]]
+
+            if len(neg_candidates) == 0:
+                raise ValueError(
+                    "No negative candidates found. Ensure that your batch contains multiple classes."
+                )
+
+            # Repeat if too few negatives
+            if len(neg_candidates) < N_neg:
+                neg_candidates = neg_candidates * (N_neg // len(neg_candidates)) + neg_candidates[:N_neg % len(neg_candidates)]
+
+            # Hard negative sampling
+            if hard_negatives:
+                # Compute cosine similarity between anchor[i] and candidate negatives
+                anchor_vec = anchors[i].unsqueeze(0)  # shape (1, F)
+                neg_vectors = torch.stack([positives[j] for j in neg_candidates])  # shape (len(neg_candidates), F)
+
+                sim = self.mz_only_cosine(anchor_vec, neg_vectors)**2  # shape (len(neg_candidates),)
+
+                # Convert similarity to probabilities (higher similarity = higher prob)
+                probs = sim / sim.sum()
+                requires_replacement = len(probs) < N_neg
+
+                sampled_idxs = torch.multinomial(probs, N_neg, replacement=requires_replacement).squeeze()
+                if False:
+                    print("sim.shape", sim.shape, flush=True)
+                    print("sampled_idxs.shape", sampled_idxs.shape, flush=True)
+
+                    # Debug sanity check: Show the cosine score of the sampled negatives vs all candidates
+                    # Take root
+                    with torch.no_grad():
+                        sampled_sims = torch.sqrt(sim)
+                        sampled_sims = sampled_sims/sampled_sims.sum()
+                        sampled_sims = sampled_sims.squeeze()[sampled_idxs]
+                        all_sims = sim
+                        print("Sampled sims:", sampled_sims, flush=True)
+                        print("All sims:", all_sims, flush=True)
+
+                        print(f"Anchor {i}: Sampled negative sims: mean {sampled_sims.mean()}, std {sampled_sims.std()}", flush=True)
+                        print(f"Anchor {i}: All candidate sims: mean {all_sims.mean()}, std {all_sims.std()}", flush=True)
+            else:
+                # Uniform random sampling
+                sampled_idxs = torch.randperm(len(neg_candidates))[:N_neg].tolist()
+
+            # Append sampled negatives
+            for j in sampled_idxs:
+                all_anchor_pairs.append(anchors[i])
+                all_candidate_pairs.append(positives[neg_candidates[j]])
+
+        anchors_flat = torch.stack(all_anchor_pairs)
+        candidates_flat = torch.stack(all_candidate_pairs)
+        return anchors_flat, candidates_flat, N_neg
 
     def training_step(self, batch, batch_idx):
         # Batch is a list of:
@@ -82,50 +213,18 @@ class Cross_Encoder(CLIP_MALDI):
         positives = spectra[1]
         B = anchors.shape[0]
         
-        # ----------------------------
-        # Construct in-batch negatives
-        # ----------------------------
-        N_neg = min(self.max_in_batch_negatives, B-1)  # configurable
-        all_anchor_pairs = []
-        all_candidate_pairs = []
+        anchors_flat, candidates_flat, N_neg = self.construct_inbatch_pairs(
+            anchors, positives, anchor_class
+        )
 
-        for i in range(B):
-            all_anchor_pairs.append(anchors[i])
-            all_candidate_pairs.append(positives[i])
-
-            # Only sample negatives that are a different class
-            neg_candidates = [j for j in range(B) if j != i and anchor_class[j] != anchor_class[i]]
-            # If neg_candidates < N_neg, repeat it
-            if len(neg_candidates) == 0:
-                raise ValueError("No negative candidates found. Ensure that your batch contains multiple classes.")
-            if len(neg_candidates) < N_neg:
-                neg_candidates = neg_candidates * (N_neg // len(neg_candidates)) + neg_candidates[:N_neg % len(neg_candidates)]
-            if len(neg_candidates) > 0:
-                sampled = torch.randperm(len(neg_candidates))[:N_neg]
-                for idx in sampled:
-                    j = neg_candidates[idx]
-                    all_anchor_pairs.append(anchors[i])
-                    all_candidate_pairs.append(positives[j])
-
-        anchors_flat = torch.stack(all_anchor_pairs)
-        candidates_flat = torch.stack(all_candidate_pairs)
-
-        # Forward pass
-        # (anchor_embeds, positive_embeds), (anchor_rcon, pos_rcon) = self.forward(torch.stack(anchors), torch.stack(positives))
         scores_flat = self.forward(anchors_flat, candidates_flat)
-
         scores = scores_flat.view(B, 1 + N_neg)
-        # print('scores.shape', scores.shape)
         labels = torch.zeros(B, dtype=torch.long, device=scores.device)
         ranking_loss = torch.nn.functional.cross_entropy(scores, labels)
-        preds = torch.argmax(scores, dim=1) 
+        preds = torch.argmax(scores, dim=1)
         acc = (preds == labels).float().mean()
 
         loss = ranking_loss
-
-        # ----------------------------
-        # Logging
-        # ----------------------------
         self.log('train_loss', loss, on_step=True, on_epoch=True)
         self.log('train_acc', acc, on_step=True, on_epoch=True)
 
@@ -153,46 +252,18 @@ class Cross_Encoder(CLIP_MALDI):
         positives = spectra[1]
         B = anchors.shape[0]
     
-        # ----------------------------
-        # Construct in-batch negatives
-        # ----------------------------
-        N_neg = min(self.max_in_batch_negatives, B-1)  # configurable
-        all_anchor_pairs = []
-        all_candidate_pairs = []
+        anchors_flat, candidates_flat, N_neg = self.construct_inbatch_pairs(
+            anchors, positives, anchor_class
+        )
 
-        for i in range(B):
-            all_anchor_pairs.append(anchors[i])
-            all_candidate_pairs.append(positives[i])
-
-            # Only sample negatives that are a different class
-            neg_candidates = [j for j in range(B) if j != i and anchor_class[j] != anchor_class[i]]
-            # If neg_candidates < N_neg, repeat it
-            if len(neg_candidates) == 0:
-                raise ValueError("No negative candidates found. Ensure that your batch contains multiple classes.")
-            if len(neg_candidates) < N_neg:
-                neg_candidates = neg_candidates * (N_neg // len(neg_candidates)) + neg_candidates[:N_neg % len(neg_candidates)]
-            if len(neg_candidates) > 0:
-                sampled = torch.randperm(len(neg_candidates))[:N_neg]
-                for idx in sampled:
-                    j = neg_candidates[idx]
-                    all_anchor_pairs.append(anchors[i])
-                    all_candidate_pairs.append(positives[j])
-
-        anchors_flat = torch.stack(all_anchor_pairs)
-        candidates_flat = torch.stack(all_candidate_pairs)
-
-        # Forward pass
-        # (anchor_embeds, positive_embeds), (anchor_rcon, pos_rcon) = self.forward(torch.stack(anchors), torch.stack(positives))
         scores_flat = self.forward(anchors_flat, candidates_flat)
-
         scores = scores_flat.view(B, 1 + N_neg)
         labels = torch.zeros(B, dtype=torch.long, device=scores.device)
         ranking_loss = torch.nn.functional.cross_entropy(scores, labels)
-        preds = torch.argmax(scores, dim=1) 
+        preds = torch.argmax(scores, dim=1)
         acc = (preds == labels).float().mean()
 
         loss = ranking_loss
-
         self.log('val_loss', loss, on_step=True, on_epoch=True)
         self.log('val_acc', acc, on_step=True, on_epoch=True)
 
@@ -225,38 +296,16 @@ class Cross_Encoder(CLIP_MALDI):
     #             layer.weight.requires_grad = False
     #             layer.bias.requires_grad = False
 
-    def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        raise NotImplementedError("Predict step not implemented")
-        self.TTT_steps = 0
+    def binary_predict_step(self, batch, dataloader_idx=None):
 
-        spectrum_a, spectrum_b, similarity, metadata = batch
+        spectrum_a, spectrum_b = batch
 
         embed_a = None
         embed_b = None
 
+        preds = self.forward(spectrum_a, spectrum_b).squeeze()
 
-        if self.TTT_steps == 0:
-            embed_a, rcon_a, _ = self.embedder(spectrum_a)
-            embed_b, rcon_b, _ = self.embedder(spectrum_b)
-
-        else:
-            embed_a, embed_b = self.TTT_step(batch)
-
-        # input = torch.cat((embed_a, embed_b, torch.abs(embed_a - embed_b)), dim=1)
-        # preds = F.softmax(self.classifier(input), dim=1)
-        # # Reverse prediction classes
-        # preds = torch.flip(preds, dims=[1])
-        # # Return probability of same genus
-        # preds = preds[:, -1]
-        # loss = None
-
-        preds = (F.cosine_similarity(embed_a, embed_b) + 1)/2
-        if similarity is not None:
-            loss = nn.functional.mse_loss(preds, similarity) # Who knows why we're doing this, but it's here
-        else:
-            loss = None
-
-        return {'predictions': preds.detach(), 'similarity': similarity.detach(), 'loss': loss.detach(), 'metadata': metadata}
+        return F.sigmoid(preds)
     
     def embed_step(self, batch):
         raise NotImplementedError("Embed step not implemented")
@@ -291,3 +340,4 @@ class Cross_Encoder(CLIP_MALDI):
         }
 
         return [optimizer], [scheduler]
+    

@@ -780,13 +780,20 @@ def train_for_score(args: argparse.Namespace, hparam_path: str) -> None:
     
     callbacks = [checkpoint_callback]
 
+    if args.cpu:
+        devices = 1
+        accelerator = 'cpu'
+    else:
+        devices = [0]
+        accelerator = 'gpu'
+
     trainer = Trainer(
         max_epochs=args.n_epochs,
         max_steps=args.n_steps,
         log_every_n_steps=1,
         logger=logger,
-        # accelerator='cpu',
-        devices=[0],
+        accelerator=accelerator,
+        devices=devices,
         callbacks=callbacks,
         **trainer_args,
     )
@@ -892,6 +899,11 @@ def main():
         "--pretrained_model_path",
         help="Path to a pretrained model to use for fine-tuning.",
         type=str,
+    )
+    parser.add_argument(
+        "--cpu",
+        action='store_true',
+        help="Use CPU for training instead of GPU.",
     )
 
     args = parser.parse_args()

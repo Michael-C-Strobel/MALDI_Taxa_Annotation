@@ -30,24 +30,25 @@ def write_mzML_files_from_json(json_input:Path, output_mzML_dir:Path)->None:
             # Assume "Strain name" is the key for each object
             strain_name = obj["Strain name"]
             all_scans = obj["spectrum"]
-            with MzMLWriter(open(output_mzML_dir / f'{strain_name}.mzML', 'wb'), close=True) as writer:
-                writer.controlled_vocabularies()
-                with writer.run(id='my_analysis'):
-                    with writer.spectrum_list(count=len(all_scans)):
-                        for scan_idx, scan in enumerate(all_scans):
-                            mz_array = [float(x[0]) for x in scan]
-                            intensity_array = [float(x[1]) for x in scan]
+            for scan_idx, scan in enumerate(all_scans):
+                with MzMLWriter(open(output_mzML_dir / f'{strain_name}_rep_{scan_idx}.mzML', 'wb'), close=True) as writer:
+                    writer.controlled_vocabularies()
+                    with writer.run(id='my_analysis'):
+                        with writer.spectrum_list(count=1):
+                            
+                                mz_array = [float(x[0]) for x in scan]
+                                intensity_array = [float(x[1]) for x in scan]
 
-                            writer.write_spectrum(
-                                mz_array,
-                                intensity_array,
-                                id=f'scan={scan_idx}',
-                                params=[
-                                    "MS1 Spectrum",
-                                    {"ms level": 1},
-                                    {"total ion current": sum(intensity_array)}
-                                ]
-                            )
+                                writer.write_spectrum(
+                                    mz_array,
+                                    intensity_array,
+                                    id=f'scan={scan_idx}',
+                                    params=[
+                                        "MS1 Spectrum",
+                                        {"ms level": 1},
+                                        {"total ion current": sum(intensity_array)}
+                                    ]
+                                )
 
 def parse_driams_txt_to_dict(txt_file:Path, species_dict:dict)->dict:
     data = pd.read_csv( txt_file,

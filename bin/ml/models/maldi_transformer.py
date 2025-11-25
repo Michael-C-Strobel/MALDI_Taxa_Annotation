@@ -8,7 +8,7 @@ import torchmetrics
 from torchmetrics.classification import BinaryAUROC, MulticlassAccuracy
 from .autoencoder import BCE_Metric
 
-class SinusoidalPositionalEncoding(nn.Module):  # TODO: Somehow creating nan vals
+class SinusoidalPositionalEncoding(nn.Module):
     def __init__(self, dim, concat=False):
         super().__init__()
         # Register div_term as a buffer to avoid being updated by the optimizer

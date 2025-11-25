@@ -181,8 +181,9 @@ def gather_embeddings_helper(dataset:str, target:str, split_type:str):
                     _base_dir / '../MALDI-Transformer_Reproduction' / f'k={i}' / 'malditrfvanilla_M_200_0.15_0.01_0.0005' / 'version_1' / 'inference' / 'DRIAMS-A' / target / split_type for i in [0,]
                 ]
                 print("Warning - using screwy data for Cross_Encoder")
+                print("TODO: Re-evaluate folds 4,5")
                 cross_encoder_path =  [
-                    _base_dir / target / split_type / f'k={i}' / 'Cross_Encoder' / 'version_0' / 'inference' / target / split_type for i in range(0,DRIAMS_MAX_INDEX)
+                    _base_dir / target / split_type / f'k={i}' / 'Cross_Encoder' / 'version_0' / 'inference' / target / split_type for i in range(0,1)
                 ]
 
 
@@ -216,6 +217,7 @@ def gather_embeddings_helper(dataset:str, target:str, split_type:str):
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_idbac_for_score')
                 cosine_path = [_base_dir / 'cosine_10' / 'all']
             elif dataset.lower() == 'driams-b':
+                print("Gathering driams-b test set")
                 metadata_path = Path('../data/driams-B/preprocessing/merged_metadata.csv')
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_A_for_score')
                 clip_transformer_path = [
@@ -224,6 +226,9 @@ def gather_embeddings_helper(dataset:str, target:str, split_type:str):
                 clip_transformer_genus_genus_path = None
                 clip_transformer_classifer_path = None
                 prototypical_transformer_path = None
+                cross_encoder_path = [
+                   _base_dir / target / split_type / f'k={i}' / 'Cross_Encoder' / 'version_0' / 'inference' / 'DRIAMS-B' / 'all' for i in range(0,DRIAMS_MAX_INDEX)
+                ]
 
                 # Different root for cosine
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_B_for_score')
@@ -363,6 +368,11 @@ def gather_embeddings_helper(dataset:str, target:str, split_type:str):
             output_dict['cosine']['train'] = [pd.read_feather(x / 'all_inference.feather') for x in cosine_path]
             output_dict['cosine']['test'] = [pd.read_feather(x / 'all_inference.feather') for x in cosine_path]
             print('cosine_path', cosine_path)
+        if cross_encoder_path:
+            output_dict['cross_encoder'] = {}
+            output_dict['cross_encoder']['train'] = [pd.read_feather(x / 'all_inference.feather') for x in cross_encoder_path]
+            output_dict['cross_encoder']['test'] = [pd.read_feather(x / 'all_inference.feather') for x in cross_encoder_path]
+            print('cross_encoder_path', cross_encoder_path)
     else:
         if clip_transformer_path:
             output_dict['clip_transformer'] = {}
@@ -454,6 +464,11 @@ def gather_embeddings_helper(dataset:str, target:str, split_type:str):
                 output_dict[key]['test'][i]['genus'] = output_dict[key]['test'][i]['accession'].apply(lambda x: accession_to_genus.get(x, None))
                 output_dict[key]['test'][i]['species'] = output_dict[key]['test'][i]['accession'].apply(lambda x: accession_to_species.get(x, None))
 
+                # Convert genus, species, accession, strain_name to categorical to save memory
+                for col in ['genus', 'species', 'accession', 'strain_name']:
+                    output_dict[key]['train'][i][col] = output_dict[key]['train'][i][col].astype('category')
+                    output_dict[key]['test'][i][col] = output_dict[key]['test'][i][col].astype('category')
+
                 # Add metadata to the output dataframes
                 output_dict[key]['test'][i].target = target
                 output_dict[key]['train'][i].target = target
@@ -487,9 +502,7 @@ def gather_embeddings_helper(dataset:str, target:str, split_type:str):
                 output_dict[key][cond][i].attrs.update({'paired': True})
 
                 for col in ['accession_a', 'accession_b']:
-                    print('1)', output_dict[key][cond][i][col].head(5))
                     output_dict[key][cond][i][col] = output_dict[key][cond][i][col].astype(str)   # For some reason it's a list of a single string
-                    print('2a)', output_dict[key][cond][i][col].head(5))
                     output_dict[key][cond][i][f'true_label_{col[-1]}'] = output_dict[key][cond][i][col].apply(lambda x: accession_to_label.get(x, None))
     
 
@@ -503,6 +516,10 @@ def gather_embeddings_helper(dataset:str, target:str, split_type:str):
                     output_dict[key][cond][i]['true_label'] = (output_dict[key][cond][i]['genus_a'] == output_dict[key][cond][i]['genus_b']).astype(int)
                 elif target == 'species':
                     output_dict[key][cond][i]['true_label'] = (output_dict[key][cond][i]['species_a'] == output_dict[key][cond][i]['species_b']).astype(int)
+
+                # Convert genus, species, accession, strain_name to categorical to save memory
+                for col in ['genus_a', 'species_a', 'accession_a', 'genus_b', 'species_b', 'accession_b', 'strain_name_a', 'strain_name_b']:
+                    output_dict[key][cond][i][col] = output_dict[key][cond][i][col].astype('category')
 
                 output_dict[key][cond][i].attrs.update({'target': target})
         
@@ -883,9 +900,6 @@ def evaluate_top_k_recall_old(
         return output_dict
 
 # %%
-def get_hybrid_retrieval_df()
-
-# %%
 from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
 from sklearn.metrics import recall_score
 from collections import defaultdict
@@ -1228,12 +1242,6 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
         embeddings['cosine_intensity_agnostic']['train'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['train'][i]['embedding'].apply(lambda x: (x>0.02).astype(int))
         embeddings['cosine_intensity_agnostic']['test'][i]['embedding'] = embeddings['cosine_intensity_agnostic']['test'][i]['embedding'].apply(lambda x: (x>0.02).astype(int))
 
-    # DEBUG Keep only relevant embeddings
-    print("Removing all embeddings except clip_transformer, cosine_intensity_agnostic, cross_encoder...")
-    for key in list(embeddings.keys()):
-        if key not in {'clip_transformer', 'cosine_intensity_agnostic', 'cross_encoder'}:
-            del embeddings[key]
-
     if db_dataset is not None:
         if within_test:
             raise ValueError("Cannot use within_test with db_dataset")
@@ -1257,10 +1265,16 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
                 print(f"Warning: {method} not found in db_embeddings, skipping.")
                 del embeddings[method]
 
+    # DEBUG Keep only relevant embeddings
+    # print("Removing all embeddings except clip_transformer, cosine_intensity_agnostic, cross_encoder...")
+    # for key in list(embeddings.keys()):
+    #     if key not in {'clip_transformer', 'cosine_intensity_agnostic', 'cross_encoder'}:
+    #         del embeddings[key]
+    # print("Remaining embeddings:", embeddings.keys())
+
     # Prepare job arguments
     job_args = []
     for key in embeddings.keys():
-        break   # DBEUG SKIPPING REGULAR COMPUTATIONS
         if key in {'metadata', 'multinomial_classifier', 'cross_encoder'}:
             continue
         distance_metric = 'cosine' if key in {'clip_transformer', 'clip_transformer_genus_genus', 'cosine', 'cosine_intensity_agnostic'} else 'euclidean'
@@ -1303,7 +1317,7 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
         print(len(embeddings['clip_transformer']['test']))
 
         job_args = []
-        for i in range(len(embeddings['clip_transformer']['test'])):
+        for i in range(len(embeddings['cross_encoder']['test'])):
             train_df = embeddings['cross_encoder']['train'][i]
             test_df = embeddings['cross_encoder']['test'][i]
 
@@ -1330,16 +1344,22 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
             print('strain_names.shape', strain_names[0].shape)
 
             print('clip_scores.shape', clip_scores.shape)
+            print('clip_scores:', clip_scores[:5, :5])
 
             print('train_labels', train_labels[:5])
             print('test_labels', test_labels[:5])
 
             print('"cross_encoder" test_df', test_df.head())
 
+            # Print where this is happening
+            if any(isinstance(x, np.ndarray) for x in test_df['strain_name_a']):
+                print('"cross_encoder" test_df strain_name_a contains arrays:', test_df['strain_name_a'][test_df['strain_name_a'].apply(lambda x: isinstance(x, np.ndarray))])
+            if any(isinstance(x, np.ndarray) for x in test_df['strain_name_b']):
+                print('"cross_encoder" test_df strain_name_b contains arrays:', test_df['strain_name_b'][test_df['strain_name_b'].apply(lambda x: isinstance(x, np.ndarray))])
+
             # test_df is the cross_encoder test set, we need to reverse all cols with _a, _b and reconcat to make it square
-            test_df_flipped = test_df.rename(columns=lambda x: x.replace('_a', '_temp').replace('_b', '_a').replace('_temp', '_b'))
-            test_df = pd.concat([test_df, test_df_flipped], ignore_index=True)
             test_df = test_df.pivot(index='strain_name_a', columns='strain_name_b', values='binary_pred')
+            test_df = test_df.combine_first(test_df.T)  # Make it symmetric
             np.fill_diagonal(test_df.values, -np.inf)
 
             # Count how many rows/cols are common with strain_names[0], strain_names[1]
@@ -1349,19 +1369,21 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
             print(f"Common strains in cross_encoder test set: {len(common_strains_a)} rows, {len(common_strains_b)} columns")
             test_df = test_df.loc[common_strains_a, common_strains_b]
 
-            assert np.array_equal(train_labels, train_df['true_label'].values)
-            assert np.array_equal(test_labels, test_df['true_label'].values)
-            assert np.array_equal(strain_names, test_df['strain_name'].values)
-
             # Top 50 indices
             sorted_idx = np.argsort(-clip_scores, axis=1)   # Highest similarity first
-            top_idx = sorted_idx[:, :50]
-            # Get all other indices
+            # Get lowest similarity indices (everything out of top-50)
             other_idx = sorted_idx[:, 50:]
 
             super_scores = clip_scores.copy()
-            super_scores[sorted_idx] = test_df[sorted_idx]
-            super_scores[other_idx] = -np.inf  # Mask out all but top 50
+            print('super_scores.shape', super_scores.shape)
+            print("super_scores", super_scores[:5, :10])
+            print('test_df.values.shape', test_df.values.shape)
+            print('sorted_idx.shape', sorted_idx.shape)
+            print('sorted_idx', sorted_idx[:5, :10])
+            rows = np.arange(super_scores.shape[0])[:, None]
+            super_scores[rows, sorted_idx] = test_df.values[rows, sorted_idx]
+            super_scores[rows, other_idx] = -np.inf  # Mask out all but top 50
+            super_scores[~np.isfinite(clip_scores)] = -np.inf  # Reapply original mask
 
             job_args.append((super_scores, train_labels, test_labels, strain_names, i))
 
@@ -2239,12 +2261,13 @@ def train_test_curves_nn_plot(dataset, target, split_type, n_jobs=-1):
 
 # %%
 from sklearn.metrics import roc_curve, precision_recall_curve, auc
+from sklearn.utils.class_weight import compute_sample_weight
 from scipy.interpolate import interp1d
 import numpy as np
 import matplotlib.pyplot as plt
 import traceback
 
-def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None, between_species=False,):
+def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None, between_species=False, balance_pairs=False):
     """
     Computes binary labels and similarity scores for all pairs between df1 and df2,
     then returns ROC and PR curve components.
@@ -2252,7 +2275,9 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
     Returns:
         fpr, tpr, roc_auc, precision, recall, pr_auc
     """
-    print("df2.paired",  df2.attrs)
+
+    print('df1.columns', df1.columns)
+    print('df2.columns', df2.columns)
 
     if df2.attrs.get('paired'):
         assert df2.test == True
@@ -2272,6 +2297,8 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
         Y = np.nan_to_num(Y)
         labels_X = np.array(df1['true_label'])
         labels_Y = np.array(df2['true_label'])
+        genera_X = np.array(df1['genus'])
+        genera_Y = np.array(df2['genus'])
 
         n, m = len(X), len(Y)
         if n*m < max_pairs:
@@ -2307,6 +2334,12 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
         l2 = labels_Y[list(i2)]
         y_true = (l1 == l2).astype(int)
 
+        # Use 'genus' column to make combined labels, must be sorted order
+        balance_labels = []
+        for idx1, idx2 in pair_indices:
+            genus_pair = tuple(sorted((genera_X[idx1], genera_Y[idx2])))
+            balance_labels.append(genus_pair)
+
         if distance_metric == 'cosine':
             sim = np.sum(X1 * X2, axis=1) / (np.linalg.norm(X1, axis=1) * np.linalg.norm(X2, axis=1))
         elif distance_metric == 'euclidean':
@@ -2323,36 +2356,41 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
     acc = (np.round(y_true.flatten(), 0) == np.round(sim.flatten(), 0)).sum()/len(y_true)
     print(f"DEBUG ** Computing PR ACC={acc}")
 
-    # Artificially reweight to 1/5 positives 
-    _y_true_flat = y_true.flatten()
-    _sim_flat = sim.flatten()
-    # Get all positives 
-    _true_pos = _y_true_flat[_y_true_flat == 1]
-    _sim_pos = _sim_flat[_y_true_flat == 1]
-    # Sample negatives to be 4x the number of positives
-    _true_neg = _y_true_flat[_y_true_flat == 0]
-    _sim_neg = _sim_flat[_y_true_flat == 0]
-    if len(_true_pos) > 0:
-        n_neg_samples = min(len(_true_neg), 4 * len(_true_pos))
-        rng = np.random.default_rng(42)
-        neg_indices = rng.choice(len(_true_neg), size=n_neg_samples, replace=False)
-        _true_neg_sampled = _true_neg[neg_indices]
-        _sim_neg_sampled = _sim_neg[neg_indices]
+    if False:
+        # Artificially reweight to 1/5 positives 
+        _y_true_flat = y_true.flatten()
+        _sim_flat = sim.flatten()
+        # Get all positives 
+        _true_pos = _y_true_flat[_y_true_flat == 1]
+        _sim_pos = _sim_flat[_y_true_flat == 1]
+        # Sample negatives to be 4x the number of positives
+        _true_neg = _y_true_flat[_y_true_flat == 0]
+        _sim_neg = _sim_flat[_y_true_flat == 0]
+        if len(_true_pos) > 0:
+            n_neg_samples = min(len(_true_neg), 4 * len(_true_pos))
+            rng = np.random.default_rng(42)
+            neg_indices = rng.choice(len(_true_neg), size=n_neg_samples, replace=False)
+            _true_neg_sampled = _true_neg[neg_indices]
+            _sim_neg_sampled = _sim_neg[neg_indices]
 
-        _y_true = np.concatenate([_true_pos, _true_neg_sampled])
-        _sim = np.concatenate([_sim_pos, _sim_neg_sampled])
-        # Show the artificial accuracy
-        acc = (np.round(_y_true.flatten(), 0) == np.round(_sim.flatten(), 0)).sum()/len(_y_true)
-        # Print the new class balance
-        print(f"DEBUG ** After reweighting, new class balance: {np.mean(_y_true)} (ACC={acc})")
-    else:
-        print("No positive samples found, skipping reweighting.")
+            _y_true = np.concatenate([_true_pos, _true_neg_sampled])
+            _sim = np.concatenate([_sim_pos, _sim_neg_sampled])
+            # Show the artificial accuracy
+            acc = (np.round(_y_true.flatten(), 0) == np.round(_sim.flatten(), 0)).sum()/len(_y_true)
+            # Print the new class balance
+            print(f"DEBUG ** After reweighting, new class balance: {np.mean(_y_true)} (ACC={acc})")
+        else:
+            print("No positive samples found, skipping reweighting.")
 
-    fpr, tpr, _ = roc_curve(y_true.flatten(), sim.flatten(), drop_intermediate=False)
-    precision, recall, _ = precision_recall_curve(y_true.flatten(), sim.flatten())
+    sample_weights = None
+    if balance_pairs:
+        sample_weights = compute_sample_weight(class_weight='balanced', y=balance_labels)
+
+    fpr, tpr, _ = roc_curve(y_true.flatten(), sim.flatten(), drop_intermediate=False, sample_weight=sample_weights)
+    precision, recall, _ = precision_recall_curve(y_true.flatten(), sim.flatten(), sample_weight=sample_weights)
     return fpr, tpr, auc(fpr, tpr), precision, recall, auc(recall, precision)
 
-def _compute_interpolated_curves(df1, df2, method, data_idx, interp_points, metric, max_pairs, between_species=False):
+def _compute_interpolated_curves(df1, df2, method, data_idx, interp_points, metric, max_pairs, between_species=False, balance_pairs=False):
     print(f"_compute_interpolated_curves; {method} : {metric}")
     try:
         if 'intensity_agnostic' in method and method != 'clip_transformer_intensity_agnostic':
@@ -2366,7 +2404,7 @@ def _compute_interpolated_curves(df1, df2, method, data_idx, interp_points, metr
             df2['embedding'] = df2['embedding'].apply(lambda x: (x > 0.02).astype(int))
             between_species = True
 
-        fpr, tpr, roc_auc_val, prec, rec, pr_auc_val = _binary_similarity_curves(df1, df2, metric, max_pairs, between_species=between_species)
+        fpr, tpr, roc_auc_val, prec, rec, pr_auc_val = _binary_similarity_curves(df1, df2, metric, max_pairs, between_species=between_species, balance_pairs=balance_pairs)
         fdr = 1 - prec
 
         print(f"Raw Precision: {prec}")
@@ -2387,7 +2425,9 @@ def _compute_interpolated_curves(df1, df2, method, data_idx, interp_points, metr
         # raise e
         return None
 
-def static_precision_recall_roc(df1, df2, target, split_type, method, max_pairs=None, between_species=False):
+def static_precision_recall_roc(df1, df2, target, split_type, method, max_pairs=None, between_species=False,
+    balance_pairs=False
+    ):
     """
     Computes static precision and recall based on predicted class equality
     between embeddings in df1 and df2. Intended for classifier predictions
@@ -2396,6 +2436,8 @@ def static_precision_recall_roc(df1, df2, target, split_type, method, max_pairs=
     Returns:
         precision (float), recall (float)
     """
+    if balance_pairs: raise NotImplementedError("balance_pairs is not implemented yet.")
+
     pred1 = np.array(df1['pred_class'])
     pred2 = np.array(df2['pred_class'])
     true1 = np.array(df1['true_label'])
@@ -2442,7 +2484,7 @@ def static_precision_recall_roc(df1, df2, target, split_type, method, max_pairs=
 
 import re
 def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=None,
-                       cosine_ablation=False, n_jobs=-1, between_species=False):
+                       cosine_ablation=False, n_jobs=-1, between_species=False, balance_pairs=False):
     if cosine_ablation:
         embeddings = gather_embeddings_cosine_only(dataset, target, split_type)
     else:
@@ -2487,10 +2529,10 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
 
 
     # DEBUG, MALDI_TRANSFORMER_TS and COSINE ONLY
-    # for key in list(embeddings.keys()):
-    #     if key not in {'cross_encoder', 'cosine_intensity_agnostic'}:
-    #         print(f"Removing {key} from embeddings")
-    #         del embeddings[key]
+    for key in list(embeddings.keys()):
+        if key not in {'clip_transformer', 'cosine_intensity_agnostic'}:
+            print(f"Removing {key} from embeddings")
+            del embeddings[key]
        
     # Print prior probability of equal and unequal taxa
     a_key = [x for x in list(embeddings.keys()) if x != 'metadata' and x not in PAIRED_MODELS][0]
@@ -2554,7 +2596,8 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
                     split_type=split_type,
                     method=method,
                     max_pairs=max_pairs,
-                    between_species=between_species
+                    between_species=between_species,
+                    balance_pairs=balance_pairs
                 )
 
                 if np.isnan(precision) or np.isnan(recall) or np.isnan(fpr):
@@ -2611,7 +2654,7 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
                 tasks.append((df1, df2, method, data_idx))
 
             results = Parallel(n_jobs=n_jobs)(
-                delayed(_compute_interpolated_curves)(df1, df2, method, data_idx, interp_points, metric, max_pairs, between_species)
+                delayed(_compute_interpolated_curves)(df1, df2, method, data_idx, interp_points, metric, max_pairs, between_species, balance_pairs)
                 for df1, df2, method, data_idx in tasks
             )
 
@@ -3326,7 +3369,7 @@ def dendrogram_from_embeddings(
     return fig
 
 # %%
-_ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=True, n_jobs=6, macro=False)
+_ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=True, n_jobs=6, macro=True)
 
 # %%
 d = gather_embeddings('DRIAMS-A', 'genera', 'species')['cross_encoder']['test'][0]
@@ -3335,10 +3378,11 @@ d = gather_embeddings('DRIAMS-A', 'genera', 'species')['cross_encoder']['test'][
 d.strain_name_a.nunique(), d.strain_name_b.nunique(), d.shape
 
 # %%
-d
+# Check for numpy.ndarray in accession_a or accession_b
+any(isinstance(x, np.ndarray) for x in d['strain_name_a']), any(isinstance(x, np.ndarray) for x in d['strain_name_b'])
 
 # %%
-_ = top_k_recall_plot('DRIAMS-A', 'genera', 'genera', cross_species=True, within_test=True, n_jobs=12, macro=True)
+_ = top_k_recall_plot('DRIAMS-A', 'genera', 'genera', cross_species=False, within_test=True, n_jobs=12, macro=True)
 
 # %%
 _ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=12, macro=True, cross_species=False)
@@ -3386,7 +3430,13 @@ gather_embeddings('driams-a', 'genera', 'species')['multinomial_classifier']
 _ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=1)
 
 # %%
+_ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=1, balance_pairs=True)
+
+# %%
 _ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=True)
+
+# %%
+_ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=True, balance_pairs=True)
 
 # %%
 _ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=4, between_species=True)
@@ -3881,14 +3931,16 @@ _ = binary_curves_plot('DRIAMS-A', 'genera', 'genera', test_only=True, max_pairs
 
 # %%
 # Binary 
-_ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pairs=1_000_000)
+_ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pairs=10_000_000)
+_ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pairs=10_000_000, balance_pairs=True)
 
 # %%
-_ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=True)
+_ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pairs=10_000_000, between_species=True)
+_ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pairs=10_000_000, between_species=True, balance_pairs=True)
 
 # %%
-top_k_recall_plot('DRIAMS-B', 'genera', 'species', within_test=True, n_jobs=6, macro=False, legend=False)
-top_k_recall_plot('DRIAMS-B', 'genera', 'species', within_test=True, n_jobs=6, macro=False, cross_species=True)
+top_k_recall_plot('DRIAMS-B', 'genera', 'species', within_test=True, n_jobs=6, macro=True, legend=False)
+top_k_recall_plot('DRIAMS-B', 'genera', 'species', within_test=True, n_jobs=6, macro=True, cross_species=True)
 
 # %%
 top_k_precision_plot('DRIAMS-B', 'genera', 'species', within_test=True, n_jobs=16, average='micro')
@@ -3904,8 +3956,8 @@ _ = binary_curves_plot('DRIAMS-C', 'genera', 'species', test_only=True, max_pair
 _ = binary_curves_plot('DRIAMS-C', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=True)
 
 # %%
-top_k_recall_plot('DRIAMS-C', 'genera', 'species', within_test=True, n_jobs=6, macro=False, legend=False)
-top_k_recall_plot('DRIAMS-C', 'genera', 'species', within_test=True, n_jobs=6, macro=False, legend=False, cross_species=True)
+top_k_recall_plot('DRIAMS-C', 'genera', 'species', within_test=True, n_jobs=6, macro=True, legend=False)
+top_k_recall_plot('DRIAMS-C', 'genera', 'species', within_test=True, n_jobs=6, macro=True, legend=False, cross_species=True)
 
 # %%
 top_k_precision_plot('DRIAMS-C', 'genera', 'species', within_test=True, n_jobs=16, average='macro')

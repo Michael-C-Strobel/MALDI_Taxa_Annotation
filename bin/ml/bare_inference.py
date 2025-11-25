@@ -24,10 +24,13 @@ from models.cosine import RawCosine
 from models.Sentence_MALDI import Sentence_MALDI
 from models.mlp_binary_classifier import MLPBinaryClassifier
 from models.CLIP_MALDI import CLIP_MALDI
+from models.Cross_Encoder import Cross_Encoder
 from models.CLIP_MALDI_classifier import CLIP_MALDI_Classifier
 from models.prototypical_transformer import PrototyicalTransformer
 from models.logistic_regression_classifier import MultinomialLogisticClassifier
 from models.MaldiTransformer.MaldiTransformerWrapper import MaldiTransformerWrapper
+
+from torch.profiler import profile, record_function, ProfilerActivity
 
 from datamodule import SingleSpectrum_DataModule
 from tqdm import tqdm
@@ -39,11 +42,12 @@ IMPLEMENTED_MODELS = {'Prototyical_Transformer',    # TODO: Spell it right once 
                       'cosine_1', 'cosine_3', 'cosine_5', 'cosine_7', 'cosine_10',
                       'BinaryTransformerPredictionHead',
                       'MaldiTransformerWrapper',
-                      'MaldiTransformerWrapperMethodData'
+                      'MaldiTransformerWrapperMethodData',
+                      'Cross_Encoder'
                       }
 
 # Models that only predict in a paired setting
-PAIRED_MODELS = {'BinaryTransformerPredictionHead'}
+PAIRED_MODELS = {'BinaryTransformerPredictionHead', 'Cross_Encoder'}
 
 def setup_model(model_name: str,
                 checkpoint_path: Path,
@@ -150,7 +154,8 @@ def setup_model(model_name: str,
                                         NormalizeIntensity(),
                                     ])
     elif model_name == "MaldiTransformerWrapper" or model_name == "MaldiTransformerWrapperMethodData":
-        model = MaldiTransformerWrapper.load_from_checkpoint(checkpoint_path=checkpoint_path)
+
+        model = MaldiTransformerWrapper.load_from_checkpoint(checkpoint_path=checkpoint_path, **model_kwargs)
 
         # trans = transforms.Compose([
         #     L1NormalizeIntensity(),
@@ -159,7 +164,15 @@ def setup_model(model_name: str,
         trans=transforms.Compose([
             SelectTopKPeaks(200),
         ])
-        trans=None
+    elif model_name == 'Cross_Encoder':
+        model = Cross_Encoder.load_from_checkpoint(checkpoint_path=checkpoint_path)
+
+        trans = transforms.Compose([
+                SelectMassRange(3000, 20000),
+                NormalizeIntensity(),
+                SelectTopKPeaks(150),
+                PadToLength(150, padding_value=-1.0),
+            ])
 
     else:
         raise ValueError(f"Model {model_name} not implemented, please check the model name")
@@ -218,11 +231,31 @@ def get_paired_inference_df(model, datamodule, inference_set: str, target: str) 
     print("Getting paired inference df")
     model.eval()
     inference_lst = []
+
     with torch.no_grad():
-        for batch in tqdm(datamodule.predict_dataloader()):
+        dl = datamodule.predict_dataloader()
+
+        
+        # with profile(
+        #     activities=[ProfilerActivity.CPU],  # , ProfilerActivity.CUDA
+        #     record_shapes=True,
+        #     profile_memory=True,
+        #     with_stack=True,
+        #     on_trace_ready=torch.profiler.tensorboard_trace_handler("./torch_profile")
+        # ) as prof:
+
+        idx = 0
+
+        for batch in tqdm(dl, desc="Performing Paired Inference", total=len(dl)):
             spectrum_a, spectrum_b, _, metadata = batch
             spectrum_a = spectrum_a.to(model.device)
             spectrum_b = spectrum_b.to(model.device)
+
+            # idx += 1
+            # if idx > 10:
+            #     print("*****BREAKING TO DEBUG")
+            #     break
+
             if len(spectrum_a.shape) == 3:
                 if spectrum_a.shape[1] == 0:
                     continue
@@ -242,13 +275,15 @@ def get_paired_inference_df(model, datamodule, inference_set: str, target: str) 
                     pred_class = datamodule.full_dataset.int_to_class[pred.item()]
                 elif hasattr(model, 'is_binary_classifier') and model.is_binary_classifier:
                     pred = model.binary_predict_step((spectrum_a, spectrum_b))
-                    pred_class = pred.cpu().numpy().copy()                        
+                    pred_class = pred.cpu().numpy().copy()
 
-                embedding_a = model.embed_step(spectrum_a)
-                embedding_a = embedding_a.cpu().numpy().copy()  # Wihtout copy, runs into memory issues
-                embedding_b = model.embed_step(spectrum_b)
-                embedding_b = embedding_b.cpu().numpy().copy()  # Wihtout copy, runs into memory issues
-            
+                # embedding_a = model.embed_step(spectrum_a)
+                # embedding_a = embedding_a.cpu().numpy().copy()  # Wihtout copy, runs into memory issues
+                # embedding_b = model.embed_step(spectrum_b)
+                # embedding_b = embedding_b.cpu().numpy().copy()  # Wihtout copy, runs into memory issues
+
+                embedding_a  = None
+                embedding_b  = None            
 
             
             except Exception as e:
@@ -260,16 +295,19 @@ def get_paired_inference_df(model, datamodule, inference_set: str, target: str) 
 
             # print(metadata.keys())
 
-            embedding_dict = {
-                                'accession_a':metadata['accession_a'], 
-                                'strain_name_a':metadata['strain_a'],
-                                'accession_b':metadata['accession_b'],
-                                'strain_name_b':metadata['strain_b'],
-                                'embedding_a': np.squeeze(embedding_a),
-                                'embedding_b': np.squeeze(embedding_b),
-                                'binary_pred': pred_class,
-                              }
-            inference_lst.append(embedding_dict)
+            for i in range(len(metadata['accession_a'])):
+                embedding_dict = {
+                                    'accession_a':metadata['accession_a'][i], 
+                                    'strain_name_a':metadata['strain_a'][i],
+                                    'accession_b':metadata['accession_b'][i],
+                                    'strain_name_b':metadata['strain_b'][i],
+                                    'embedding_a': np.squeeze(embedding_a)[i] if embedding_a is not None else None,
+                                    'embedding_b': np.squeeze(embedding_b)[i] if embedding_b is not None else None,
+                                    'binary_pred': pred_class[i] if pred_class is not None else None,
+                                }
+                inference_lst.append(embedding_dict)
+
+        # prof.export_chrome_trace("inference_trace.json")
     embedding_df = pd.DataFrame(inference_lst)
     print("Total number of spectra: ", len(embedding_df))
 
@@ -357,7 +395,7 @@ def main():
             if args.model is None or args.version is None:
                 raise ValueError("Either version or checkpoint_path  must be specified")
             
-        if args.checkpoint_path is None:
+        if args.checkpoint_path is not None:
             if args.version is not None:
                 raise ValueError("Either version or checkpoint_path  must be specified")
         
@@ -470,11 +508,10 @@ def main():
             raise NotImplementedError("MALDI-Transformer preprocessing not supported for RKI dataset")
     elif args.dataset == 'IDBac':
         spectra_path = '../../data/idbac_db/preprocessing'
-        metadata_path = '../../data/idbac_db/raw/ammended_db.csv'
-        ml_processing_path = '../../data/idbac_db/processed_data'
+        metadata_path = '../../data/idbac_db/preprocessing/db_with_taxonomy_and_replicates.csv'
+        ml_processing_path = '../../data/idbac_db/processed_to_pt/'
         if args.maldi_nn_preprocessing:
             raise ValueError("MALDI-Transformer preprocessing not supported for IDBac dataset")
-        spectra_path = '../../data/driams/processed_data/MaldiTransformer/spectra'
     else:
         raise ValueError(f"Dataset '{args.dataset}' not supported")
     
@@ -509,7 +546,7 @@ def main():
     print('metadata_path', metadata_path)
     print('ml_processing_path', ml_processing_path)
     print('batch_size', 1)
-    print('num_workers', 0)
+    print('num_workers', 1)
     print('transforms', model_specific_transforms)
     print('split_method', args.split_type)
     print('inference_set_to_use', args.inference_set)
@@ -521,8 +558,8 @@ def main():
         spectra_path,
         metadata_path,
         ml_processing_path,
-        batch_size=1,
-        num_workers=0,
+        batch_size=768,    # 1536 (24 GB), 768 (12 GB)
+        num_workers=1,
         transforms=model_specific_transforms,
         split_method=args.split_type,
         inference_set_to_use=args.inference_set,
