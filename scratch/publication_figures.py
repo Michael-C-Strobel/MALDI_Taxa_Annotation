@@ -124,7 +124,7 @@ def gather_embeddings_helper(dataset:str, target:str, split_type:str):
     cross_encoder_path = None
 
     DRIAMS_MAX_INDEX=6 # Exclude 7th (index=6) fold, as it's used for parameter tuning
-    IDBAC_MAX_INDEX=3
+    IDBAC_MAX_INDEX=1   # Used to be 3, only using 1 for eval since this is applicaitonn-focused
 
     # inference/{args.target}/{args.split_type}/"
     if target == 'genera':
@@ -180,31 +180,31 @@ def gather_embeddings_helper(dataset:str, target:str, split_type:str):
                 maldi_transformer_ts_path = [
                     _base_dir / '../MALDI-Transformer_Reproduction' / f'k={i}' / 'malditrfvanilla_M_200_0.15_0.01_0.0005' / 'version_1' / 'inference' / 'DRIAMS-A' / target / split_type for i in [0,]
                 ]
-                print("Warning - using screwy data for Cross_Encoder")
-                print("TODO: Re-evaluate folds 4,5")
-                cross_encoder_path =  [
-                    _base_dir / target / split_type / f'k={i}' / 'Cross_Encoder' / 'version_0' / 'inference' / target / split_type for i in range(0,1)
-                ]
+                # print("Warning - using screwy data for Cross_Encoder")
+                # print("TODO: Re-evaluate folds 4,5")
+                # cross_encoder_path =  [
+                #     _base_dir / target / split_type / f'k={i}' / 'Cross_Encoder' / 'version_0' / 'inference' / target / split_type for i in range(0,1)
+                # ]
 
 
             elif dataset.lower() == 'idbac-kb':
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_idbac_for_score')
-                metadata_path = Path('../data/idbac_db/raw/ammended_db.csv')
+                metadata_path = Path('../data/idbac_db/preprocessing/db_with_taxonomy.csv')
 
                 clip_transformer_path = [
-                     _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_2' / 'inference' / target / split_type for i in range(0,IDBAC_MAX_INDEX)
+                     _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_3' / 'inference' / target / split_type for i in range(0,IDBAC_MAX_INDEX)
                 ]
-                clip_transformer_classifer_path = None
+                # clip_transformer_classifer_path = None
                 cosine_path = [_base_dir / 'cosine_10' / target / split_type / f'k={i}' for i in range(0,IDBAC_MAX_INDEX)]
-                prototypical_transformer_path = None
-                multinomial_classifier_path = [
-                    _base_dir / target / split_type / f'k={i}' / 'Multinomial_Logistic_Classifier' / 'version_0' / 'inference' / target / split_type for i in range(0,IDBAC_MAX_INDEX)
-                ]
+                # prototypical_transformer_path = None
+                # multinomial_classifier_path = [
+                #     _base_dir / target / split_type / f'k={i}' / 'Multinomial_Logistic_Classifier' / 'version_0' / 'inference' / target / split_type for i in range(0,IDBAC_MAX_INDEX)
+                # ]
                 # binary_transformer_prediction_head_path = [
                 #     _base_dir / target / split_type / f'k={i}' / 'Binary_Transformer_Prediction_Head' / 'version_0' / 'inference' / target / split_type for i in range(0,3)
                 # ]
             elif dataset.lower() == 'idbac-all':
-                metadata_path = Path('../data/idbac_db/preprocessing/db_with_taxonomy_and_replicates.csv')
+                metadata_path = Path('../data/idbac_db/preprocessing/db_with_taxonomy.csv')
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_DRIAMS_A_for_score')
                 clip_transformer_path = [
                     _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_11' / 'inference' / 'IDBac' / 'all' for i in range(0, DRIAMS_MAX_INDEX)
@@ -293,7 +293,7 @@ def gather_embeddings_helper(dataset:str, target:str, split_type:str):
                 #     _base_dir / target / split_type / f'k={i}' / 'MaldiTransformerWrapperMethodData' / 'version_0' / 'inference' / target / split_type for i in range(0,DRIAMS_MAX_INDEX)
                 # ]
             elif dataset.lower() == 'idbac-kb':
-                metadata_path = Path('../data/idbac_db/raw/ammended_db.csv')
+                metadata_path = Path('../data/idbac_db/preprocessing/db_with_taxonomy.csv')
                 _base_dir = Path('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/lightning_logs_idbac_for_score')
                 clip_transformer_path = [
                      _base_dir / target / split_type / f'k={i}' / 'CLIP_Transformer' / 'version_0' / 'inference' / target / split_type for i in range(0,IDBAC_MAX_INDEX)
@@ -332,7 +332,7 @@ def gather_embeddings_helper(dataset:str, target:str, split_type:str):
                 ]
                 prototypical_transformer_path = None
             elif dataset.lower() == 'idbac-kb':
-                metadata_path = Path('../data/idbac_db/raw/ammended_db.csv')
+                metadata_path = Path('../data/idbac_db/preprocessing/db_with_taxonomy.csv')
                 clip_transformer_path = None
                 clip_transformer_classifer_path = None
                 cosine_path = None
@@ -475,23 +475,25 @@ def gather_embeddings_helper(dataset:str, target:str, split_type:str):
                 output_dict[key]['test'][i]._metadata += ('target',)
                 output_dict[key]['train'][i]._metadata += ('target',)
 
-            # if dataset.lower() == 'rki':
-            #     # Remove all species that overlap in DRIAMS-A metadata from test df
+            if False:
+                if dataset.lower() == 'rki':
+                    # Remove all species that overlap in DRIAMS-A metadata from test df
+                    TO_REMOVE = 'species'
 
-            #     print("REMOVING ALL COMMON SPECTRA WITH DRIAMS-A", flush=True)
+                    print(f"REMOVING ALL COMMON {TO_REMOVE} WITH DRIAMS-A", flush=True)
 
-            #     driams_a = pd.read_csv('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/data/driams/preprocessing/merged_metadata.csv')
+                    driams_a = pd.read_csv('/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/data/driams/preprocessing/merged_metadata.csv')
 
-            #     for key in output_dict.keys():
-            #         for i in range(len(output_dict[key]['test'])):
-            #             df = output_dict[key]['test'][i]
-            #             if 'species' not in df.columns:
-            #                 continue
-            #             inital_len = len(df)
-            #             output_dict[key]['test'][i] = df[~df['species'].str.lower().isin(driams_a['genus'].str.lower())]      
-            #             print(f"Started with {inital_len} spectra, now we have {len(output_dict[key]['test'][i])} spectra after removing DRIAMS-A overlaps", flush=True)
-            # else:
-            #     print(f"NOT REMOVING ANYTHING BECAUSE WE ARE NOT USING RKI. GOT '{dataset.lower()}'", flush=True)
+                    for key in output_dict.keys():
+                        for i in range(len(output_dict[key]['test'])):
+                            df = output_dict[key]['test'][i]
+                            if TO_REMOVE not in df.columns:
+                                continue
+                            inital_len = len(df)
+                            output_dict[key]['test'][i] = df[~df[TO_REMOVE].str.lower().isin(driams_a[TO_REMOVE].str.lower())]      
+                            print(f"Started with {inital_len} spectra, now we have {len(output_dict[key]['test'][i])} spectra after removing DRIAMS-A overlaps", flush=True)
+                else:
+                    print(f"NOT REMOVING ANYTHING BECAUSE WE ARE NOT USING RKI. GOT '{dataset.lower()}'", flush=True)
         else: # Model is paired
 
             output_dict[key]['test'][i].test = True
@@ -1046,8 +1048,8 @@ def compute_scores(
     else:
         raise ValueError(f"Unknown distance metric: {distance_metric}")
 
-    train_species = train_df['species'].values
-    test_species = test_df['species'].values
+    train_species = train_df['species'].astype(str).values
+    test_species = test_df['species'].astype(str).values
 
     if cross_species:
         # Set values to np.inf where species are the same
@@ -1087,6 +1089,16 @@ def evaluate_top_k_recall(
         if train_df is None or test_df is None:
             raise ValueError("Must provide either scores or both train_df and test_df")
         
+        if False:
+            print("************* REMOVING SINGLETON GENERA (ONE SPECIES GENERA)")
+            singleton_genera = train_df['true_label'].value_counts()
+            singleton_genera = singleton_genera[singleton_genera == 1].index.tolist()
+            train_df = train_df[~train_df['true_label'].isin(singleton_genera)]
+            
+            singleton_genera = test_df['true_label'].value_counts()
+            singleton_genera = singleton_genera[singleton_genera == 1].index.tolist()
+            test_df = test_df[~test_df['true_label'].isin(singleton_genera)]
+
         scores, train_labels, test_labels, strain_names = compute_scores(
             train_df, test_df,
             distance_metric=distance_metric,
@@ -1310,7 +1322,7 @@ def top_k_recall_plot(dataset, target, split_type, n_jobs=-1, within_test=False,
     )
 
     # Get top 50 hits with clip_transformer, then use cross_encoder to rerank
-    if 'clip_transformer' in embeddings and 'cross_encoder' in embeddings:
+    if 'clip_transformer' in embeddings and 'cross_encoder' in embeddings and False:
         print("Calculating super score...")
 
         print(len(embeddings['cross_encoder']['train']))
@@ -1664,7 +1676,7 @@ def nn_accuracy(
                 k:int=5,
                 distance_metric:str='euclidean',
                 normalize:bool=True, 
-                dedicated_db:pd.DataFrame=False,
+                dedicated_db:pd.DataFrame=None,
                 average:str='micro', # 'macro' or 'micro'
                 require_cross_species:bool=False,
                 require_same_species:bool=False,
@@ -1701,60 +1713,131 @@ def nn_accuracy(
     df = test_df.copy(deep=True)
     np.random.seed(random_seed)
 
-    if dedicated_db is None: # Generate a faux db using the test set
-        label_counts = df['true_label'].value_counts()
-        singletons = label_counts[label_counts == 1].index.tolist()
+    sampling_mode = 'species'
 
-        df = df[~df['true_label'].isin(singletons)]
-        singleton_df = df[df['true_label'].isin(singletons)]
+    # ----------------- Spectrum Sampling Mode ----------------- #
+    if sampling_mode == 'spectrum':
+        if dedicated_db is None: # Generate a faux db using the test set
+            label_counts = df['true_label'].value_counts()
+            singletons = label_counts[label_counts == 1].index.tolist()
 
-        
-        if normalize:
-            # L2 Norm
-            df['embedding'] = df['embedding'].apply(lambda x: x / np.linalg.norm(x))
-            # Check if any are nan, set to 0
-            df['embedding'] = df['embedding'].apply(lambda x: np.nan_to_num(x))
+            singleton_df = df[df['true_label'].isin(singletons)]
+            df = df[~df['true_label'].isin(singletons)]
+            
+            if normalize:
+                # L2 Norm
+                df['embedding'] = df['embedding'].apply(lambda x: x / np.linalg.norm(x))
+                # Check if any are nan, set to 0
+                df['embedding'] = df['embedding'].apply(lambda x: np.nan_to_num(x))
 
 
-        taxa_indices = {}
-        for idx, row in df.iterrows():
-            if row['true_label'] not in taxa_indices:
-                taxa_indices[row['true_label']] = []
-            taxa_indices[row['true_label']].append(idx)
+            taxa_indices = {}
+            for idx, row in df.iterrows():
+                if row['true_label'] not in taxa_indices:
+                    taxa_indices[row['true_label']] = []
+                taxa_indices[row['true_label']].append(idx)
 
-        # For each taxa, sample k spectra (up to 50% of test set)
-        sampled_indices_set = set()
-        for taxa, indices in taxa_indices.items():
-            _k = min(k, len(indices)//2)
-            sampled_indices = np.random.choice(indices, size=_k, replace=False)
-            for i in sampled_indices:
-                sampled_indices_set.add(i)
+            # For each taxa, sample k spectra (up to 50% of test set)
+            sampled_indices_set = set()
+            for taxa, indices in taxa_indices.items():
+                _k = min(k, len(indices)//2)
+                sampled_indices = np.random.choice(indices, size=_k, replace=False)
+                for i in sampled_indices:
+                    sampled_indices_set.add(i)
 
-        # Add singletons into the faux_db THIS IS NEW 6/26
-        # Ensure singleton's aren't already in that set 
-        assert sampled_indices_set.isdisjoint(singletons), "Singletons should not be in the sampled indices set."
+            # Add singletons into the faux_db THIS IS NEW 6/26
+            # Ensure singleton's aren't already in that set 
+            assert sampled_indices_set.isdisjoint(singletons), "Singletons should not be in the sampled indices set."
 
-        faux_db = pd.concat([df.loc[list(sampled_indices_set), :], singleton_df]).values
+            faux_db = pd.concat([df.loc[list(sampled_indices_set), :], singleton_df]).values
+        else:
+            # Use the provided faux_db
+            dedicated_db = dedicated_db.copy(deep=True)
+            # Subsample the faux_db to k samples per taxa
+            grouped_db = dedicated_db.groupby('true_label')
+            sampled_indices_set = set()             # Empty set because we don't want to remove anything
+            sampled_indices_dedicated_db = set()    # Different set because we don't want to remove these indices
+            for taxa, group in grouped_db:
+                _k = min(k, len(group)//2)
+                sampled_indices = np.random.choice(group.index, size=_k, replace=False)
+                for i in sampled_indices:
+                    sampled_indices_dedicated_db.add(i)
+
+            faux_db = dedicated_db.loc[list(sampled_indices_dedicated_db), :].values
+    # ----------------- Species Sampling Mode ----------------- #
+    elif sampling_mode == 'species':
+        if dedicated_db is None: # Generate a faux db using the test set
+            single_species_genera = []
+            grouped = df.groupby('genus', observed=True)
+            for genus, group in grouped:
+                if group.species.nunique() == 1:
+                    single_species_genera.extend(group.index.tolist())
+
+            single_species_df = df.loc[single_species_genera, :]
+            df = df.drop(index=single_species_genera)
+
+            if normalize:
+                # L2 Norm
+                df['embedding'] = df['embedding'].apply(lambda x: x / np.linalg.norm(x))
+                # Check if any are nan, set to 0
+                df['embedding'] = df['embedding'].apply(lambda x: np.nan_to_num(x))
+
+            # Generate a dict[genus][species] -> indices
+            genus_species_indices = {}
+            for l, group in df.groupby('genus', observed=True):
+                if l not in genus_species_indices:
+                    genus_species_indices[l] = {}
+                for s, species_group in group.groupby('species', observed=True):
+                    genus_species_indices[l][s] = species_group.index.tolist()
+
+            sampled_indices_set = set()
+            # For each genus, sample k species, and take all spectra from those species
+            for genus, species_dict in genus_species_indices.items():
+                _k = min(k, len(species_dict)-1) # Ensure at least one species is left out
+                sampled_species = np.random.choice(list(species_dict.keys()), size=_k, replace=False)
+                
+                for species in sampled_species:
+                    species_indices = species_dict[species]
+                    for i in species_indices:
+                        sampled_indices_set.add(i)
+
+            assert sampled_indices_set.isdisjoint(single_species_genera), "Single-species genera should not be in the sampled indices set."
+
+            faux_db = pd.concat([df.loc[list(sampled_indices_set), :], single_species_df])
+
+            # Show the faux_db
+            # print(faux_db.head())
+            print('faux_db.shape', faux_db.shape)
+
+            faux_db = faux_db.values
+
+        else:
+            # ----------------- Species-Provided DB Sampling Mode ----------------- #
+            # Use the provided faux_db
+            dedicated_db = dedicated_db.copy(deep=True)
+            # Subsample the faux_db to k samples per taxa
+            grouped_db = dedicated_db.groupby('true_label')
+            sampled_indices_set = set()
+            sampled_indices_dedicated_db = set()    # Different set because we don't want to remove these indices
+            for taxa, group in grouped_db:
+                species_grouped = group.groupby('species')
+                _k = min(k, len(species_grouped)-1) # Ensure at least one species is left out
+                sampled_species = np.random.choice(list(species_grouped.groups.keys()), size=_k, replace=False)
+                for species in sampled_species:
+                    species_group = species_grouped.get_group(species)
+                    for i in species_group.index:
+                        sampled_indices_dedicated_db.add(i)
     else:
-        # Use the provided faux_db
-        dedicated_db = dedicated_db.copy(deep=True)
-        # Subsample the faux_db to k samples per taxa
-        grouped_db = dedicated_db.groupby('true_label')
-        sampled_indices_set = set()
-        sampled_indices_dedicated_db = set()    # Different set because we don't want to remove these indices
-        for taxa, group in grouped_db:
-            _k = min(k, len(group)//2)
-            sampled_indices = np.random.choice(group.index, size=_k, replace=False)
-            for i in sampled_indices:
-                sampled_indices_dedicated_db.add(i)
-
-        faux_db = dedicated_db.loc[list(sampled_indices_dedicated_db), :].values
+        raise ValueError(f"Unknown sampling mode: {sampling_mode}")
 
     predictions = []
     labels = []
     failure_cases = []
 
     faux_db_labels = np.unique(faux_db[:, 4])
+
+    # Print the number of rows that aren't in the sampled-index set
+    print(f"Evaluating on {len(df) - len(sampled_indices_set)} test samples.")
           
     for i, row in df.iterrows():
         if i in sampled_indices_set:
@@ -1796,7 +1879,7 @@ def nn_accuracy(
         if true_label not in [x[0] for x in similarities]:
             continue
 
-        predicted_label = max(similarities, key=lambda x: x[1])[0]
+        predicted_label = max(similarities, key=lambda x: x[1])[0]  # Always take the top-1 prediction
         similarity_count = len(similarities)
 
         predictions.append(predicted_label)
@@ -1937,10 +2020,14 @@ import matplotlib.pyplot as plt
 from tqdm.notebook import tqdm
 
 def nn_accuracy_plot(dataset, target, split_type, n_jobs=-1, within_test=False, num_samples_per_k=1,
-                     average='macro', require_cross_species=False, require_same_species=False):
+                     average='macro', require_cross_species=False, require_same_species=False,
+                     dedicated_db:str=None):
     
     if require_cross_species and require_same_species:
         raise ValueError("Cannot require both cross-species and same-species accuracy at the same time.")
+
+    if dedicated_db and within_test:
+        raise ValueError("Either a 'dedicated_db' or 'within_test' can be specified, but not both.")
 
     embeddings = gather_embeddings(dataset, target, split_type)
 
@@ -1965,11 +2052,25 @@ def nn_accuracy_plot(dataset, target, split_type, n_jobs=-1, within_test=False, 
             assert 'multinomial_classifier' in embeddings.keys(), "Multinomial classifier should be in embeddings"
             del embeddings['multinomial_classifier']
 
+    if dedicated_db:
+        print(f"Using dedicated retrieval database: {dedicated_db}")
+        dedicated_embeddings = gather_embeddings(dedicated_db, target, split_type)
+
+        # Generate an intensity_agnostic cosine for dedicated db
+        dedicated_embeddings['cosine_intensity_agnostic'] = {'train': [None for _ in range(len(dedicated_embeddings['cosine']['train']))],
+                                                            'test': [None for _ in range(len(dedicated_embeddings['cosine']['test']))]}
+
+        for i in range(len(dedicated_embeddings['cosine_intensity_agnostic']['test'])):
+            dedicated_embeddings['cosine_intensity_agnostic']['train'][i] = dedicated_embeddings['cosine']['train'][i].copy(deep=True)
+            dedicated_embeddings['cosine_intensity_agnostic']['test'][i] = dedicated_embeddings['cosine']['test'][i].copy(deep=True)
+            dedicated_embeddings['cosine_intensity_agnostic']['train'][i]['embedding'] = dedicated_embeddings['cosine_intensity_agnostic']['train'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
+            dedicated_embeddings['cosine_intensity_agnostic']['test'][i]['embedding'] = dedicated_embeddings['cosine_intensity_agnostic']['test'][i]['embedding'].apply(lambda x: (x > 0.02).astype(int))
+
     # Quick sanity check, remove everything but contrastive transformer TODO DEBUG
-    # for key in list(embeddings.keys()):
-    #     if key not in {'clip_transformer', 'cosine'}:
-    #         print(f"Removing {key} from embeddings")
-    #         del embeddings[key]
+    for key in list(embeddings.keys()):
+        if key not in {'clip_transformer', 'cosine', 'cosine_intensity_agnostic'}:
+            print(f"Removing {key} from embeddings")
+            del embeddings[key]
 
     # Check that all dataframes have a 'target' value
     for key, train_test_dict in embeddings.items():
@@ -2014,6 +2115,8 @@ def nn_accuracy_plot(dataset, target, split_type, n_jobs=-1, within_test=False, 
             retrieval_db = None
             if not within_test:
                 retrieval_db = embeddings[key]['train'][i]
+            if dedicated_db:
+                retrieval_db = dedicated_embeddings[key]['test'][0]
             if key in {'clip_transformer', 'clip_transformer_genus_genus', 'cosine', 'cosine_intensity_agnostic'}:
                 print(f"Using cosine distance for {key}")
                 distance_metric = 'cosine'
@@ -2024,7 +2127,7 @@ def nn_accuracy_plot(dataset, target, split_type, n_jobs=-1, within_test=False, 
             test_embeddings = train_test_dict['test'][i]
 
             for random_seed in np.arange(42, 42+num_samples_per_k):
-                for k in np.arange(1, 11):
+                for k in np.arange(1, 11):  # Is this supposed to be 1-11?
                     tasks.append((key, test_embeddings, distance_metric, k, random_seed, retrieval_db))
 
     # Parallel execution
@@ -2056,16 +2159,20 @@ def nn_accuracy_plot(dataset, target, split_type, n_jobs=-1, within_test=False, 
     # Rename legend entries based on NAME_MAPPINGS
     handles, labels = plt.gca().get_legend_handles_labels()
     new_labels = [NAME_MAPPINGS.get(label, label) for label in labels]
-    plt.legend(handles=handles, labels=new_labels, title='Model')
+    # plt.legend(handles=handles, labels=new_labels)
 
-    if within_test:
-        plt.title(f"Within Test Nearest-Neighbor Accuracy for {dataset} - {target} - {split_type}")
-    else:
-        plt.title(f"Train-Test Nearest-Neighbor Accuracy for {dataset} - {target} - {split_type}")
-    plt.xlabel(f'Number of Strains Per {target.capitalize()} (k)')
+    if False:
+        if within_test:
+            plt.title(f"Within Test Nearest-Neighbor Accuracy for {dataset} - {target} - {split_type}")
+        else:
+            plt.title(f"Train-Test Nearest-Neighbor Accuracy for {dataset} - {target} - {split_type}")
+    plt.xlabel(f'Number of Species Per {target.capitalize()} (k)')
     plt.ylabel('Accuracy')
     plt.ylim(0, 1)
-    plt.grid(True)
+    plt.grid(False)
+    # Completely disable the legend, even if already plotted
+    plt.legend([],[], frameon=False)
+
     plt.show()
 
     return fig, accuracies_df
@@ -2267,7 +2374,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import traceback
 
-def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None, between_species=False, balance_pairs=False):
+def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None, between_species=False, balance_pairs=False, remove_singleton_genera=False):
     """
     Computes binary labels and similarity scores for all pairs between df1 and df2,
     then returns ROC and PR curve components.
@@ -2275,9 +2382,15 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
     Returns:
         fpr, tpr, roc_auc, precision, recall, pr_auc
     """
-
-    print('df1.columns', df1.columns)
-    print('df2.columns', df2.columns)
+    if remove_singleton_genera:
+        print("******************* REMOVING SINGLETON GENERA")
+        singleton_genera = df1['true_label'].value_counts()
+        singleton_genera = singleton_genera[singleton_genera == 1].index.tolist()
+        df1 = df1[~df1['true_label'].isin(singleton_genera)]
+        
+        singleton_genera = df2['true_label'].value_counts()
+        singleton_genera = singleton_genera[singleton_genera == 1].index.tolist()
+        df2 = df2[~df2['true_label'].isin(singleton_genera)]
 
     if df2.attrs.get('paired'):
         assert df2.test == True
@@ -2341,7 +2454,7 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
             balance_labels.append(genus_pair)
 
         if distance_metric == 'cosine':
-            sim = np.sum(X1 * X2, axis=1) / (np.linalg.norm(X1, axis=1) * np.linalg.norm(X2, axis=1))
+            sim = ((np.sum(X1 * X2, axis=1) / (np.linalg.norm(X1, axis=1) * np.linalg.norm(X2, axis=1))) + 1) / 2
         elif distance_metric == 'euclidean':
             sim = -np.linalg.norm(X1 - X2, axis=1)
         else:
@@ -2386,11 +2499,28 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
     if balance_pairs:
         sample_weights = compute_sample_weight(class_weight='balanced', y=balance_labels)
 
-    fpr, tpr, _ = roc_curve(y_true.flatten(), sim.flatten(), drop_intermediate=False, sample_weight=sample_weights)
-    precision, recall, _ = precision_recall_curve(y_true.flatten(), sim.flatten(), sample_weight=sample_weights)
-    return fpr, tpr, auc(fpr, tpr), precision, recall, auc(recall, precision)
+    print('sim.flatten()', sim.flatten())
+    # Print lowest 10 sims
+    print('Lowest 10 sims:', np.sort(sim.flatten())[:10])
+    # Assert all positive
+    assert np.all(sim.flatten() >= 0), "sim.flatten() contain negative values."
 
-def _compute_interpolated_curves(df1, df2, method, data_idx, interp_points, metric, max_pairs, between_species=False, balance_pairs=False):
+    fpr, tpr, roc_thresholds = roc_curve(y_true.flatten(), sim.flatten(), drop_intermediate=False, sample_weight=sample_weights)
+    precision, recall, pr_thresholds = precision_recall_curve(y_true.flatten(), sim.flatten(), sample_weight=sample_weights, drop_intermediate=False)
+    print('pr_thresholds', pr_thresholds)
+    return (fpr, tpr, roc_thresholds, auc(fpr, tpr)), (precision, recall, pr_thresholds, auc(recall, precision))
+
+def _compute_interpolated_curves(
+        df1,
+        df2,
+        method,
+        data_idx,
+        interp_points,
+        metric,
+        max_pairs,
+        between_species=False,
+        balance_pairs=False,
+        remove_singleton_genera=False):
     print(f"_compute_interpolated_curves; {method} : {metric}")
     try:
         if 'intensity_agnostic' in method and method != 'clip_transformer_intensity_agnostic':
@@ -2404,21 +2534,53 @@ def _compute_interpolated_curves(df1, df2, method, data_idx, interp_points, metr
             df2['embedding'] = df2['embedding'].apply(lambda x: (x > 0.02).astype(int))
             between_species = True
 
-        fpr, tpr, roc_auc_val, prec, rec, pr_auc_val = _binary_similarity_curves(df1, df2, metric, max_pairs, between_species=between_species, balance_pairs=balance_pairs)
+        (fpr, tpr, roc_thresholds, roc_auc_val),(prec, rec, pr_thresholds, pr_auc_val) = _binary_similarity_curves(df1, df2, metric, max_pairs, between_species=between_species, balance_pairs=balance_pairs, remove_singleton_genera=remove_singleton_genera)
         fdr = 1 - prec
+
+        # --- DEBUG PRINT BLOCK ---
+        print(f"\n[DEBUG {method} Seed {data_idx}] Raw PR Curve Samples:")
+        # thresh_array is n-1, precision is n. We zip them to see the relationship.
+        # We look at the tail end where thresholds are highest (most strict)
+        print(f"{'Threshold':<12} | {'Precision':<10} | {'Recall':<10}")
+        print("-" * 40)
+        # Show ~10 points across the distribution
+        step = max(1, len(pr_thresholds) // 10)
+        for i in range(0, len(pr_thresholds), step):
+            print(f"{pr_thresholds[i]:<12.4f} | {prec[i]:<10.4f} | {rec[i]:<10.4f}")
+        # Always check the very last thresholded point
+        print(f"{pr_thresholds[-1]:<12.4f} | {prec[-2]:<10.4f} | {rec[-2]:<10.4f}")
+        print("-" * 40 + "\n")
+        # -------------------------
 
         print(f"Raw Precision: {prec}")
         print(f"Raw Recall: {rec}")
 
         print(f"ROC AUC before interpolation for {method} seed {data_idx}: {roc_auc_val:.3f}")
         print(f"PR AUC before interpolation for {method} seed {data_idx}: {pr_auc_val:.3f}")
+
+
+        target_precision = 0.95
+        meeting_indices = np.where(prec >= target_precision)[0]
+        
+        informed_point = None
+        if len(meeting_indices) > 0:
+            # In sklearn, the last precision value is 1.0 (at rec 0), 
+            # so we look for the index that gives us the best recall
+            best_idx = meeting_indices[0] # Usually the one with highest recall
+            
+            # Guard against the n vs n-1 length of pr_thresholds
+            t_val = pr_thresholds[best_idx] if best_idx < len(pr_thresholds) else pr_thresholds[-1]
+            r_val = rec[best_idx]
+            p_val = prec[best_idx]
+            informed_point = (t_val, p_val, r_val)
         
 
         return (
             np.interp(interp_points, fpr, tpr),
             np.interp(interp_points, rec[::-1], prec[::-1]),
             np.interp(interp_points, rec[::-1], fdr[::-1])
-        )
+        ), informed_point
+    
     except Exception as e:
         print(f"Interpolation failed for {method} seed {data_idx}: {e}")
         traceback.print_exc()
@@ -2436,12 +2598,13 @@ def static_precision_recall_roc(df1, df2, target, split_type, method, max_pairs=
     Returns:
         precision (float), recall (float)
     """
-    if balance_pairs: raise NotImplementedError("balance_pairs is not implemented yet.")
 
     pred1 = np.array(df1['pred_class'])
     pred2 = np.array(df2['pred_class'])
     true1 = np.array(df1['true_label'])
     true2 = np.array(df2['true_label'])
+    genera_X = np.array(df1['genus'])
+    genera_Y = np.array(df2['genus'])
 
     n, m = len(df1), len(df2)
     if n*m < max_pairs:
@@ -2472,9 +2635,30 @@ def static_precision_recall_roc(df1, df2, target, split_type, method, max_pairs=
     y_pred = pred_match.astype(int)
     y_true = true_match.astype(int)
 
-    tp = np.sum((y_pred == 1) & (y_true == 1))
-    fp = np.sum((y_pred == 1) & (y_true == 0))
-    fn = np.sum((y_pred == 0) & (y_true == 1))
+    # Use 'genus' column to make combined labels, must be sorted order
+    balance_labels = []
+    for idx1, idx2 in pair_indices:
+        genus_pair = tuple(sorted((genera_X[idx1], genera_Y[idx2])))
+        balance_labels.append(genus_pair)
+
+    tp_mask = (y_true == 1) & (y_pred == 1)
+    fp_mask = (y_true == 0) & (y_pred == 1)
+    fn_mask = (y_true == 1) & (y_pred == 0)
+    tn_mask = (y_true == 0) & (y_pred == 0)
+
+    sample_weights = None
+    if balance_pairs:
+        sample_weights = compute_sample_weight(class_weight='balanced', y=balance_labels)
+
+    def wsum(mask):
+        if sample_weights is None:
+            return np.sum(mask)
+        return np.sum(sample_weights[mask])
+
+    tp = wsum(tp_mask)
+    fp = wsum(fp_mask)
+    fn = wsum(fn_mask)
+    tn = wsum(tn_mask)
 
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
@@ -2529,10 +2713,10 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
 
 
     # DEBUG, MALDI_TRANSFORMER_TS and COSINE ONLY
-    for key in list(embeddings.keys()):
-        if key not in {'clip_transformer', 'cosine_intensity_agnostic'}:
-            print(f"Removing {key} from embeddings")
-            del embeddings[key]
+    # for key in list(embeddings.keys()):
+    #     if key not in {'clip_transformer', 'cosine_intensity_agnostic'}:
+    #         print(f"Removing {key} from embeddings")
+    #         del embeddings[key]
        
     # Print prior probability of equal and unequal taxa
     a_key = [x for x in list(embeddings.keys()) if x != 'metadata' and x not in PAIRED_MODELS][0]
@@ -2663,13 +2847,33 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
             if not results:
                 continue
 
-            roc_curves, pr_curves, fdr_curves = map(np.array, zip(*results))
+            roc_curves = []
+            pr_curves = []
+            fdr_curves = []
+            informed_points = []
+            # Unpack the results
+            for curves, informed_point in results:
+                roc_curve, pr_curve, fdr_curve = curves
+                roc_curves.append(roc_curve)
+                pr_curves.append(pr_curve)
+                fdr_curves.append(fdr_curve)
+                informed_points.append(informed_point)
+
+            if informed_points:
+                opt_thresholds = [pt[0] for pt in informed_points if pt is not None]
+                avg_threshold = np.mean(opt_thresholds)
+                std_threshold = np.std(opt_thresholds)
+                print(f"[{method}] Average lowest SIMILARITY threshold: {avg_threshold:.3f} ± {std_threshold:.3f}")
+                print(f"[{method}] Average lowest DISTANCE threshold: {1-avg_threshold:.3f} ± {std_threshold:.3f}")
+            roc_curves = np.array(roc_curves)
+            pr_curves = np.array(pr_curves)
+            fdr_curves = np.array(fdr_curves)
 
             roc_mean, roc_std = roc_curves.mean(axis=0), roc_curves.std(axis=0)
             pr_mean, pr_std = pr_curves.mean(axis=0), pr_curves.std(axis=0)
             fdr_mean, fdr_std = fdr_curves.mean(axis=0), fdr_curves.std(axis=0)
 
-            print(pr_mean)
+            print('roc_curves.shape', roc_curves.shape)
 
             roc_auc_val = auc(interp_points, roc_mean)
             pr_auc_val = auc(interp_points, pr_mean)
@@ -2687,6 +2891,7 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
             # Print the Method, and Standard Deviation at 5 points
             print(f"[{method}] ROC AUC: {roc_auc_val:.3f}, PR AUC: {pr_auc_val:.3f}, FDR AUC: {fdr_auc_val:.3f}")
             for i in [0, 25, 50, 74, 79, 84, 89, 99]:
+                print(f"[{method}] X- Axis is {interp_points[i]:.2f}")
                 print(f"[{method}] ROC at {interp_points[i]:.2f}: {roc_mean[i]:.3f} ± {roc_std[i]:.3f}")
                 print(f"[{method}] PR at {interp_points[i]:.2f}: {pr_mean[i]:.3f} ± {pr_std[i]:.3f}")
                 print(f"[{method}] FDR at {interp_points[i]:.2f}: {fdr_mean[i]:.3f} ± {fdr_std[i]:.3f}")
@@ -3388,6 +3593,9 @@ _ = top_k_recall_plot('DRIAMS-A', 'genera', 'genera', cross_species=False, withi
 _ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=12, macro=True, cross_species=False)
 
 # %%
+_ = top_k_recall_plot('DRIAMS-B', 'genera', 'species', within_test=False, n_jobs=12, macro=False, cross_species=True)
+
+# %%
 _ = top_k_recall_plot('DRIAMS-A', 'genera', 'species', within_test=False, n_jobs=12, macro=False, cross_species=False)
 
 # %%
@@ -3411,81 +3619,65 @@ _ = top_k_recall_plot('DRIAMS-A', 'genera', 'genera', within_test=True, n_jobs=1
 # ## DRIAMS Plots Genera/Genera
 
 # %%
-_ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=4)
+_ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=12)
+_ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=12, balance_pairs=True)
 
 # %%
 _ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=True)
+_ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=True, balance_pairs=True)
 
 # %% [markdown]
 # ## DRIAMS Plots Genera/Species
 
 # %%
 _ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12)
-
-# %%
-gather_embeddings('driams-a', 'genera', 'species')['multinomial_classifier']
-
-# %%
-# DRIAMS Plots
-_ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=1)
-
-# %%
-_ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=1, balance_pairs=True)
+_ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12, balance_pairs=True)
 
 # %%
 _ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=True)
-
-# %%
 _ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=True, balance_pairs=True)
 
 # %%
-_ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=4, between_species=True)
+_ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=False)
+_ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=False, balance_pairs=True)
 
 # %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=False, n_jobs=12, num_samples_per_k=5, average='macro')
-_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=12, num_samples_per_k=5, average='macro')
+_ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=True)
+_ = binary_curves_plot('driams-a', 'genera', 'genera', test_only=True, max_pairs=1_000_000, n_jobs=12, between_species=True, balance_pairs=True)
 
 # %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=12, num_samples_per_k=5, average='macro')
-_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=False, n_jobs=12, num_samples_per_k=5, average='macro')
+_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='micro')
+_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='macro')
 
 # %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=12, num_samples_per_k=5, average='macro', require_cross_species=True)
+_ = nn_accuracy_plot('driams-b', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='micro')
+_ = nn_accuracy_plot('driams-b', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='macro')
 
 # %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=12, num_samples_per_k=5, average='macro', require_cross_species=False)
+_ = nn_accuracy_plot('driams-c', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='micro')
+_ = nn_accuracy_plot('driams-c', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='macro')
 
 # %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=12, num_samples_per_k=5, average='macro', require_cross_species=True)
+_ = nn_accuracy_plot('driams-D', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='micro')
+_ = nn_accuracy_plot('driams-D', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='macro')
 
 # %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'genera', within_test=True, n_jobs=12, num_samples_per_k=5, average='macro', require_cross_species=True)
+# Rerun in species sampling mode:
+_ = nn_accuracy_plot('driams-D', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='micro')
+_ = nn_accuracy_plot('driams-D', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='macro')
 
 # %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=12, num_samples_per_k=2, average='macro', require_cross_species=True)
+_ = nn_accuracy_plot('rki', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='micro')
+_ = nn_accuracy_plot('rki', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='macro')
 
 # %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=16, num_samples_per_k=5, average='macro', require_same_species=True)
+_ = nn_accuracy_plot('rki', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='micro')
+_ = nn_accuracy_plot('rki', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='macro')
 
 # %%
-_[1].head(50)
-
-# %%
-_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=True, n_jobs=6)
-_ = nn_accuracy_plot('driams-a', 'genera', 'species', within_test=False, n_jobs=6)
-
-# %%
-s = gather_embeddings('driams-a', 'genera', 'species')['clip_transformer']['train'][0]['species']
-
-# Plot histogram of species counts
-plt.figure(figsize=(12, 6))
-sns.histplot(s.value_counts(), bins=30, kde=False)
-plt.title('Distribution of Species Counts in DRIAMS-A')
-plt.xlabel('Number of Species')
-plt.ylabel('Frequency')
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+# TODO: Genus disjoint
+_ = nn_accuracy_plot('rki', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='micro')
+_ = nn_accuracy_plot('rki', 'genera', 'species', within_test=True, n_jobs=46, num_samples_per_k=5, average='macro')
 
 # %%
 plot_nn_accuracy_vs_train_taxa_size(
@@ -3838,7 +4030,14 @@ _ = nn_accuracy_plot('IDBac-kb', 'genera', 'species', within_test=True, n_jobs=6
 _ = nn_accuracy_plot('IDBac-kb', 'genera', 'species', within_test=True, n_jobs=1, num_samples_per_k=5, average='macro', require_cross_species=True)
 
 # %%
+print("standard")
 _ = binary_curves_plot('IDBac-kb', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4)
+# print("between species")
+# _ = binary_curves_plot('IDBac-kb', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4, between_species=True)
+# print("balanced")
+# _ = binary_curves_plot('IDBac-kb', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4, balance_pairs=True)
+# print("balanced between species")
+# _ = binary_curves_plot('IDBac-kb', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=4, balance_pairs=True, between_species=True)
 
 # %%
 _ = binary_curves_plot('driams-a', 'genera', 'species', test_only=True, max_pairs=500_000, n_jobs=2, cosine_ablation=True)
@@ -3931,8 +4130,8 @@ _ = binary_curves_plot('DRIAMS-A', 'genera', 'genera', test_only=True, max_pairs
 
 # %%
 # Binary 
-_ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pairs=10_000_000)
-_ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pairs=10_000_000, balance_pairs=True)
+_ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=1)
+_ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pairs=1_000_000, balance_pairs=True, n_jobs=1)
 
 # %%
 _ = binary_curves_plot('DRIAMS-B', 'genera', 'species', test_only=True, max_pairs=10_000_000, between_species=True)
@@ -3951,9 +4150,11 @@ top_k_precision_plot('DRIAMS-B', 'genera', 'species', within_test=True, n_jobs=1
 
 # %%
 _ = binary_curves_plot('DRIAMS-C', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=False)
+_ = binary_curves_plot('DRIAMS-C', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=False, balance_pairs=True)
 
 # %%
 _ = binary_curves_plot('DRIAMS-C', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=True)
+_ = binary_curves_plot('DRIAMS-C', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=True, balance_pairs=True)
 
 # %%
 top_k_recall_plot('DRIAMS-C', 'genera', 'species', within_test=True, n_jobs=6, macro=True, legend=False)
@@ -3967,9 +4168,11 @@ top_k_precision_plot('DRIAMS-C', 'genera', 'species', within_test=True, n_jobs=1
 
 # %%
 _ = binary_curves_plot('DRIAMS-D', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=False)
+_ = binary_curves_plot('DRIAMS-D', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=False, balance_pairs=True)
 
 # %%
 _ = binary_curves_plot('DRIAMS-D', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=True)
+_ = binary_curves_plot('DRIAMS-D', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=True, balance_pairs=True)
 
 # %%
 top_k_recall_plot('DRIAMS-D', 'genera', 'species', within_test=True, n_jobs=6, macro=False, legend=False)
@@ -3983,9 +4186,11 @@ top_k_precision_plot('DRIAMS-D', 'genera', 'species', within_test=True, n_jobs=1
 
 # %%
 _ = binary_curves_plot('RKI', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12)
+_ = binary_curves_plot('RKI', 'genera', 'species', test_only=True, max_pairs=1_000_000, n_jobs=12, balance_pairs=True)
 
 # %%
 _ = binary_curves_plot('RKI', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=True)
+_ = binary_curves_plot('RKI', 'genera', 'species', test_only=True, max_pairs=1_000_000, between_species=True, balance_pairs=True)
 
 # %%
 top_k_recall_plot('RKI', 'genera', 'species', within_test=True, n_jobs=12, macro=True, cross_species=False)
