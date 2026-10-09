@@ -3,7 +3,7 @@
 ## Required provenance
 
 - The source notebook/scripts and result tables for the separate 47-strain WGS/IDBac requery experiment are not yet included. The manuscript supplies its roster but not the corresponding metric-generation inputs.
-- The included banana-slug search table provides the figure-level reproduction input. The original ML search task/checkpoint association has not yet been identified, so end-to-end reproduction of the remote search remains undocumented.
+- Banana-slug remote-search provenance is documented through the two GNPS2 tasks cited in the manuscript and linked in `publication/banana_slug/PROVENANCE.md`. The frozen search table supports local figure reproduction. Automated task-page retrieval returned HTTP 403, so remote parameter/checkpoint metadata has not been independently verified here.
 - Figure 6B mirror-plot source is not located; this is an optional provenance gap under the agreed scope.
 
 ## Methods wording to review with the manuscript authors
