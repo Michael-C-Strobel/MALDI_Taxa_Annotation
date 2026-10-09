@@ -1,0 +1,22 @@
+{
+  "python_syntax": "passed",
+  "notebooks": 3,
+  "code_cells_parsed": 72,
+  "checkpoints": 24,
+  "checkpoint_size_limit": "all below 100 MiB",
+  "frozen_artifacts_hashed": 470,
+  "metric_training_inference_genome_runs": "none",
+  "workspace_application": "ready after validated slim backup",
+  "original_notebook": "preserved; unfinished exploratory cell 167 is excluded from executable notebook validation",
+  "inference_commands_listed": 200,
+  "inference_cli_flags": "passed",
+  "shell_syntax_files": 71,
+  "git_review_staged_files": 622,
+  "frozen_hash_verification": "passed in isolated review checkout",
+  "backup": {
+    "path": "archive/16S_SIM_PRED_Backup.tar.gz",
+    "scope": "source/results, metadata/splits, current checkpoints/inference; excludes raw data, environments and historical experiments",
+    "uncompressed_bytes": 10122217682,
+    "validation": "complete archive stream and checksum passed"
+  }
+}

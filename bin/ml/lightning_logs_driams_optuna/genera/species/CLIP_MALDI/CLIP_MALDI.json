@@ -1,0 +1,11 @@
+{
+  "hidden_dim": 420,
+  "hidden_layers": 2,
+  "weight_decay": 7.166892051942863e-06,
+  "dropout": 0.18753828991409338,
+  "tau": 0.11641156385104359,
+  "lr": 0.0009021168067039361,
+  "TARGET": "genera",
+  "N_EPOCHS": 600,
+  "batch_size": 32
+}

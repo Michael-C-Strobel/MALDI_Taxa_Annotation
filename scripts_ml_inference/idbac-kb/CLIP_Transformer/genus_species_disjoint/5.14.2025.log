@@ -1,0 +1,8 @@
+nohup: ignoring input
+usage: bare_inference.py [-h] --model MODEL [--version VERSION] --dataset
+                         {DIRAMS-A,IDBac} --target {genera,species}
+                         [--split_type {genera,species,species_even}]
+                         --inference_set {train,val,test,all}
+                         [--checkpoint_path CHECKPOINT_PATH] [--new_paths]
+                         [--run_for_score] [--k K]
+bare_inference.py: error: unrecognized arguments: 0

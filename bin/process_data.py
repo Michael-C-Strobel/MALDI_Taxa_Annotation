@@ -21,12 +21,43 @@ from typing import List
 
 GROUP_SIZE = 100
 
-def write_mzML_files_from_json(json_input:Path, output_mzML_dir:Path)->None:
+def write_mzML_files_from_json_as_reps(json_input:Path, output_mzML_dir:Path)->None:
     with open(json_input, 'r') as input_file:
         parser = ijson.items(input_file, 'item')
         for obj in tqdm(parser, desc="Writing mzML files"):
             obj = convert_to_serializable(obj)
             
+            # Assume "Strain name" is the key for each object
+            strain_name = obj["Strain name"]
+            all_scans = obj["spectrum"]
+            for scan_idx, scan in enumerate(all_scans):
+                with MzMLWriter(open(output_mzML_dir / f'{strain_name}_rep_{scan_idx}.mzML', 'wb'), close=True) as writer:
+                    writer.controlled_vocabularies()
+                    with writer.run(id='my_analysis'):
+                        with writer.spectrum_list(count=1):
+                            
+                                mz_array = [float(x[0]) for x in scan]
+                                intensity_array = [float(x[1]) for x in scan]
+
+                                writer.write_spectrum(
+                                    mz_array,
+                                    intensity_array,
+                                    id=f'scan={scan_idx}',
+                                    params=[
+                                        "MS1 Spectrum",
+                                        {"ms level": 1},
+                                        {"total ion current": sum(intensity_array)}
+                                    ]
+                                )
+
+def write_mzML_files_from_json(json_input:Path, output_mzML_dir:Path)->None:
+    with open(json_input, 'r') as input_file:
+        parser = ijson.items(input_file, 'item')
+
+        for obj in tqdm(parser, desc="Writing mzML files"):
+
+            obj = convert_to_serializable(obj)
+
             # Assume "Strain name" is the key for each object
             strain_name = obj["Strain name"]
             all_scans = obj["spectrum"]
@@ -142,7 +173,7 @@ def process_with_maldi_quant(input_path: Path, output_path: Path, n_jobs:int=-1)
     def _run_rscript(spectrum_paths: List[Path],):
         for spectrum_path in spectrum_paths:
             _output_path = output_path / f"{spectrum_path.stem}.mzML"
-            subprocess.run(['Rscript', 'preprocess_data.R', str(spectrum_path), str(_output_path)], 
+            subprocess.run(['Rscript', str(Path(__file__).resolve().with_name('preprocess_data.R')), str(spectrum_path), str(_output_path)],
                            stdout = subprocess_output_path, 
                            stderr = subprocess_output_path,
                            check  = subprocess_check)

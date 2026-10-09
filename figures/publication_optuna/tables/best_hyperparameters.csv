@@ -1,0 +1,13 @@
+run,parameter,best_value
+genera_species,dropout,0.18753828991409338
+genera_species,hidden_dim,420.0
+genera_species,hidden_layers,2.0
+genera_species,lr,0.0009021168067039361
+genera_species,tau,0.11641156385104359
+genera_species,weight_decay,7.166892051942863e-06
+genera_genera,dropout,0.41115388656427554
+genera_genera,hidden_dim,390.0
+genera_genera,hidden_layers,2.0
+genera_genera,lr,0.0007406137323806516
+genera_genera,tau,0.12421465035176336
+genera_genera,weight_decay,1.9586987391446873e-05

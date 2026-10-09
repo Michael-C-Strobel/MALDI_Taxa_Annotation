@@ -1,0 +1,18 @@
+sample,domain,GTDB_genus,genus_normalized,GTDB_species,classification_method,contaminated_per_CheckM2
+SL1002,Bacteria,Caballeronia,Caballeronia,,taxonomic classification defined by topology and ANI,False
+SL1003,Bacteria,Mucilaginibacter,Mucilaginibacter,,taxonomic classification defined by topology and ANI,False
+SL1004,Bacteria,Sphingomonas,Sphingomonas,,taxonomic classification defined by topology and ANI,False
+SL1010,Archaea,,,,taxonomic novelty determined using RED,True
+SL1033,Bacteria,Pseudomonas_E,Pseudomonas,Pseudomonas_E helmanticensis,ani_screen,False
+SL1046,Bacteria,Pseudomonas_E,Pseudomonas,Pseudomonas_E edaphica,ani_screen,False
+SL1064,Bacteria,Acinetobacter,Acinetobacter,Acinetobacter sp003410005,ani_screen,False
+SL1071,Bacteria,Acinetobacter,Acinetobacter,Acinetobacter sp003410005,ani_screen,True
+SL1072,Bacteria,Pseudomonas_E,Pseudomonas,Pseudomonas_E paracarnis,ani_screen,False
+SL1086,Bacteria,Pseudomonas_E,Pseudomonas,Pseudomonas_E azotoformans_A,ani_screen,True
+SL1092,Bacteria,Pseudomonas_E,Pseudomonas,Pseudomonas_E paraversuta,ani_screen,True
+SL1095,Bacteria,Pseudomonas_E,Pseudomonas,Pseudomonas_E sp013386585,ani_screen,True
+SL1097,Bacteria,Pseudomonas_E,Pseudomonas,Pseudomonas_E paracarnis,ani_screen,False
+SL1098,Bacteria,Duganella,Duganella,Duganella zoogloeoides,ani_screen,True
+SL1102,Bacteria,Pseudomonas_E,Pseudomonas,Pseudomonas_E azotoformans_A,ani_screen,False
+SL1105,Bacteria,Pseudomonas_E,Pseudomonas,,taxonomic classification defined by topology and ANI,False
+SL1107,Bacteria,Chryseobacterium,Chryseobacterium,Chryseobacterium indoltheticum,ani_screen,False

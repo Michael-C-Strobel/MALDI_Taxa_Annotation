@@ -1,0 +1,5 @@
+Generated publication assets:
+- Output directory: /data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/figures/publication_optuna
+- Runs: genera_species, genera_genera
+- Tables: /data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/figures/publication_optuna/tables
+- Figures: /data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/figures/publication_optuna/figures

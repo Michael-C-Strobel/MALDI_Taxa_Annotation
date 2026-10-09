@@ -13,6 +13,8 @@ import ijson
 import csv
 import polars as pl
 import logging
+from taxonomy_utils import populate_taxonomies
+import pandas as pd
 
 from utils import init_logging, convert_to_serializable
 
@@ -125,41 +127,40 @@ def sanitize_file(input_path:str, output_path:str):
             outfile.write(sanitized_line)
 
 def split_spectrum_metadata(input_path: str, output_spec_path: str, output_meta_path: str):
-    # Open input file and two output files
-    with open(input_path, 'r') as input_file:
-        # Use ijson to parse the input file one item at a time
-        parser = ijson.items(input_file, 'item')
-        
-        # Open output files and write the opening brackets for JSON arrays
-        with open(output_spec_path, 'w') as spec_file, open(output_meta_path, 'w') as meta_file:
-            spec_file.write('[\n')  # Start of JSON array
-            meta_file.write('[\n')  # Start of JSON array
-            
-            first_spec = True  # To handle comma placement
-            first_meta = True  # To handle comma placement
-            
-            for obj in parser:
-                obj = convert_to_serializable(obj)
+    with open(input_path, 'r', encoding='utf-8') as input_file, \
+         open(output_spec_path, 'w', encoding='utf-8') as spec_file, \
+         open(output_meta_path, 'w', encoding='utf-8') as meta_file:
 
-                # Assume "Strain name" is the key for each object
-                
-                # Extract spectrum
-                if "spectrum" in obj:
-                    spectrum = obj.pop("spectrum")
-                    # Write spectrum to output_spec_path
-                    if not first_spec:
-                        spec_file.write(',\n')  # Add comma before subsequent entries
-                    spec_file.write(json.dumps({"Strain name": obj["Strain name"], "spectrum": spectrum}))
-                    first_spec = False  # Mark that we have written the first entry
-                
-                # Write remaining metadata (without spectrum) to output_meta_path
-                if not first_meta:
-                    meta_file.write(',\n')  # Add comma before subsequent entries
-                meta_file.write(json.dumps(obj))
-                first_meta = False  # Mark that we have written the first entry
+        spec_file.write('[\n')  # Start of JSON array
+        meta_file.write('[\n')  # Start of JSON array
 
-            spec_file.write('\n]')  # End of JSON array
-            meta_file.write('\n]')  # End of JSON array
+        first_spec = True
+        first_meta = True
+
+        for line in input_file:
+            line = line.strip()
+            if not line:
+                continue  # skip blank lines
+
+            obj = json.loads(line)
+            obj = convert_to_serializable(obj)
+
+            # Handle spectrum separately
+            if "spectrum" in obj:
+                spectrum = obj.pop("spectrum")
+                if not first_spec:
+                    spec_file.write(',\n')
+                spec_file.write(json.dumps({"Strain name": obj.get("Strain name"), "spectrum": spectrum}))
+                first_spec = False
+
+            # Write metadata (with spectrum removed already)
+            if not first_meta:
+                meta_file.write(',\n')
+            meta_file.write(json.dumps(obj))
+            first_meta = False
+
+        spec_file.write('\n]')
+        meta_file.write('\n]')
 
 def convert_to_csv(json_path:str, csv_path:str):
     # Load the JSON file into a DataFrame
@@ -178,6 +179,7 @@ def main():
     parser = argparse.ArgumentParser(description='Download all spectra from IDBac')
     parser.add_argument('-j', '--json_output', type=str, default='all_spectra.json', help='Output file path')
     parser.add_argument('-c', '--csv_output', type=str, default='all_spectra.csv', help='Convert json to csv')
+    parser.add_argument('--cleaned_csv_output', type=str, default='db_with_taxonomy.csv', help='Convert json to csv after cleaning and adding taxonomy')
     args = parser.parse_args()
 
     init_logging()
@@ -214,6 +216,13 @@ def main():
     # Convert metadata to CSV
     logging.info('Converting to CSV...')
     convert_to_csv(output_metadata_path, db_summary_path)
+
+    # Get taxonomy
+    df = pd.read_csv(db_summary_path)
+    df = populate_taxonomies(df)
+    # Save everything with a 'genus' and 'Genbank accession'
+    df = df[~df['genus'].isna() & ~df['Genbank accession'].isna()]
+    df.to_csv(args.cleaned_csv_output, index=False)
 
 
 

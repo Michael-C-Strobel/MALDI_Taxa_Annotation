@@ -1,0 +1,19 @@
+{
+  "ml_accuracy": {
+    "rows": 1530,
+    "max_distance": 0.1899857892648113,
+    "top1_mismatches": [],
+    "top1_query_count": 47,
+    "near_zero_rows": 50,
+    "near_zero_nonidentity_rows": 0
+  },
+  "presence_accuracy": {
+    "rows": 1144,
+    "max_distance": 0.6999903995391754,
+    "top1_mismatches": [],
+    "top1_query_count": 47,
+    "near_zero_rows": 50,
+    "near_zero_nonidentity_rows": 0
+  },
+  "scope": "Static cross-check of frozen hit-table top-1 entries against saved per-query output; full notebook and top-k metrics were not executed."
+}

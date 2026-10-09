@@ -1,0 +1,281 @@
+model,k,accuracy,label_to_counts_k,genera_counts,cv_fold,model_name,color
+clip_transformer,1,0.895341474445952,,0,0.0,Contrastive Transformer,#66c2a5
+clip_transformer,1,0.8585255540479421,,0,1.0,Contrastive Transformer,#66c2a5
+clip_transformer,1,0.8580732700135685,,0,2.0,Contrastive Transformer,#66c2a5
+clip_transformer,1,0.8897331524197196,,0,3.0,Contrastive Transformer,#66c2a5
+clip_transformer,1,0.8634102216191768,,0,4.0,Contrastive Transformer,#66c2a5
+clip_transformer,1,0.8500226142017187,,0,5.0,Contrastive Transformer,#66c2a5
+clip_transformer,2,0.9120759837177748,,0,0.0,Contrastive Transformer,#66c2a5
+clip_transformer,2,0.8713704206241519,,0,1.0,Contrastive Transformer,#66c2a5
+clip_transformer,2,0.8710085933966532,,0,2.0,Contrastive Transformer,#66c2a5
+clip_transformer,2,0.8987788331071913,,0,3.0,Contrastive Transformer,#66c2a5
+clip_transformer,2,0.8830393487109905,,0,4.0,Contrastive Transformer,#66c2a5
+clip_transformer,2,0.8691994572591587,,0,5.0,Contrastive Transformer,#66c2a5
+clip_transformer,3,0.9183175033921303,,0,0.0,Contrastive Transformer,#66c2a5
+clip_transformer,3,0.8789687924016282,,0,1.0,Contrastive Transformer,#66c2a5
+clip_transformer,3,0.8801447308909995,,0,2.0,Contrastive Transformer,#66c2a5
+clip_transformer,3,0.9044776119402985,,0,3.0,Contrastive Transformer,#66c2a5
+clip_transformer,3,0.8925373134328358,,0,4.0,Contrastive Transformer,#66c2a5
+clip_transformer,3,0.8805970149253731,,0,5.0,Contrastive Transformer,#66c2a5
+clip_transformer,4,0.9224785165083672,,0,0.0,Contrastive Transformer,#66c2a5
+clip_transformer,4,0.8839439167797377,,0,1.0,Contrastive Transformer,#66c2a5
+clip_transformer,4,0.8859339665309814,,0,2.0,Contrastive Transformer,#66c2a5
+clip_transformer,4,0.9079149706015378,,0,3.0,Contrastive Transformer,#66c2a5
+clip_transformer,4,0.8985074626865671,,0,4.0,Contrastive Transformer,#66c2a5
+clip_transformer,4,0.8921754862053369,,0,5.0,Contrastive Transformer,#66c2a5
+clip_transformer,5,0.9266395296246043,,0,0.0,Contrastive Transformer,#66c2a5
+clip_transformer,5,0.8890094979647218,,0,1.0,Contrastive Transformer,#66c2a5
+clip_transformer,5,0.8898236092265943,,0,2.0,Contrastive Transformer,#66c2a5
+clip_transformer,5,0.9106286748077793,,0,3.0,Contrastive Transformer,#66c2a5
+clip_transformer,5,0.9026684758028042,,0,4.0,Contrastive Transformer,#66c2a5
+clip_transformer,5,0.9024875621890547,,0,5.0,Contrastive Transformer,#66c2a5
+clip_transformer,6,0.9293532338308458,,0,0.0,Contrastive Transformer,#66c2a5
+clip_transformer,6,0.8926277702397105,,0,1.0,Contrastive Transformer,#66c2a5
+clip_transformer,6,0.8936227951153324,,0,2.0,Contrastive Transformer,#66c2a5
+clip_transformer,6,0.9130710085933966,,0,3.0,Contrastive Transformer,#66c2a5
+clip_transformer,6,0.905924920850294,,0,4.0,Contrastive Transformer,#66c2a5
+clip_transformer,6,0.9069199457259158,,0,5.0,Contrastive Transformer,#66c2a5
+clip_transformer,7,0.9306196291270918,,0,0.0,Contrastive Transformer,#66c2a5
+clip_transformer,7,0.8956128448665762,,0,1.0,Contrastive Transformer,#66c2a5
+clip_transformer,7,0.896969696969697,,0,2.0,Contrastive Transformer,#66c2a5
+clip_transformer,7,0.9146992311171416,,0,3.0,Contrastive Transformer,#66c2a5
+clip_transformer,7,0.9087290818634102,,0,4.0,Contrastive Transformer,#66c2a5
+clip_transformer,7,0.9103573043871551,,0,5.0,Contrastive Transformer,#66c2a5
+clip_transformer,8,0.932157394843962,,0,0.0,Contrastive Transformer,#66c2a5
+clip_transformer,8,0.8980551786521935,,0,1.0,Contrastive Transformer,#66c2a5
+clip_transformer,8,0.9012211668928087,,0,2.0,Contrastive Transformer,#66c2a5
+clip_transformer,8,0.9162369968340117,,0,3.0,Contrastive Transformer,#66c2a5
+clip_transformer,8,0.9110809588421529,,0,4.0,Contrastive Transformer,#66c2a5
+clip_transformer,8,0.9132519222071461,,0,5.0,Contrastive Transformer,#66c2a5
+clip_transformer,9,0.9332428765264587,,0,0.0,Contrastive Transformer,#66c2a5
+clip_transformer,9,0.9002261420171868,,0,1.0,Contrastive Transformer,#66c2a5
+clip_transformer,9,0.9041157847127996,,0,2.0,Contrastive Transformer,#66c2a5
+clip_transformer,9,0.9175938489371325,,0,3.0,Contrastive Transformer,#66c2a5
+clip_transformer,9,0.9130710085933966,,0,4.0,Contrastive Transformer,#66c2a5
+clip_transformer,9,0.915513342379014,,0,5.0,Contrastive Transformer,#66c2a5
+clip_transformer,10,0.9336047037539574,,0,0.0,Contrastive Transformer,#66c2a5
+clip_transformer,10,0.9013116236996834,,0,1.0,Contrastive Transformer,#66c2a5
+clip_transformer,10,0.9067390321121664,,0,2.0,Contrastive Transformer,#66c2a5
+clip_transformer,10,0.9185888738127544,,0,3.0,Contrastive Transformer,#66c2a5
+clip_transformer,10,0.9146087743102669,,0,4.0,Contrastive Transformer,#66c2a5
+clip_transformer,10,0.9171415649027589,,0,5.0,Contrastive Transformer,#66c2a5
+cosine,1,0.47607417458163725,,0,0.0,Cosine Similarity,#fc8d62
+cosine,2,0.5022161917684306,,0,0.0,Cosine Similarity,#fc8d62
+cosine,3,0.5252826775214835,,0,0.0,Cosine Similarity,#fc8d62
+cosine,4,0.5481682496607869,,0,0.0,Cosine Similarity,#fc8d62
+cosine,5,0.564812302125735,,0,0.0,Cosine Similarity,#fc8d62
+cosine,6,0.5831750339213025,,0,0.0,Cosine Similarity,#fc8d62
+cosine,7,0.5968340117593849,,0,0.0,Cosine Similarity,#fc8d62
+cosine,8,0.6141112618724559,,0,0.0,Cosine Similarity,#fc8d62
+cosine,9,0.6254183627317955,,0,0.0,Cosine Similarity,#fc8d62
+cosine,10,0.639981908638625,,0,0.0,Cosine Similarity,#fc8d62
+cosine_intensity_agnostic,1,0.5792853912256898,,0,0.0,Cosine Similarity (Int. Agn.),#e78ac3
+cosine_intensity_agnostic,2,0.6602442333785618,,0,0.0,Cosine Similarity (Int. Agn.),#e78ac3
+cosine_intensity_agnostic,3,0.707824513794663,,0,0.0,Cosine Similarity (Int. Agn.),#e78ac3
+cosine_intensity_agnostic,4,0.7413839891451832,,0,0.0,Cosine Similarity (Int. Agn.),#e78ac3
+cosine_intensity_agnostic,5,0.7661691542288557,,0,0.0,Cosine Similarity (Int. Agn.),#e78ac3
+cosine_intensity_agnostic,6,0.7879692446856627,,0,0.0,Cosine Similarity (Int. Agn.),#e78ac3
+cosine_intensity_agnostic,7,0.8045228403437359,,0,0.0,Cosine Similarity (Int. Agn.),#e78ac3
+cosine_intensity_agnostic,8,0.816644052464948,,0,0.0,Cosine Similarity (Int. Agn.),#e78ac3
+cosine_intensity_agnostic,9,0.8269561284486657,,0,0.0,Cosine Similarity (Int. Agn.),#e78ac3
+cosine_intensity_agnostic,10,0.8361827227498869,,0,0.0,Cosine Similarity (Int. Agn.),#e78ac3
+maldi_transformer_ts,1,0.7854364540931705,,0,0.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,1,0.7249208502939847,,0,1.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,1,0.7147896879240163,,0,2.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,1,0.6477611940298508,,0,3.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,1,0.6827679782903664,,0,4.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,1,0.7464495703301673,,0,5.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,2,0.8218000904568069,,0,0.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,2,0.779194934418815,,0,1.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,2,0.7678878335594753,,0,2.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,2,0.703030303030303,,0,3.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,2,0.7406603346901854,,0,4.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,2,0.7948439620081411,,0,5.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,3,0.8392582541836273,,0,0.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,3,0.8073270013568521,,0,1.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,3,0.7992763455450023,,0,2.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,3,0.7391225689733153,,0,3.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,3,0.7733152419719584,,0,4.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,3,0.8173677069199458,,0,5.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,4,0.8535504296698326,,0,0.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,4,0.8275893260967888,,0,1.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,4,0.8216191768430574,,0,2.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,4,0.7653550429669833,,0,3.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,4,0.7920398009950249,,0,4.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,4,0.8341022161917684,,0,5.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,5,0.8619629127091814,,0,0.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,5,0.8408864767073723,,0,1.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,5,0.8344640434192673,,0,2.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,5,0.789778380823157,,0,3.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,5,0.8100407055630936,,0,4.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,5,0.8445047489823609,,0,5.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,6,0.8686567164179104,,0,0.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,6,0.8511080958842153,,0,1.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,6,0.8430574400723655,,0,2.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,6,0.8066033469018543,,0,3.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,6,0.8241519674355495,,0,4.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,6,0.8517412935323383,,0,5.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,7,0.8731795567616463,,0,0.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,7,0.8594301221166892,,0,1.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,7,0.8506558118498417,,0,2.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,7,0.8170963364993216,,0,3.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,7,0.8352781546811398,,0,4.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,7,0.8587969244685663,,0,5.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,8,0.8777023971053822,,0,0.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,8,0.8660334690185436,,0,1.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,8,0.8557213930348259,,0,2.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,8,0.8257801899592945,,0,3.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,8,0.8421528720036183,,0,4.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,8,0.8645861601085482,,0,5.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,9,0.8824966078697422,,0,0.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,9,0.8701944821347807,,0,1.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,9,0.8618724559023067,,0,2.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,9,0.8340117593848937,,0,3.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,9,0.8489371325192221,,0,4.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,9,0.8682948891904115,,0,5.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,10,0.8852103120759837,,0,0.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,10,0.8752600633197648,,0,1.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,10,0.8668475802804161,,0,2.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,10,0.8406151062867481,,0,3.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,10,0.8538218000904568,,0,4.0,MALDI Transformer,#a6d854
+maldi_transformer_ts,10,0.8722749886928991,,0,5.0,MALDI Transformer,#a6d854
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,1,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,2,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,3,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,4,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,5,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,6,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,7,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,8,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,9,0.9553143374038896,,0,,Theoretical Max,#727272
+Theoretical Max,10,0.9553143374038896,,0,,Theoretical Max,#727272

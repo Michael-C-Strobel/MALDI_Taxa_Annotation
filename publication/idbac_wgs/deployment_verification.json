@@ -1,0 +1,56 @@
+{
+  "checked_date": "2026-10-09",
+  "workflow_version": "2026.04.23.00",
+  "production_path": "/data/nf_data/server/env/workflows/idbac_analysis_workflow",
+  "source_git_commit": "330e529eb97daee24bd3f4e2fb778dc5247c3e8f",
+  "working_model_and_R_script_differ_from_git": true,
+  "files": [
+    {
+      "source_path": "bin/ml_inference/ml_inference.nf",
+      "sha256": "ec0d4ed9cf58ed1acf206d363fa948144cec81f26ad573507ebb42850743b08a",
+      "matches_production": true
+    },
+    {
+      "source_path": "bin/ml_inference/bin/ml_inference.py",
+      "sha256": "4538a001f49aadc7716d94ffd66b62d404b66ba068105a6f5758080da500084e",
+      "matches_production": true
+    },
+    {
+      "source_path": "bin/ml_inference/bin/preprocess_data.R",
+      "sha256": "e812c9d94867f516c612a31e2ddf1f597d049e572b893edb58558dd36b8802c2",
+      "matches_production": true
+    },
+    {
+      "source_path": "bin/ml_inference/bin/custom_transforms.py",
+      "sha256": "106d04aa2ef5c39bb6e5599f0316f37af43ef31ef2c00249c47350a8b4b85fb6",
+      "matches_production": true
+    },
+    {
+      "source_path": "bin/ml_inference/bin/preprocess.py",
+      "sha256": "5e6ce0c4b4e9416a98d71b5197ec933bbded103ed0cc3e08e032ebd81d9d509d",
+      "matches_production": true
+    },
+    {
+      "source_path": "bin/ml_inference/bin/conda_env.yml",
+      "sha256": "369499c3af74a912999cb5f5b772594e0d1be01b1494ad4fb1d255e04685215b",
+      "matches_production": true
+    },
+    {
+      "source_path": "bin/ml_inference/bin/models/CLIP_Transformer.onnx",
+      "sha256": "49083116475560b806ae957c2b392b252e8cd33733a26ee5f0986f466e89f1c9",
+      "matches_production": true
+    },
+    {
+      "source_path": "bin/database_search.py",
+      "sha256": "a7d160c81d048d4aa01d355c18cc9c18c869ed1b6182a9bc38c2b69434727407",
+      "matches_production": true
+    },
+    {
+      "source_path": "bin/utils.py",
+      "sha256": "54ba89ce0a59d28d8469e540b80d228d36d9ec33083cf76c8cd06dc682d8b53c",
+      "matches_production": true
+    }
+  ],
+  "historical_task_model_independently_verified": false,
+  "historical_task_database_snapshot_available": false
+}

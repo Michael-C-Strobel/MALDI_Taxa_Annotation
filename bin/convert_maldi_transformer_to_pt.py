@@ -25,7 +25,14 @@ def main():
     dataset = h5torch.Dataset(str(input_h5torch_path))
 
     for x in tqdm(dataset):
-        id = Path(str(x["0/loc"])).stem
+        loc_value = x["0/loc"]
+        # Handle both bytes and string formats
+        if isinstance(loc_value, bytes):
+            loc_str = loc_value.decode('utf-8')
+        else:
+            loc_str = str(loc_value)
+        # Remove any leading slashes
+        id = Path(loc_str.lstrip('/')).stem
 
         mz_array = torch.tensor(x["0/mz"])
         intensity_array = torch.tensor(x["0/intensity"])

@@ -45,8 +45,8 @@ def postprocess_files(input_dir: Path, output_dir: Path):
     if not output_spectra_dir.exists():
         output_spectra_dir.mkdir(parents=True)
 
-    # for strain_name, spectrum_as_tensor in tqdm(convert_spectra_to_tensor(input_dir / 'baseline_corrected.json')):
-    #     torch.save(spectrum_as_tensor, output_spectra_dir / f'{strain_name}.pt')
+    for strain_name, spectrum_as_tensor in tqdm(convert_spectra_to_tensor(input_dir / 'baseline_corrected.json')):
+        torch.save(spectrum_as_tensor, output_spectra_dir / f'{strain_name}.pt')
 
     # Convert blast results to feather file
     all_blast_results = list((input_dir / 'blast_results').glob('*.txt'))

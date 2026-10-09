@@ -172,17 +172,17 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
         else:
             print(f"Using standard split method: {self.split_method}")
 
-        if train_accessions_path:
+        if train_accessions_path.exists():
             if wipe_test_sets:
                 (train_accessions_path).unlink(missing_ok=True)
             else:
                 self.train_accessions = torch.load(train_accessions_path, weights_only=False)
-        if val_accessions_path:
+        if val_accessions_path.exists():
             if wipe_test_sets:
                 (val_accessions_path).unlink(missing_ok=True)
             else:
                 self.val_accessions = torch.load(val_accessions_path, weights_only=False)
-        if test_accessions_path:
+        if test_accessions_path.exists():
             if wipe_test_sets:
                 (test_accessions_path).unlink(missing_ok=True)
             else:
@@ -228,6 +228,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
             self.predict_set = self.full_dataset
         else:
             raise ValueError(f"Unknown stage: {stage}")
+        self.stage = stage
 
     def train_dataloader(self):
         return DataLoader(self.train_set, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
@@ -244,7 +245,12 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
             return self.train_test_stats
         else:
             return self.train_test_stats
-
+        
+    def __len__(self):
+        if self.stage == 'test':
+            return len(self.predict_set)
+        else:
+            raise NotImplementedError("Length is only implemented for 'test' stage.")
     
 
 def test_dataloader():

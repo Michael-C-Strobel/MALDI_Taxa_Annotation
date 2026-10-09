@@ -65,9 +65,23 @@ class single_MALDI_TOF_DS(Dataset):
                 n_workers:int=-1,
                 prefer_hard:bool=False,
                 singletons_as_anchors:bool=True,):
+
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
-        self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+
+        preprocessing_dir = Path(preprocessing_dir)
+        if not preprocessing_dir.exists():
+            # Process it
+            raise NotImplementedError(f"Implicit preprocessing in dataset has been deprecated and preprocessing dir was not found: {preprocessing_dir}")
+            print(f"Root dir {preprocessing_dir} does not exist, processing...")
+            self.preprocess()
+
+        self.all_spectra = list(Path(self.preprocessing_dir).glob('*.pt'))
+        if len(self.all_spectra) == 0:
+            print(f"No spectra found in {preprocessing_dir}, processing...")
+            self.preprocess()
+            self.all_spectra = list(Path(self.preprocessing_dir).glob('*.pt'))
+
         self.cast_to_classification = cast_to_classification
         self.prefer_hard = prefer_hard
         self.singletons_as_anchors = singletons_as_anchors
@@ -105,11 +119,15 @@ class single_MALDI_TOF_DS(Dataset):
             print(f"Got maximum class number {max(self.class_to_int.values())}")
 
         if 'accession' not in metadata_table.columns:
+            print("Column 'accession' not found in metadata table, trying 'Genbank accession'")
             metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
         else:
             metadata_table['accession'] = metadata_table['accession'].astype(str).str.strip()
         metadata_table['accession'] = metadata_table['accession'].astype(str)
+        initial_len = len(metadata_table)
         metadata_table = metadata_table.loc[metadata_table['Strain name'].isin(all_spectra_names)]
+        filtered_len = len(metadata_table)
+        print("Filtered metadata table from", initial_len, "to", filtered_len, "based on available spectra")
         metadata_table = metadata_table.drop_duplicates(subset='Strain name')   # Some strains occur twice due to multuple csv files
 
         self.metadata_table = metadata_table
@@ -246,7 +264,11 @@ class single_MALDI_TOF_DS(Dataset):
         def _fetch(strain_names_chunk):
             chunk_results = []
             for strain_name in strain_names_chunk:
-                spectrum = torch.load(Path(self.root_dir) / 'spectra' / f"{strain_name}.pt", weights_only=True).to(torch.float32)
+                try:
+                    spectrum = torch.load(Path(self.preprocessing_dir) / f"{strain_name}.pt", weights_only=False).to(torch.float32)
+                except:
+                    raise RuntimeError(f"Error loading spectrum for strain {strain_name} from {Path(self.preprocessing_dir) / f'{strain_name}.pt'}")
+                # print("loading spectrum from", Path(self.preprocessing_dir) / f"{strain_name}.pt")
                 if self.transform:
                     spectrum = self.transform(spectrum)
                 chunk_results.append((strain_name, spectrum))
@@ -340,8 +362,15 @@ class single_MALDI_TOF_DS(Dataset):
             return spectrum, metadata
             
     def get_by_strain_name(self, strain_name):
-        accession = self.metadata_table[self.metadata_table['Strain name'] == strain_name]['accession'].values[0]
-        spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
+        accession = self.strain_name_to_metadata[strain_name]['accession']
+        # print('accession:', accession)
+        if self.in_memory:
+            # print("Found that this was in memory", flush=True)
+            spectrum = self.spectra[strain_name]
+            # print("spectrum:", spectrum.shape, flush=True)
+        else:
+            # print("Found that this was no memory", flush=True)
+            spectrum = torch.load(Path(self.root_dir) / 'spectra' / f'{strain_name}.pt', weights_only=True).to(torch.float32)
         
         metadata = {}
 
@@ -357,11 +386,11 @@ class single_MALDI_TOF_DS(Dataset):
             'num_peaks': num_peaks,
         })
 
-        if self.transform:
+        if self.transform and not self.in_memory:
             try:
                 spectrum = self.transform(spectrum)
             except Exception as e:
-                raise RuntimeError(f"Error transforming spectrum for strain {strain_name} with accession {accession}") from e
+                raise RuntimeError(f"Error transforming spectrum (shape: {spectrum.shape}) for strain {strain_name} with accession {accession}") from e
 
         return spectrum, metadata
 
@@ -689,11 +718,11 @@ class single_MALDI_TOF_DS(Dataset):
 
     def preprocess(self,):
         # return
-        if not (Path(self.root_dir) / 'spectra/').exists():
-            (Path(self.root_dir) / 'spectra/').mkdir(parents=True, exist_ok=True)
+        if not (Path(self.preprocessing_dir)).exists():
+            (Path(self.preprocessing_dir)).mkdir(parents=True, exist_ok=True)
         print("Preprocessing files...")
-        for strain_name, spectrum_as_tensor in tqdm(convert_spectra_to_tensor(Path(self.preprocessing_dir) / 'baseline_corrected.json')):
-            torch.save(spectrum_as_tensor, Path(self.root_dir) / f'spectra/{strain_name}.pt')
+        for strain_name, spectrum_as_tensor in tqdm(convert_spectra_to_tensor(Path(self.root_dir) / 'baseline_corrected.json')):
+            torch.save(spectrum_as_tensor, Path(self.preprocessing_dir) / f'{strain_name}.pt')
 
     def calculate_transformed_stats(self, train_accessions)->Dict[str, float]:
         """ Use Welford's online algorithm to compute the mean and variance of the transformed spectra,
@@ -753,6 +782,10 @@ class Paired_MALDI_TOF_DS(Dataset):
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
         self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+        if len(self.all_spectra) == 0:
+            print("No spectra found, running initial setup.")
+            self.preprocess()
+            self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
 
         if targets not in ['genera', 'species']:
             raise ValueError(f"Expected targets to be 'genera' or 'species', but got {targets}")
@@ -765,10 +798,14 @@ class Paired_MALDI_TOF_DS(Dataset):
         all_spectra_names = [x.stem for x in self.all_spectra]
 
         metadata_table = pd.read_csv(metadata_table)
+        print(f"DEBUG 767: metadata table contains {len(metadata_table)} rows")
+
         if 'Genbank accession' in metadata_table.columns and \
             'accession' not in metadata_table.columns:
             metadata_table['accession'] = metadata_table['Genbank accession'].str.split('.').str[0].str.strip()
         metadata_table = metadata_table.loc[metadata_table['Strain name'].isin(all_spectra_names)]
+
+        print(f"DEBUG 773: metadata table contains {len(metadata_table)} rows")
 
         self.metadata_table = metadata_table
         self.transform = transform
@@ -842,7 +879,7 @@ class Paired_MALDI_TOF_DS(Dataset):
             self.sim_bins = np.linspace(temp_similarities['pident'].min(), temp_similarities['pident'].max(), 21)   # Data leakage in the _absolute_ strictest sense
             self.sliced_similarities = self._preslice_similarities(temp_similarities)
 
-
+        print(f"DEBUG 5: metadata table contains {len(self.metadata_table)} rows")
         self.all_accessions = self.metadata_table.loc[self.metadata_table['accession'].notna(), 'accession'].unique().astype(str)
         print(f"Found {len(self.all_accessions)} accessions in the metadata table.")
 
@@ -1311,8 +1348,8 @@ class ExhaustiveMALDI_TOF_DS(IterableDataset):
     def __iter__(self):
         return iter(self.sampler)
 
-    # def __len__(self):
-    #     return self.len
+    def __len__(self):
+        return self.sampler.__len__()
 
     def __getitem__(self, idx):
         spectrum_a, spectrum_b, similarity, metadata = next(self.sampler)
@@ -1347,6 +1384,7 @@ class ExhaustiveSampler():
                     strain_a, meta_a = self.data.get_by_strain_name(self.all_strains[i])
                     strain_b, meta_b = self.data.get_by_strain_name(self.all_strains[j])
                 except Exception as e:
+                    raise e
                     continue
                 
                 try:
@@ -1386,11 +1424,9 @@ class ExhaustiveSampler():
             self.__iter__()
         return next(self._iterator)
     
-    # def __len__(self):
-    #     x =  self.num_strains
-    #     return x * (x + 1) // 2
-        
-    
+    def __len__(self):
+        return self.num_strains * (self.num_strains - 1) // 2
+
 class ExhaustiveSingleSampler():
     def __init__(self, data: single_MALDI_TOF_DS, accessions: torch.Tensor):
         self.data = data
@@ -1406,10 +1442,11 @@ class ExhaustiveSingleSampler():
 
         self.accessions = accessions
         self.metadata = self.data.metadata_table.loc[self.data.metadata_table['accession'].isin(self.accessions)]
-        print("Found a total of", len(self.metadata), "strains.")
-        print("Found a total of", len(self.accessions), "accessions.")
+        print("ExhaustiveSingleSampler: Found a total of", len(self.metadata), "strains.")
+        print("ExhaustiveSingleSampler: Found a total of", len(self.accessions), "accessions.")
         self.all_strains = self.metadata['Strain name'].values
         self.num_strains = len(self.all_strains)
+        print(f"ExhaustiveSingleSampler: Found {self.num_strains} strains", flush=True)
         self._iterator = None
 
     def _iter_strains(self):
@@ -1417,6 +1454,8 @@ class ExhaustiveSingleSampler():
             try:
                 strain, metadata = self.data.get_by_strain_name(self.all_strains[i])
             except Exception as e:
+                print(f"ExhaustiveSingleSampler: Error getting strain {self.all_strains[i]}: {e}", flush=True)
+                raise e
                 continue
             
             metadata = {
@@ -1441,6 +1480,9 @@ class ExhaustiveSingleSampler():
         if self._iterator is None:
             self.__iter__()
         return next(self._iterator)
+
+    def __len__(self):
+        return self.num_strains
 
 
 @pytest.fixture
