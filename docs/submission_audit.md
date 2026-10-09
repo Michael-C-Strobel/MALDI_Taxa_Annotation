@@ -2,7 +2,7 @@
 
 ## Required provenance
 
-- The source notebook/scripts and result tables for the separate 47-strain WGS/IDBac requery experiment are not yet included. The manuscript supplies its roster but not the corresponding metric-generation inputs.
+- The 47-strain WGS/IDBac evaluation is included in `publication/idbac_wgs/`. Frozen hit tables and saved top-1 output match the manuscript roster and reported accuracies. The copied active model/source matches production version 2026.04.23.00; exact historical task model/database metadata remains unverified.
 - Banana-slug remote-search provenance is documented through the two GNPS2 tasks cited in the manuscript and linked in `publication/banana_slug/PROVENANCE.md`. The frozen search table supports local figure reproduction. Automated task-page retrieval returned HTTP 403, so remote parameter/checkpoint metadata has not been independently verified here.
 - Figure 6B mirror-plot source is not located; this is an optional provenance gap under the agreed scope.
 
@@ -16,6 +16,7 @@ These observations compare the manuscript methods with the preserved source impl
 - Contrastive training and inference use different transform sequences in the preserved implementation. Both sequences are retained in the reproduction workflow.
 - Saved Optuna studies contain 311 species and 256 genus trials; the manuscript refers to 300. These totals include saved trial records; they do not by themselves establish the number of completed trials.
 - Banana-slug figure scoring uses six fixed normalized GTDB genus labels. The scoring labels and 16S evidence are supplied separately in the frozen workup tables.
+- The 47-strain source uses a near-zero-distance exclusion for self matches and has seven queries without another same-genus knowledgebase member, differing from the manuscript statement that all queries had potential correct hits. Its pre-cohort 42-query hit count differs from the final 40 transformer queries with predictions. The historical theoretical-reference curve uses a `k - 1` condition that can overstate its ceiling. These conventions are documented in `publication/idbac_wgs/PROVENANCE.md`; measured accuracy scoring is preserved.
 
 ## Validation scope
 

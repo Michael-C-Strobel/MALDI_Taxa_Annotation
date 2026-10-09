@@ -8,6 +8,7 @@ The publication workflow uses DRIAMS-A to train a contrastive transformer and re
 
 - `scratch/publication_figures/`: frozen CSV metrics and SVG figures. These are the outputs checked against the manuscript; do not overwrite them when reproducing an analysis.
 - `scratch/publication_figures.ipynb`: original analysis notebook, including exploratory sections.
+- `publication/idbac_wgs/`: 47-strain supplementary search evaluation, cleaned notebook, and deployed model provenance.
 - `scratch/publication_metrics.ipynb`: curated publication analysis, with regenerated outputs written separately.
 - `scratch/publication_figures_helpers.py` and `scratch/publication_figures_metrics.py`: embedding loading, pair construction, metric calculation, and plotting.
 - `publication/banana_slug/`: frozen search results, 16S/CheckM2/GTDB tables, original figures, reproduction notebook, and genome-workup source scripts.
@@ -16,7 +17,7 @@ The publication workflow uses DRIAMS-A to train a contrastive transformer and re
 - `python scripts/publication/verify_artifacts.py`: verify the frozen input/result hashes without recomputing metrics.
 - [Outstanding provenance and methods questions](docs/submission_audit.md).
 
-The published supplementary PR-AUC tables match all 128 checked values in the frozen CSV files to four decimal places. The separate 47-strain WGS/IDBac evaluation still needs its source analysis/results located; full reproduction of that supplementary experiment is pending. The manuscript itself is not modified by this repository curation.
+The published supplementary PR-AUC tables match all 128 checked values in the frozen CSV files to four decimal places. The separate 47-strain WGS/IDBac evaluation includes its combined search tables, focused notebook, saved figure panels, and production-matched model snapshot in `publication/idbac_wgs/`. Its saved top-1 counts and genus-weighted accuracies match the manuscript. The manuscript itself is not modified by this repository curation.
 
 ## Install
 
@@ -35,10 +36,11 @@ The MALDI Transformer submodule is pinned at `afccd3c2fd4ff1e71701f397db68580778
 1. **Read the reported metrics:** open the frozen CSVs and SVGs in `scratch/publication_figures/`. This requires no training or inference.
 2. **Recompute metrics:** restore the frozen metadata/split files, acquire and preprocess the original spectra, run inference using the publication checkpoints, then execute `scratch/publication_metrics.ipynb`. Saved embeddings are generated locally rather than distributed as an additional artifact.
 3. **Retrain:** follow the same preprocessing and fixed splits, then train with the saved DRIAMS hyperparameters. Final models were not hyperparameter-tuned on IDBac.
-4. **Banana-slug figures:** execute `publication/banana_slug/notebooks/banana_slug_publication.ipynb` from its notebook directory. It reads the included frozen hit table and reproduces the ranked-hit plots and pooled precision curve without rerunning genome tools or a remote IDBac query.
+4. **47-strain IDBac evaluation:** execute `publication/idbac_wgs/notebooks/idbac_wgs_publication.ipynb` from its notebook directory. It reads the included combined search results and regenerates supplementary top-k accuracy figures without the 16S comparison.
+5. **Banana-slug figures:** execute `publication/banana_slug/notebooks/banana_slug_publication.ipynb` from its notebook directory. It reads the included frozen hit table and reproduces the ranked-hit plots and pooled precision curve without rerunning genome tools or a remote IDBac query.
 
 Publication evaluations use folds **0–5**. Fold 6 is excluded because its test split is the validation split of fold 0 used for hyperparameter optimization. Species-disjoint folds are used for the main evaluations; genus-disjoint folds are used for the genus generalization experiment. Preserve the exact split tensors and taxonomy labels rather than regenerating them against a current taxonomy database.
 
 ## License and attribution
 
-Repository-authored code is released under the MIT license; see `LICENSE`. External software, submodules, and source datasets retain their own licenses and attribution. See `publication/banana_slug/PROVENANCE.md` for the included genome workup and search-result provenance.
+Repository-authored code is released under the MIT license; see `LICENSE`. External software, submodules, and source datasets retain their own licenses and attribution. See `publication/banana_slug/PROVENANCE.md` and `publication/idbac_wgs/PROVENANCE.md` for the included workup, search results, and workflow-model provenance.

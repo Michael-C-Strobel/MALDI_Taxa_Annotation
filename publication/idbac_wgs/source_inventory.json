@@ -1,0 +1,92 @@
+[
+  {
+    "path": "publication/idbac_wgs/data/ML_Query_Metadata.xlsx - Metadata sheet.csv",
+    "source_path": "data/ML_Queries_Full/ML_Query_Metadata.xlsx - Metadata sheet.csv",
+    "sha256": "3065fb0b21df2d6d55a284d2c0630231e61ba40ea9775a10e517d44b18d3db46",
+    "bytes": 5417
+  },
+  {
+    "path": "publication/idbac_wgs/data/fbb91febffc54470b91d3b84e1ab7293-enriched_db_results.tsv",
+    "source_path": "data/ML_Queries_Full/fbb91febffc54470b91d3b84e1ab7293-enriched_db_results.tsv",
+    "sha256": "fcbc289e3d9924fe56e44a686f80fecf54dae98f98390ab138316a9656f920d7",
+    "bytes": 388197
+  },
+  {
+    "path": "publication/idbac_wgs/data/fedcb489d6f7441eb738260b4bb352ab-enriched_db_results.tsv",
+    "source_path": "data/ML_Queries_Full/fedcb489d6f7441eb738260b4bb352ab-enriched_db_results.tsv",
+    "sha256": "faec9b47193acc10c682902ad10e24679c6218e55207b129d3e8cc62f0b4fa72",
+    "bytes": 268220
+  },
+  {
+    "path": "publication/idbac_wgs/data/IDBac_KB_Spectra_List.csv",
+    "source_path": "data/ML_Queries_Full/IDBac_KB_Spectra_List.csv",
+    "sha256": "766a385bdd3e95ad7e3635cc0994907dd011b304a917cf8f1373d5c4deaa53c1",
+    "bytes": 3224656
+  },
+  {
+    "path": "publication/idbac_wgs/data/name_mapping.tsv",
+    "source_path": "data/ML_Queries_Full/name_mapping.tsv",
+    "sha256": "93084190c8b4506aedc21060b68cea6e801b6d93fb92f8ecc16a6a6062428486",
+    "bytes": 1415
+  },
+  {
+    "path": "publication/idbac_wgs/data/gemini_first_output.csv",
+    "source_path": "data/ML_Queries_Full/gemini_first_output.csv",
+    "sha256": "35c47c49bd30eb3b4dd97b82e0437d352520a51202053213c80ded6e027928e6",
+    "bytes": 5400
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/ml_inference.nf",
+    "source_path": "bin/ml_inference/ml_inference.nf",
+    "sha256": "ec0d4ed9cf58ed1acf206d363fa948144cec81f26ad573507ebb42850743b08a",
+    "bytes": 2598
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/ml_inference.py",
+    "source_path": "bin/ml_inference/bin/ml_inference.py",
+    "sha256": "4538a001f49aadc7716d94ffd66b62d404b66ba068105a6f5758080da500084e",
+    "bytes": 3130
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/preprocess_data.R",
+    "source_path": "bin/ml_inference/bin/preprocess_data.R",
+    "sha256": "e812c9d94867f516c612a31e2ddf1f597d049e572b893edb58558dd36b8802c2",
+    "bytes": 1251
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/custom_transforms.py",
+    "source_path": "bin/ml_inference/bin/custom_transforms.py",
+    "sha256": "106d04aa2ef5c39bb6e5599f0316f37af43ef31ef2c00249c47350a8b4b85fb6",
+    "bytes": 15914
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/preprocess.py",
+    "source_path": "bin/ml_inference/bin/preprocess.py",
+    "sha256": "5e6ce0c4b4e9416a98d71b5197ec933bbded103ed0cc3e08e032ebd81d9d509d",
+    "bytes": 8102
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/conda_env.yml",
+    "source_path": "bin/ml_inference/bin/conda_env.yml",
+    "sha256": "369499c3af74a912999cb5f5b772594e0d1be01b1494ad4fb1d255e04685215b",
+    "bytes": 325
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/models/CLIP_Transformer.onnx",
+    "source_path": "bin/ml_inference/bin/models/CLIP_Transformer.onnx",
+    "sha256": "49083116475560b806ae957c2b392b252e8cd33733a26ee5f0986f466e89f1c9",
+    "bytes": 18726708
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/database_search.py",
+    "source_path": "bin/database_search.py",
+    "sha256": "a7d160c81d048d4aa01d355c18cc9c18c869ed1b6182a9bc38c2b69434727407",
+    "bytes": 31545
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/utils.py",
+    "source_path": "bin/utils.py",
+    "sha256": "54ba89ce0a59d28d8469e540b80d228d36d9ec33083cf76c8cd06dc682d8b53c",
+    "bytes": 13392
+  }
+]

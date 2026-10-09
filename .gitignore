@@ -265,3 +265,7 @@ bin/ml/MALDI-Transformer_Reproduction*/**
 archive/
 .venv/
 .pytest_cache/
+
+# Frozen production model for the supplementary IDBac evaluation.
+!publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/models/CLIP_Transformer.onnx
+publication/idbac_wgs/regenerated_results/

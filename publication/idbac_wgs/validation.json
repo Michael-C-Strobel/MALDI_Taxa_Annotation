@@ -1,0 +1,11 @@
+{
+  "query_count": 47,
+  "genus_count": 17,
+  "manuscript_roster_matches": true,
+  "transformer_top1_correct": 32.0,
+  "cosine_top1_correct": 26.0,
+  "transformer_macro_top1": 0.38745098039215686,
+  "cosine_macro_top1": 0.1988235294117647,
+  "queries_without_other_same_genus_kb_member": 7,
+  "validation_scope": "Comparison of saved top-1 output with manuscript counts, macro averages, and strain roster; no inference or notebook execution."
+}

@@ -2348,5 +2348,135 @@
     "path": "scratch/publication_figures/fig/top_k_recall/RKI/genera_species_micro_cross_species.svg",
     "bytes": 36120,
     "sha256": "f907c4b13f96f8a5564e4c496955046b4a890c8a0e3c3cb2831dcbe5ba38c8b2"
+  },
+  {
+    "path": "publication/idbac_wgs/PROVENANCE.md",
+    "bytes": 5326,
+    "sha256": "07866d0cfddad64beb0637d4c490d6af1b33e310b4defc8cf2b4f32469026445"
+  },
+  {
+    "path": "publication/idbac_wgs/README.md",
+    "bytes": 2927,
+    "sha256": "eeaa1f57b8d32c6b44c412b7b24d9a2ce7ec0525026f97828923a6eff73393ad"
+  },
+  {
+    "path": "publication/idbac_wgs/data/IDBac_KB_Spectra_List.csv",
+    "bytes": 3224656,
+    "sha256": "766a385bdd3e95ad7e3635cc0994907dd011b304a917cf8f1373d5c4deaa53c1"
+  },
+  {
+    "path": "publication/idbac_wgs/data/ML_Query_Metadata.xlsx - Metadata sheet.csv",
+    "bytes": 5417,
+    "sha256": "3065fb0b21df2d6d55a284d2c0630231e61ba40ea9775a10e517d44b18d3db46"
+  },
+  {
+    "path": "publication/idbac_wgs/data/fbb91febffc54470b91d3b84e1ab7293-enriched_db_results.tsv",
+    "bytes": 388197,
+    "sha256": "fcbc289e3d9924fe56e44a686f80fecf54dae98f98390ab138316a9656f920d7"
+  },
+  {
+    "path": "publication/idbac_wgs/data/fedcb489d6f7441eb738260b4bb352ab-enriched_db_results.tsv",
+    "bytes": 268220,
+    "sha256": "faec9b47193acc10c682902ad10e24679c6218e55207b129d3e8cc62f0b4fa72"
+  },
+  {
+    "path": "publication/idbac_wgs/data/gemini_first_output.csv",
+    "bytes": 5400,
+    "sha256": "35c47c49bd30eb3b4dd97b82e0437d352520a51202053213c80ded6e027928e6"
+  },
+  {
+    "path": "publication/idbac_wgs/data/manuscript_roster.csv",
+    "bytes": 3120,
+    "sha256": "4413bc1753f4f143e8b376e3c1cf4a150e2782f9c47ed7e6942abd9abb0b33db"
+  },
+  {
+    "path": "publication/idbac_wgs/data/name_mapping.tsv",
+    "bytes": 1415,
+    "sha256": "93084190c8b4506aedc21060b68cea6e801b6d93fb92f8ecc16a6a6062428486"
+  },
+  {
+    "path": "publication/idbac_wgs/deployment_verification.json",
+    "bytes": 2101,
+    "sha256": "0e924cb86a5b3d8c4b967327122e3bee0807fe814b0781ac742843efff1a4c4b"
+  },
+  {
+    "path": "publication/idbac_wgs/figures/macro_top_k_accuracy.png",
+    "bytes": 47851,
+    "sha256": "d93a12b09a4ed217944bf2dc4fa62e9b2be9f03e160edad4fab9adc8271574a7"
+  },
+  {
+    "path": "publication/idbac_wgs/figures/top_k_accuracy.png",
+    "bytes": 47398,
+    "sha256": "fdd45c80321a524aa440a0e28e4329450df68fdd49c37667dfd0ca15ec1f0838"
+  },
+  {
+    "path": "publication/idbac_wgs/hit_table_validation.json",
+    "bytes": 557,
+    "sha256": "d0c0a40083e8a92157c1d144d4547794472337a8aff141d2c975a0c6902ffb43"
+  },
+  {
+    "path": "publication/idbac_wgs/notebooks/idbac_wgs_publication.ipynb",
+    "bytes": 12655,
+    "sha256": "0cc1da295f7896ee4b8352293e50ab89822e960931eb0dd4be1114e6cf93ea68"
+  },
+  {
+    "path": "publication/idbac_wgs/notebooks/source_sections.json",
+    "bytes": 9274,
+    "sha256": "e8ba5579bbdf5f65aa5292a58d6c326d643f33ccb397fca41401c4f023cf26dc"
+  },
+  {
+    "path": "publication/idbac_wgs/source_inventory.json",
+    "bytes": 3918,
+    "sha256": "c2f84a91d34a23d901c7b98007db420f73b03e11736fefe6d67c1f3a6c713295"
+  },
+  {
+    "path": "publication/idbac_wgs/validation.json",
+    "bytes": 445,
+    "sha256": "b04c710c8b1db92f1bc8e4caa117cf509c0127a2e5761ac4e39dd3d90adc7197"
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/database_search.py",
+    "bytes": 31545,
+    "sha256": "a7d160c81d048d4aa01d355c18cc9c18c869ed1b6182a9bc38c2b69434727407"
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/conda_env.yml",
+    "bytes": 325,
+    "sha256": "369499c3af74a912999cb5f5b772594e0d1be01b1494ad4fb1d255e04685215b"
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/custom_transforms.py",
+    "bytes": 15914,
+    "sha256": "106d04aa2ef5c39bb6e5599f0316f37af43ef31ef2c00249c47350a8b4b85fb6"
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/ml_inference.py",
+    "bytes": 3130,
+    "sha256": "4538a001f49aadc7716d94ffd66b62d404b66ba068105a6f5758080da500084e"
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/models/CLIP_Transformer.onnx",
+    "bytes": 18726708,
+    "sha256": "49083116475560b806ae957c2b392b252e8cd33733a26ee5f0986f466e89f1c9"
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/preprocess.py",
+    "bytes": 8102,
+    "sha256": "5e6ce0c4b4e9416a98d71b5197ec933bbded103ed0cc3e08e032ebd81d9d509d"
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/bin/preprocess_data.R",
+    "bytes": 1251,
+    "sha256": "e812c9d94867f516c612a31e2ddf1f597d049e572b893edb58558dd36b8802c2"
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/ml_inference/ml_inference.nf",
+    "bytes": 2598,
+    "sha256": "ec0d4ed9cf58ed1acf206d363fa948144cec81f26ad573507ebb42850743b08a"
+  },
+  {
+    "path": "publication/idbac_wgs/workflow_snapshot/bin/utils.py",
+    "bytes": 13392,
+    "sha256": "54ba89ce0a59d28d8469e540b80d228d36d9ec33083cf76c8cd06dc682d8b53c"
   }
 ]

@@ -128,4 +128,16 @@ jupyter lab banana_slug_publication.ipynb
 
 The notebook reads the included enriched IDBac hit table, fixes the original six normalized GTDB genus labels, applies distance <=0.232, and regenerates top-10/all-hit plots, precision@k, and pooled threshold precision. It does not invoke genome QC, BLAST, GTDB, or a live search. Original outputs are preserved in `figures/fig6_iterations/`; new outputs go to `regenerated_figures/fig6_iterations/`.
 
-For genome-analysis provenance see `publication/banana_slug/README.md`, its source scripts and environment, the frozen summary tables, and `PROVENANCE.md`. The preserved full presentation notebook requires the included tables and has schematic exploratory sections; the focused notebook contains the data-driven publication calculations. The two GNPS2 task links and external IDBac workflow/model-weight repository document remote-search provenance. Remote task parameter/checkpoint metadata has not been independently inspected here. The separate 47-strain experiment remains a source-analysis gap.
+For genome-analysis provenance see `publication/banana_slug/README.md`, its source scripts and environment, the frozen summary tables, and `PROVENANCE.md`. The preserved full presentation notebook requires the included tables and has schematic exploratory sections; the focused notebook contains the data-driven publication calculations. The two GNPS2 task links and external IDBac workflow/model-weight repository document remote-search provenance. Remote task parameter/checkpoint metadata has not been independently inspected here.
+
+
+## 8. 47-strain IDBac knowledgebase evaluation
+
+The combined frozen search tables, WGS query labels, saved supplementary panels, and production-matched ONNX/source snapshot are included in `publication/idbac_wgs/`. The notebook named `results.ipynb` in the original Round 1 directory actually reads the combined `ML_Queries_Full` tables; the focused publication notebook uses that combined dataset.
+
+```text
+cd publication/idbac_wgs/notebooks
+jupyter lab idbac_wgs_publication.ipynb
+```
+
+Run from the repository root before changing directories. The notebook excludes the 16S comparison and exploratory analyses, preserves the 47-strain scoring cohort, and writes to `publication/idbac_wgs/regenerated_results/`. Saved top-1 counts are 32 versus 26; genus-weighted accuracies match 38.7% versus 19.9%. Source/model hashes match production workflow version 2026.04.23.00. The precise historical task model/database snapshot remains unverified; frozen hit tables support figure reproduction. See `publication/idbac_wgs/PROVENANCE.md` for threshold, no-hit, and theoretical-reference conventions.
