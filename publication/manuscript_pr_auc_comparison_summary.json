@@ -1,0 +1,14 @@
+{
+  "manuscript_sha256": "f6b6dcaf412107dd72a83697d28702a14f87d4070e120419df8c4887bb875a76",
+  "entries": 128,
+  "unfiltered": {
+    "matching_entries": 128,
+    "nonmatching_entries": 0,
+    "unavailable_entries": 0
+  },
+  "no_singleton_genera": {
+    "matching_entries": 0,
+    "nonmatching_entries": 112,
+    "unavailable_entries": 16
+  }
+}
