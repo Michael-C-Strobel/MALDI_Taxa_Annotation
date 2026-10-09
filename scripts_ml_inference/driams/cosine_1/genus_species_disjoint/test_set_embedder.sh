@@ -15,7 +15,7 @@ cd bin/ml
 
 for k in {0..6}; do
     python3 bare_inference.py   --model "cosine_1" \
-                                --dataset "DIRAMS-A" \
+                                --dataset "DRIAMS-A" \
                                 --target "genera" \
                                 --split_type "species" \
                                 --inference_set "test" \

@@ -13,6 +13,24 @@ current_dir=$(pwd)
 
 cd bin/ml
 
+k=$1
+version=0
+
+echo "Running genus_species_disjoint test set inference with k=$k"
+
+# Identify the checkpoint path for the specified k value (number of epochs varies based on k)
+possible_checkpoint_paths="/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/MALDI-Transformer_Reproduction/k=$k/malditrfvanilla_M_200_0.15_0.01_0.0005/version_$version/checkpoints/epoch=*.ckpt"
+# If more than 1, fail
+checkpoint_path=$(ls $possible_checkpoint_paths 2>/dev/null || true)
+if [ -z "$checkpoint_path" ]; then
+    echo "Error: No checkpoint found for k=$k at $possible_checkpoint_paths"
+    exit 1
+elif [ $(echo "$checkpoint_path" | wc -l) -gt 1 ]; then
+    echo "Error: Multiple checkpoints found for k=$k at $possible_checkpoint_paths"
+    echo "$checkpoint_path"
+    exit 1
+fi
+
 python3 bare_inference.py   --model "MaldiTransformerWrapper" \
                             --dataset "DRIAMS-A" \
                             --target "genera" \
@@ -20,6 +38,6 @@ python3 bare_inference.py   --model "MaldiTransformerWrapper" \
                             --inference_set "test" \
                             --run_for_score \
                             --new_paths \
-                            --checkpoint_path "/data/nas-gpu/wang/mstro016/SourceCode/16s_sim_pred/bin/ml/MALDI-Transformer_Reproduction/k=0/malditrfvanilla_M_200_0.15_0.01_0.0005/version_1/checkpoints/epoch=5783-step=480000.ckpt" \
+                            --checkpoint_path $checkpoint_path \
                             --maldi_nn_preprocessing \
-                            -k 0
+                            -k $k

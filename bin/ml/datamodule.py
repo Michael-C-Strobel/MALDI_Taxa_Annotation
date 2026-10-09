@@ -228,6 +228,7 @@ class SingleSpectrum_DataModule(L.LightningDataModule):
             self.predict_set = self.full_dataset
         else:
             raise ValueError(f"Unknown stage: {stage}")
+        self.stage = stage
 
     def train_dataloader(self):
         return DataLoader(self.train_set, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)

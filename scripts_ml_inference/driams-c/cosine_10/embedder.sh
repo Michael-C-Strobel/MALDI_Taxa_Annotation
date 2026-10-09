@@ -13,8 +13,6 @@ current_dir=$(pwd)
 
 cd bin/ml
 
-VERSION=11
-
 python3 bare_inference.py   --model "cosine_10" \
                             --dataset "DRIAMS-C" \
                             --target "genera" \

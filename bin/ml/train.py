@@ -30,6 +30,7 @@ from pathlib import Path
 from torchvision import transforms
 from custom_transforms import *
 import optuna
+from optuna.trial import TrialState
 import argparse
 import json
 
@@ -64,15 +65,16 @@ def get_path_info(dataset: str, args: argparse.Namespace) -> Union[str, str, str
     if dataset == 'idbac':
         if args.maldi_nn_preprocessing:
             raise ValueError("maldi_nn_preprocessing is not supported for IDBac dataset.")
-        SPECTRA_PATH = '../../data/idbac_db/preprocessing'
+        SPECTRA_PATH = '../../data/idbac_db/preprocessing/spectra'
         METADATA_PATH = '../../data/idbac_db/raw/ammended_db.csv'
+        METADATA_PATH = '../../data/idbac_db/preprocessing/db_with_taxonomy.csv'
         ML_PROCESSING_PATH = '../../data/idbac_db/processed_data'
         if args.train_for_score:
             log_dir = os.path.join('./lightning_logs_idbac_for_score', f'{args.target}/{args.split_method}') # /{args.model_type}?
         else:
             log_dir=  os.path.join('./lightning_logs_idbac_optuna', f'{args.target}/{args.split_method}') # /{args.model_type}?
     elif dataset == 'driams':            
-        SPECTRA_PATH = '../../data/driams/preprocessing'
+        SPECTRA_PATH = '../../data/driams/processed_data/spectra'
         if args.maldi_nn_preprocessing:
             print("**Using MALDI-Transformer preprocessing for DRIAMS dataset.**")
             SPECTRA_PATH = '../../data/driams/processed_data/MaldiTransformer/spectra'
@@ -412,12 +414,20 @@ def initialize_model(SPECTRA_PATH: str,
             # Freeze the first half of layers
             params = list(model.named_parameters())
             # print(params)
-            num_to_freeze = int(0.75 * len(params))
+            # num_to_freeze = int(0.75 * len(params))
+            num_to_freeze = len(params)-4
             # print('num_to_freeze', num_to_freeze)
 
             for name, param in params[:num_to_freeze]:
+                # If it's a norm or bias term, don't freeze it
+                # if 'norm' in name.lower() or 'bias' in name.lower():
+                #     print(f"Not freezing (norm/bias): {name}")
+                #     continue
                 param.requires_grad = False
                 print(f"Froze: {name}")
+
+            for name, param in params[num_to_freeze:]:
+                print(f"Trainable: {name}")
 
 
         # print("*******************************")
@@ -864,7 +874,7 @@ def main():
         "--split_method",
         type=str,
         default='species',
-        choices=['genera', 'species', 'species_even'],
+        choices=['genera', 'species', 'species_even', 'genera_holdout'],
         required=True,
         help="The method used to split the data ('genera', 'species', or 'species_even').",
     )
@@ -908,6 +918,9 @@ def main():
 
     args = parser.parse_args()
 
+    for var, val in vars(args).items():
+        print(f"{var}: {val}")
+
     if args.n_epochs != -1 and args.n_steps != -1:
         raise ValueError("Cannot specify both n_epochs and n_steps. Use n_epochs=-1 to specify n_steps.")
 
@@ -934,20 +947,33 @@ def main():
                                     pruner=MedianPruner(n_warmup_steps=int(0.1 * args.n_epochs)), 
                                     storage=sqlite_path, 
                                     load_if_exists=True)
-        curr_num_trials = len(study.get_trials(deepcopy=False))
+        curr_num_trials = len(study.get_trials(states=[TrialState.COMPLETE, TrialState.PRUNED]))
+
+        remaining_trials = args.n_trials-curr_num_trials
+
+        print(f"Number of existing trials in the study: {curr_num_trials}")
+        print(f"Number of remaining trials to run: {remaining_trials}")
         
         if not args.dump_best:
-            study.optimize(lambda trial: objective(trial, args), n_trials=args.n_trials-curr_num_trials)
+            study.optimize(lambda trial: objective(trial, args), n_trials=remaining_trials)
 
         print("Number of finished trials: ", len(study.trials))
         print(f"Best trial for {args.model_type} on {args.dataset} (Target: {args.target}, Split: {args.split_method}):")
-        trial = study.best_trial
-        print("  Value (Validation Loss): ", trial.value)
+        all_trials = sorted(study.get_trials(deepcopy=False), key=lambda t: t.number)
+        first_complete = [
+            t for t in all_trials if t.state in [TrialState.COMPLETE]   # No need to check pruned
+        ]
+        if study.direction == optuna.study.StudyDirection.MINIMIZE:
+            best_from_subset = min(first_complete, key=lambda t: t.value)
+        else:
+            best_from_subset = max(first_complete, key=lambda t: t.value)
+        best_trial = best_from_subset
+        print("  Value (Validation Loss): ", best_trial.value)
         print("  Params: ")
-        for key, value in trial.params.items():
+        for key, value in best_trial.params.items():
             print(f"    {key}: {value}")
 
-        best_params = study.best_trial.params
+        best_params = best_trial.params.copy()
         best_params.update({
             'TARGET': args.target,
             'N_EPOCHS': args.n_epochs,

@@ -1,0 +1,419 @@
+{
+  "Bacterium symbiont": {
+    "candidates_tried": [
+      "Bacterium symbiont",
+      "Bacterium"
+    ],
+    "example_description": "Bacterium symbiont of Ardisia villosa voucher Ku019 16S ribosomal RNA gene, partial sequence; tRNA-Ile and tRNA-Ala genes, complete sequence; and 23S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1002"
+    ],
+    "n_occurrences": 1
+  },
+  "Bacteroidetes bacterium": {
+    "candidates_tried": [
+      "Bacteroidetes bacterium",
+      "Bacteroidetes"
+    ],
+    "example_description": "Uncultured Bacteroidetes bacterium clone YJQ-9 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1003"
+    ],
+    "n_occurrences": 1
+  },
+  "Burkholderiaceae bacterium": {
+    "candidates_tried": [
+      "Burkholderiaceae bacterium",
+      "Burkholderiaceae"
+    ],
+    "example_description": "Uncultured Burkholderiaceae bacterium clone 477 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1002"
+    ],
+    "n_occurrences": 1
+  },
+  "Burkholderiales bacterium": {
+    "candidates_tried": [
+      "Burkholderiales bacterium",
+      "Burkholderiales"
+    ],
+    "example_description": "Uncultured Burkholderiales bacterium gene for 16S ribosomal RNA, partial sequence, clone: Bac8fC_C11",
+    "samples": [
+      "SL1002"
+    ],
+    "n_occurrences": 1
+  },
+  "Burkolderia": {
+    "candidates_tried": [
+      "Burkolderia"
+    ],
+    "example_description": "Uncultured Burkolderia sp. clone TM17_9 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1098"
+    ],
+    "n_occurrences": 1
+  },
+  "Cytophagales": {
+    "candidates_tried": [
+      "Cytophagales"
+    ],
+    "example_description": "Cytophagales str. MBIC4147 gene for 16S rRNA, partial sequence",
+    "samples": [
+      "SL1003"
+    ],
+    "n_occurrences": 1
+  },
+  "Endosymbiont of": {
+    "candidates_tried": [
+      "Endosymbiont of",
+      "Endosymbiont"
+    ],
+    "example_description": "Endosymbiont of Acanthamoeba sp. ATCC 30871 (AC010) 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1003"
+    ],
+    "n_occurrences": 1
+  },
+  "Enrichment culture": {
+    "candidates_tried": [
+      "Enrichment culture",
+      "Enrichment"
+    ],
+    "example_description": "Enrichment culture bacterium LB-Q clone LB-Q 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1107"
+    ],
+    "n_occurrences": 1
+  },
+  "Flavobacteria bacterium": {
+    "candidates_tried": [
+      "Flavobacteria bacterium",
+      "Flavobacteria"
+    ],
+    "example_description": "Uncultured Flavobacteria bacterium clone ATB-LH-6099 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1107"
+    ],
+    "n_occurrences": 1
+  },
+  "Flavobacteriaceae bacterium": {
+    "candidates_tried": [
+      "Flavobacteriaceae bacterium",
+      "Flavobacteriaceae"
+    ],
+    "example_description": "Uncultured Flavobacteriaceae bacterium clone sh-xj127 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1107"
+    ],
+    "n_occurrences": 1
+  },
+  "Flavobacteriales bacterium": {
+    "candidates_tried": [
+      "Flavobacteriales bacterium",
+      "Flavobacteriales"
+    ],
+    "example_description": "Uncultured Flavobacteriales bacterium clone Sph363_unbinned&&k119_576575 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1107"
+    ],
+    "n_occurrences": 1
+  },
+  "Gamma proteobacterium": {
+    "candidates_tried": [
+      "Gamma proteobacterium",
+      "Gamma"
+    ],
+    "example_description": "Gamma proteobacterium RI-34-2 small subunit ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1002",
+      "SL1046",
+      "SL1072",
+      "SL1092"
+    ],
+    "n_occurrences": 4
+  },
+  "Glacier ice": {
+    "candidates_tried": [
+      "Glacier ice",
+      "Glacier"
+    ],
+    "example_description": "Glacier ice bacterium sp. glbI4 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1003"
+    ],
+    "n_occurrences": 1
+  },
+  "MAG:": {
+    "candidates_tried": [
+      "MAG:"
+    ],
+    "example_description": "MAG: Mucilaginibacter sp. isolate 6e8d2c7b-1930-4cfb-8e5e-e98baa43badb genome assembly, chromosome: 1",
+    "samples": [
+      "SL1003",
+      "SL1033",
+      "SL1046",
+      "SL1072",
+      "SL1086",
+      "SL1092",
+      "SL1095",
+      "SL1097",
+      "SL1102",
+      "SL1105",
+      "SL1107"
+    ],
+    "n_occurrences": 149
+  },
+  "MAG: uncultured": {
+    "candidates_tried": [
+      "MAG: uncultured",
+      "MAG:"
+    ],
+    "example_description": "MAG: uncultured Mucilaginibacter sp. isolate 887934ba-d43b-4a6d-ab0d-49676e43cb6d genome assembly, chromosome: 1",
+    "samples": [
+      "SL1003",
+      "SL1098"
+    ],
+    "n_occurrences": 4
+  },
+  "Marine bacterium": {
+    "candidates_tried": [
+      "Marine bacterium",
+      "Marine"
+    ],
+    "example_description": "Marine bacterium MSC31 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1098"
+    ],
+    "n_occurrences": 1
+  },
+  "Mutant": {
+    "candidates_tried": [
+      "Mutant"
+    ],
+    "example_description": "Mutant Pseudomonas putida isolate P15, complete genome",
+    "samples": [
+      "SL1105"
+    ],
+    "n_occurrences": 55
+  },
+  "Oxalobacteraceae bacterium": {
+    "candidates_tried": [
+      "Oxalobacteraceae bacterium",
+      "Oxalobacteraceae"
+    ],
+    "example_description": "Oxalobacteraceae bacterium OTU3CAMAD1 chromosome, complete genome",
+    "samples": [
+      "SL1098"
+    ],
+    "n_occurrences": 1
+  },
+  "P.putida": {
+    "candidates_tried": [
+      "P.putida"
+    ],
+    "example_description": "P.putida 16S rRNA gene",
+    "samples": [
+      "SL1105"
+    ],
+    "n_occurrences": 1
+  },
+  "Pseudomonadaceae bacterium": {
+    "candidates_tried": [
+      "Pseudomonadaceae bacterium",
+      "Pseudomonadaceae"
+    ],
+    "example_description": "Pseudomonadaceae bacterium KVD-1959-08 16S ribosomal RNA gene, partial sequence >gi|94995626|gb|DQ490320.1| Pseudomonadaceae bacterium KVD-1959-02 16S ribosomal RNA gene, partial sequence >gi|94995...",
+    "samples": [
+      "SL1033"
+    ],
+    "n_occurrences": 1
+  },
+  "Pseudomonadales bacterium": {
+    "candidates_tried": [
+      "Pseudomonadales bacterium",
+      "Pseudomonadales"
+    ],
+    "example_description": "Uncultured Pseudomonadales bacterium clone 49-1_40 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1072"
+    ],
+    "n_occurrences": 1
+  },
+  "Rainbow trout": {
+    "candidates_tried": [
+      "Rainbow trout",
+      "Rainbow"
+    ],
+    "example_description": "Rainbow trout intestinal bacterium B115 16S ribosomal RNA gene, complete sequence",
+    "samples": [
+      "SL1098"
+    ],
+    "n_occurrences": 1
+  },
+  "Sphingobacteriaceae bacterium": {
+    "candidates_tried": [
+      "Sphingobacteriaceae bacterium",
+      "Sphingobacteriaceae"
+    ],
+    "example_description": "Uncultured Sphingobacteriaceae bacterium clone MG74 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1003"
+    ],
+    "n_occurrences": 1
+  },
+  "Swine manure": {
+    "candidates_tried": [
+      "Swine manure",
+      "Swine"
+    ],
+    "example_description": "Swine manure bacterium 37-8 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1046",
+      "SL1092"
+    ],
+    "n_occurrences": 2
+  },
+  "Z.ramigera": {
+    "candidates_tried": [
+      "Z.ramigera"
+    ],
+    "example_description": "Z.ramigera gene for 16S rRNA (ATCC 25935)",
+    "samples": [
+      "SL1098"
+    ],
+    "n_occurrences": 1
+  },
+  "alpha proteobacterium": {
+    "candidates_tried": [
+      "alpha proteobacterium",
+      "alpha"
+    ],
+    "example_description": "Uncultured alpha proteobacterium clone ATB-LH-6119 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1004"
+    ],
+    "n_occurrences": 3
+  },
+  "alpha-proteobacterium": {
+    "candidates_tried": [
+      "alpha-proteobacterium"
+    ],
+    "example_description": "uncultured alpha-proteobacterium partial 16S rRNA gene, clone S15B-MN112",
+    "samples": [
+      "SL1004"
+    ],
+    "n_occurrences": 1
+  },
+  "bacterium": {
+    "candidates_tried": [
+      "bacterium"
+    ],
+    "example_description": "Uncultured bacterium gene for 16S ribosomal RNA, partial sequence, clone: HK7",
+    "samples": [
+      "SL1002"
+    ],
+    "n_occurrences": 1
+  },
+  "gamma proteobacterium": {
+    "candidates_tried": [
+      "gamma proteobacterium",
+      "gamma"
+    ],
+    "example_description": "Uncultured gamma proteobacterium clone 16A1 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1046",
+      "SL1064",
+      "SL1072",
+      "SL1086",
+      "SL1097",
+      "SL1098",
+      "SL1102",
+      "SL1105"
+    ],
+    "n_occurrences": 12
+  },
+  "marine bacterium": {
+    "candidates_tried": [
+      "marine bacterium",
+      "marine"
+    ],
+    "example_description": "Uncultured marine bacterium clone Tc-49 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1072"
+    ],
+    "n_occurrences": 1
+  },
+  "organism clone": {
+    "candidates_tried": [
+      "organism clone",
+      "organism"
+    ],
+    "example_description": "Uncultured organism clone ctg_CGOF342 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1004",
+      "SL1046",
+      "SL1072",
+      "SL1086",
+      "SL1097",
+      "SL1098",
+      "SL1102"
+    ],
+    "n_occurrences": 8
+  },
+  "rape rhizosphere": {
+    "candidates_tried": [
+      "rape rhizosphere",
+      "rape"
+    ],
+    "example_description": "Uncultured rape rhizosphere bacterium wr0012 partial 16S rRNA gene",
+    "samples": [
+      "SL1003"
+    ],
+    "n_occurrences": 1
+  },
+  "rumen bacterium": {
+    "candidates_tried": [
+      "rumen bacterium",
+      "rumen"
+    ],
+    "example_description": "Uncultured rumen bacterium clone L102RC-4-G11 16S ribosomal RNA gene, partial sequence",
+    "samples": [
+      "SL1092"
+    ],
+    "n_occurrences": 1
+  },
+  "sediment bacterium": {
+    "candidates_tried": [
+      "sediment bacterium",
+      "sediment"
+    ],
+    "example_description": "Uncultured sediment bacterium 16S rRNA gene, clone 285-26",
+    "samples": [
+      "SL1072",
+      "SL1086",
+      "SL1097",
+      "SL1102"
+    ],
+    "n_occurrences": 4
+  },
+  "soil bacterium": {
+    "candidates_tried": [
+      "soil bacterium",
+      "soil"
+    ],
+    "example_description": "Uncultured soil bacterium clone F12_Pitesti 16S ribosomal RNA gene, complete sequence",
+    "samples": [
+      "SL1002",
+      "SL1003",
+      "SL1004",
+      "SL1064",
+      "SL1072",
+      "SL1086",
+      "SL1097",
+      "SL1098",
+      "SL1102",
+      "SL1107"
+    ],
+    "n_occurrences": 22
+  }
+}

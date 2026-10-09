@@ -1,0 +1,52 @@
+N_EPOCHS: 600
+TARGET: genera
+batch_size: 32
+concat_pos: true
+dropout: 0.41115388656427554
+encoder: transformer
+hidden_dim: 390
+hidden_layers: 2
+hyperparameters:
+  N_EPOCHS: 600
+  TARGET: genera
+  batch_size: 32
+  concat_pos: true
+  dropout: 0.41115388656427554
+  encoder: transformer
+  hidden_dim: 390
+  hidden_layers: 2
+  input_dim: 1700
+  lr: 0.0007406137323806516
+  output_bin_edges: &id001 !!python/object/apply:torch._utils._rebuild_tensor_v2
+  - !!python/object/apply:torch.storage._load_from_bytes
+    - !!binary |
+      gAKKCmz8nEb5IGqoUBkugAJN6QMugAJ9cQAoWBAAAABwcm90b2NvbF92ZXJzaW9ucQFN6QNYDQAA
+      AGxpdHRsZV9lbmRpYW5xAohYCgAAAHR5cGVfc2l6ZXNxA31xBChYBQAAAHNob3J0cQVLAlgDAAAA
+      aW50cQZLBFgEAAAAbG9uZ3EHSwR1dS6AAihYBwAAAHN0b3JhZ2VxAGN0b3JjaApGbG9hdFN0b3Jh
+      Z2UKcQFYDwAAADEwNjIzMjUyOTkyNjM2OHECWAMAAABjcHVxA0sBTnRxBFEugAJdcQBYDwAAADEw
+      NjIzMjUyOTkyNjM2OHEBYS4BAAAAAAAAAAAAgD8=
+  - 0
+  - !!python/tuple
+    - 1
+  - !!python/tuple
+    - 1
+  - false
+  - !!python/object/apply:collections.OrderedDict
+    - []
+  padding_value: -1.0
+  rcon_head_dim: 1700
+  ss_task: null
+  tau: 0.12421465035176336
+  warmup_steps: 2000
+  weight_decay: 1.9586987391446873e-05
+input_dim: 1700
+lr: 0.0007406137323806516
+output_bin_edges: *id001
+padding_value: -1.0
+pretrained_embedder: null
+rcon_head_dim: 1700
+ss_task: null
+tau: 0.12421465035176336
+transformer_reduction: max
+warmup_steps: 2000
+weight_decay: 1.9586987391446873e-05

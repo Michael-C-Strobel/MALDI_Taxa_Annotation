@@ -1,0 +1,7 @@
+{
+  "repository": "git@github.com:Michael-C-Strobel/16s_sim_pred.git",
+  "source_branch": "Pipeline-Overhaul",
+  "source_commit": "2b5a2d0",
+  "worktree": "includes pre-existing modified and untracked publication source",
+  "scope": "static-only; no metrics/inference/training reruns"
+}

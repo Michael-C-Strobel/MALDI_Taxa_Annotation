@@ -1,0 +1,2352 @@
+[
+  {
+    "path": "bin/ml/MALDI-Transformer_Reproduction/k=0/malditrfvanilla_M_200_0.15_0.01_0.0005/version_0/checkpoints/epoch=6024-step=500000.ckpt",
+    "bytes": 39633582,
+    "sha256": "876a8ec0db8ff91d8d24fb08efc06c79cc3023208236bb6cbf91448c36dd8e77"
+  },
+  {
+    "path": "bin/ml/MALDI-Transformer_Reproduction/k=1/malditrfvanilla_M_200_0.15_0.01_0.0005/version_0/checkpoints/epoch=6666-step=500000.ckpt",
+    "bytes": 39620142,
+    "sha256": "6ebd7a4fb3ea965832df35dd3f39f26b01e392df27462166d0794746791ae22f"
+  },
+  {
+    "path": "bin/ml/MALDI-Transformer_Reproduction/k=2/malditrfvanilla_M_200_0.15_0.01_0.0005/version_0/checkpoints/epoch=9090-step=500000.ckpt",
+    "bytes": 39627054,
+    "sha256": "77c4d0945b742de0987afa7e89a564cf957a16e8768c913761072f43163bb752"
+  },
+  {
+    "path": "bin/ml/MALDI-Transformer_Reproduction/k=3/malditrfvanilla_M_200_0.15_0.01_0.0005/version_0/checkpoints/epoch=9090-step=500000.ckpt",
+    "bytes": 39637998,
+    "sha256": "b8b245802db7df635187ebc1bf896155867198ed04e9e967bc6f516b501ba1c3"
+  },
+  {
+    "path": "bin/ml/MALDI-Transformer_Reproduction/k=4/malditrfvanilla_M_200_0.15_0.01_0.0005/version_0/checkpoints/epoch=4249-step=340000.ckpt",
+    "bytes": 39629166,
+    "sha256": "86033c99cec3e9eb7ca32efbed3028c4380a78599164cea58c2c8101c993f14c"
+  },
+  {
+    "path": "bin/ml/MALDI-Transformer_Reproduction/k=5/malditrfvanilla_M_200_0.15_0.01_0.0005/version_0/checkpoints/epoch=5813-step=500000.ckpt",
+    "bytes": 39631470,
+    "sha256": "666c47db43d655418349e218f3b3c95d065d10846c3b2102b9e4319a571c5efd"
+  },
+  {
+    "path": "bin/ml/MALDI-Transformer_Reproduction_Genus_Disjoint/k=0/malditrfvanilla_M_200_0.15_0.01_0.0005/version_0/checkpoints/epoch=8620-step=500000.ckpt",
+    "bytes": 39551598,
+    "sha256": "97846b714af49c51b48d283a77b65933b59abf7563370f294162ff9300d34ffa"
+  },
+  {
+    "path": "bin/ml/MALDI-Transformer_Reproduction_Genus_Disjoint/k=1/malditrfvanilla_M_200_0.15_0.01_0.0005/version_0/checkpoints/epoch=5747-step=500000.ckpt",
+    "bytes": 39551598,
+    "sha256": "1464341826b6c42ee7ea287a8adfba0499922958d2b8b717f3334f1a82682dfe"
+  },
+  {
+    "path": "bin/ml/MALDI-Transformer_Reproduction_Genus_Disjoint/k=2/malditrfvanilla_M_200_0.15_0.01_0.0005/version_0/checkpoints/epoch=5813-step=500000.ckpt",
+    "bytes": 39544686,
+    "sha256": "f709b25280000e2b681f932b5634ff4246d4fe73dd197b8a7df9a44afaa4a2f1"
+  },
+  {
+    "path": "bin/ml/MALDI-Transformer_Reproduction_Genus_Disjoint/k=3/malditrfvanilla_M_200_0.15_0.01_0.0005/version_0/checkpoints/epoch=7462-step=500000.ckpt",
+    "bytes": 39544686,
+    "sha256": "816cd78f37be24638916c1009d05ae1270c5eefb17a40f24b16e9968ef1789da"
+  },
+  {
+    "path": "bin/ml/MALDI-Transformer_Reproduction_Genus_Disjoint/k=4/malditrfvanilla_M_200_0.15_0.01_0.0005/version_0/checkpoints/epoch=6944-step=500000.ckpt",
+    "bytes": 39546990,
+    "sha256": "0e42e7e649421553c9dab3ee01a2280faa69266557084bd7745ec13b8266c5ac"
+  },
+  {
+    "path": "bin/ml/MALDI-Transformer_Reproduction_Genus_Disjoint/k=5/malditrfvanilla_M_200_0.15_0.01_0.0005/version_0/checkpoints/epoch=5555-step=500000.ckpt",
+    "bytes": 39560430,
+    "sha256": "e5ae15618a8847284ab84964f04b9f6cbe039b806235306130a26fac773aaeb9"
+  },
+  {
+    "path": "bin/ml/lightning_logs_DRIAMS_A_for_score/genera/genera/k=0/CLIP_Transformer/version_0/checkpoints/best-checkpoint.ckpt",
+    "bytes": 48238132,
+    "sha256": "65db8d5cfdc23fb3b7800544428f68cfa607554e952271ce3527ccf73199cfcf"
+  },
+  {
+    "path": "bin/ml/lightning_logs_DRIAMS_A_for_score/genera/genera/k=1/CLIP_Transformer/version_0/checkpoints/best-checkpoint.ckpt",
+    "bytes": 48238132,
+    "sha256": "937cda6b8028e1c11edac99d45dc3891e56bf16a09b7dc0140b50371cdd443d3"
+  },
+  {
+    "path": "bin/ml/lightning_logs_DRIAMS_A_for_score/genera/genera/k=2/CLIP_Transformer/version_0/checkpoints/best-checkpoint.ckpt",
+    "bytes": 48238132,
+    "sha256": "954481e53c0d1014addc03e8fecfc72ed3900b030765910cd25a802f32bc9edb"
+  },
+  {
+    "path": "bin/ml/lightning_logs_DRIAMS_A_for_score/genera/genera/k=3/CLIP_Transformer/version_0/checkpoints/best-checkpoint.ckpt",
+    "bytes": 48238132,
+    "sha256": "cb762d5185848f6d8ba9a26e19b96be3c004a19d572805e6efcac900a0be59ee"
+  },
+  {
+    "path": "bin/ml/lightning_logs_DRIAMS_A_for_score/genera/genera/k=4/CLIP_Transformer/version_0/checkpoints/best-checkpoint.ckpt",
+    "bytes": 48238132,
+    "sha256": "90096856c8ead2e8ca5ce765e7ff521407623968dbc69035f0deecff8058e3e4"
+  },
+  {
+    "path": "bin/ml/lightning_logs_DRIAMS_A_for_score/genera/genera/k=5/CLIP_Transformer/version_0/checkpoints/best-checkpoint.ckpt",
+    "bytes": 48238132,
+    "sha256": "b2c4196bc163629582343b320fa2e5f9a6fe28690d80af93f6a425d2964bfb35"
+  },
+  {
+    "path": "bin/ml/lightning_logs_DRIAMS_A_for_score/genera/species/k=0/CLIP_Transformer/version_0/checkpoints/best-checkpoint.ckpt",
+    "bytes": 55877364,
+    "sha256": "cfd47924be3a70fdb86eb1287ab1e312f4471a1fcc53a74d3d6082f0c446e37a"
+  },
+  {
+    "path": "bin/ml/lightning_logs_DRIAMS_A_for_score/genera/species/k=1/CLIP_Transformer/version_0/checkpoints/best-checkpoint.ckpt",
+    "bytes": 55877364,
+    "sha256": "7c7b7a6bee20e23f2f650b52de0e3d9c4a5c53ca05319b94373c671e74c7dae6"
+  },
+  {
+    "path": "bin/ml/lightning_logs_DRIAMS_A_for_score/genera/species/k=2/CLIP_Transformer/version_0/checkpoints/best-checkpoint.ckpt",
+    "bytes": 55877364,
+    "sha256": "d3f0c9525211fc0a2a969e057962c67f9c742ab356aebc6250fa03cdad25d42a"
+  },
+  {
+    "path": "bin/ml/lightning_logs_DRIAMS_A_for_score/genera/species/k=3/CLIP_Transformer/version_0/checkpoints/best-checkpoint.ckpt",
+    "bytes": 55877364,
+    "sha256": "3bc4b11cd7c20f0cb9e8e732171098d08a49c64a0ff7d3651b9c949e1559a0d6"
+  },
+  {
+    "path": "bin/ml/lightning_logs_DRIAMS_A_for_score/genera/species/k=4/CLIP_Transformer/version_0/checkpoints/best-checkpoint.ckpt",
+    "bytes": 55877364,
+    "sha256": "9ac998edaf89cf3573da8d64a9d1bd5d0b7f61b4bc07674fa6e4b4c03a3fa03b"
+  },
+  {
+    "path": "bin/ml/lightning_logs_DRIAMS_A_for_score/genera/species/k=5/CLIP_Transformer/version_0/checkpoints/best-checkpoint.ckpt",
+    "bytes": 55877364,
+    "sha256": "7acdc11cc667f28050484403d8174a98d1121617dc3e2a5158e6360867d10e69"
+  },
+  {
+    "path": "bin/ml/lightning_logs_driams_optuna/genera/genera/CLIP_MALDI/CLIP_MALDI.json",
+    "bytes": 243,
+    "sha256": "ec99665e71070457bec74731568420a94901c8d266290ae467afad4fe1e51d1f"
+  },
+  {
+    "path": "bin/ml/lightning_logs_driams_optuna/genera/genera/CLIP_MALDI/optuna_study.db",
+    "bytes": 4317184,
+    "sha256": "03e39c7734e3a177992e09f09fea5e28a87598f92d4557b3650f51ecdd707010"
+  },
+  {
+    "path": "bin/ml/lightning_logs_driams_optuna/genera/species/CLIP_MALDI/CLIP_MALDI.json",
+    "bytes": 242,
+    "sha256": "a33bb6e4883331a15678ce3ce5755ac06e0e9607aea871b58290f6f7b8915f33"
+  },
+  {
+    "path": "bin/ml/lightning_logs_driams_optuna/genera/species/CLIP_MALDI/optuna_study.db",
+    "bytes": 7696384,
+    "sha256": "1a7d88781a6f0a2fdb07a6f3d8f210ac9c18c94d3d7ba501ed086dda80b839a8"
+  },
+  {
+    "path": "data/RKI/processed/rki_metadata.csv",
+    "bytes": 1922294,
+    "sha256": "d0d2e9d7f63f550031a4299c5b0edeea9f460c4da83509d3b4a00f4209839c4b"
+  },
+  {
+    "path": "data/driams-B/preprocessing/merged_metadata.csv",
+    "bytes": 1477232,
+    "sha256": "5f42251a440fdc8697a8238cab4432d3f5acbed9d7b27b96de31732de4c3374b"
+  },
+  {
+    "path": "data/driams-C/preprocessing/merged_metadata.csv",
+    "bytes": 984293,
+    "sha256": "7e78c9b807722a9c883d18a1d7aeb93879a093d5f76e46fd6ca37f76142524fb"
+  },
+  {
+    "path": "data/driams-D/preprocessing/merged_metadata.csv",
+    "bytes": 2974494,
+    "sha256": "27e2ceffc43cf8c322eb2c494e8ca497c2a7df4fbfa744cf30952aec495a350c"
+  },
+  {
+    "path": "data/driams/preprocessing/merged_metadata.csv",
+    "bytes": 39508021,
+    "sha256": "99d3a17ffe1a80a6b3064e36d5a64ce2f2b64727a544cb457e2007fbd58200af"
+  },
+  {
+    "path": "data/driams/processed_data/genera/test_fold_0.pt",
+    "bytes": 426416,
+    "sha256": "b87e539e8cb176e659861a5fc13cd1c1e68e7e8a9e59e54925959bdec6ae32c8"
+  },
+  {
+    "path": "data/driams/processed_data/genera/test_fold_1.pt",
+    "bytes": 165552,
+    "sha256": "d56b2678798063882b2f118a6ee08a092dbf43063a7ed65d82994ccfba3d40b0"
+  },
+  {
+    "path": "data/driams/processed_data/genera/test_fold_2.pt",
+    "bytes": 459248,
+    "sha256": "770e65fb545eeb737e5c8ec8fc82158b471f7c0dd300f17a63f888530e20bcff"
+  },
+  {
+    "path": "data/driams/processed_data/genera/test_fold_3.pt",
+    "bytes": 788272,
+    "sha256": "049f7bef1855c1d7a1e63b40123f4b39704adc726207a5fc1584355628b63dff"
+  },
+  {
+    "path": "data/driams/processed_data/genera/test_fold_4.pt",
+    "bytes": 260592,
+    "sha256": "1604404743e8ced669c15a824c473a634e615e844f656460df36855594f62490"
+  },
+  {
+    "path": "data/driams/processed_data/genera/test_fold_5.pt",
+    "bytes": 265328,
+    "sha256": "60eac06a8383ca0ec79351d438083a376ac59c65a55d75e031c24fb523c9a21d"
+  },
+  {
+    "path": "data/driams/processed_data/genera/test_fold_6.pt",
+    "bytes": 1235952,
+    "sha256": "038118b5a719ee76b9336fb1c2dde9aa56a1e1330ae863613bf6d09bcb81a165"
+  },
+  {
+    "path": "data/driams/processed_data/genera/train_fold_0.pt",
+    "bytes": 2053812,
+    "sha256": "7c7c9cc073d8efe676ba65e8e56ed437d502233f3c39abeb65ae3757b6f3d0f2"
+  },
+  {
+    "path": "data/driams/processed_data/genera/train_fold_1.pt",
+    "bytes": 3103604,
+    "sha256": "206cc16cf2b3725ac72ebd7a88d95a4cb4fbdaeedb4f338e585b379fa8002ddd"
+  },
+  {
+    "path": "data/driams/processed_data/genera/train_fold_2.pt",
+    "bytes": 3070772,
+    "sha256": "ff8922570abd6257f4a5f7f29bb555c0752f128c211ed4819171e93d394a76ed"
+  },
+  {
+    "path": "data/driams/processed_data/genera/train_fold_3.pt",
+    "bytes": 2370164,
+    "sha256": "e59f9a8c438acb10f9c708a7cfd0d16346eed837593b1dd51d5f05736d0315ee"
+  },
+  {
+    "path": "data/driams/processed_data/genera/train_fold_4.pt",
+    "bytes": 2568820,
+    "sha256": "492cd97783e89625deb70962a8294c10a6992caff77f38131c5894f7e776197a"
+  },
+  {
+    "path": "data/driams/processed_data/genera/train_fold_5.pt",
+    "bytes": 3190132,
+    "sha256": "7a61f498084017ba9d413d258036f14e31656393cfeba267c70a4c7ce8430c3e"
+  },
+  {
+    "path": "data/driams/processed_data/genera/train_fold_6.pt",
+    "bytes": 2214836,
+    "sha256": "14b22c045ace1be09a4fd35443cbbee6fe51251c1b1275827204c80b227d3b16"
+  },
+  {
+    "path": "data/driams/processed_data/genera/val_fold_0.pt",
+    "bytes": 1235948,
+    "sha256": "f55c41f7309e3a40eaa037cbe4f6b50d90fc3a995ecfd6c37cfe6d0cb813b44f"
+  },
+  {
+    "path": "data/driams/processed_data/genera/val_fold_1.pt",
+    "bytes": 426412,
+    "sha256": "7c427ea1ad5f8f2b1cd09f80e77c03a22a5e86a4537f612c93627f441bbfd584"
+  },
+  {
+    "path": "data/driams/processed_data/genera/val_fold_2.pt",
+    "bytes": 165548,
+    "sha256": "b102244f20fd8f43f588847ad50e7b4996076f0e0424c0146121dd73ae53c4c1"
+  },
+  {
+    "path": "data/driams/processed_data/genera/val_fold_3.pt",
+    "bytes": 459244,
+    "sha256": "c93cb4467c10d170933b8b21dd393ddb7709170bb7aed6251a98c26a1ce42c63"
+  },
+  {
+    "path": "data/driams/processed_data/genera/val_fold_4.pt",
+    "bytes": 788268,
+    "sha256": "be288b2e17b4f585414fc796a089d977c6f5813ad31c2638bd0909a762aa1b90"
+  },
+  {
+    "path": "data/driams/processed_data/genera/val_fold_5.pt",
+    "bytes": 260588,
+    "sha256": "19f346d5ba9e1c9740cebd1698ccd7a4ac0e4e10b6ca958ac971704661ad1b23"
+  },
+  {
+    "path": "data/driams/processed_data/genera/val_fold_6.pt",
+    "bytes": 265324,
+    "sha256": "b79e1d17a7d35068da402f0dac6745f8412d34f1c7c79186cbd43879293e7ca8"
+  },
+  {
+    "path": "data/driams/processed_data/species/test_fold_0.pt",
+    "bytes": 580528,
+    "sha256": "15a2a493d1056465d668945bb2b880c2b98d2924ebebfdf651cc0799f5cca604"
+  },
+  {
+    "path": "data/driams/processed_data/species/test_fold_1.pt",
+    "bytes": 438320,
+    "sha256": "8f3557d356b0a1511dc1b8c0505d2eb2963929f3c714830fe3db15ce4d61fac0"
+  },
+  {
+    "path": "data/driams/processed_data/species/test_fold_2.pt",
+    "bytes": 1295536,
+    "sha256": "588a60d5c9ccf6e18f611380ea9b7519eccb28aab2c7f09aeabb4e4cf07ca2d6"
+  },
+  {
+    "path": "data/driams/processed_data/species/test_fold_3.pt",
+    "bytes": 484464,
+    "sha256": "f2a0c1d536014c029a58d22cfb8d949ff9091011125793906075fcc743c2c83c"
+  },
+  {
+    "path": "data/driams/processed_data/species/test_fold_4.pt",
+    "bytes": 415280,
+    "sha256": "6febedaf828e63dc31e8e541ead504643b6de25ee862dd9038d683657d49e9ab"
+  },
+  {
+    "path": "data/driams/processed_data/species/test_fold_5.pt",
+    "bytes": 216112,
+    "sha256": "49154f7faee609b6afbcc9a050630d97cb022f4281906e5d747e2ce9abd1ca6e"
+  },
+  {
+    "path": "data/driams/processed_data/species/test_fold_6.pt",
+    "bytes": 171696,
+    "sha256": "65193c16062ccfb59ddcfa8a1f12ad60bce4fef64d46b3bc1cd4c28c9d9a1015"
+  },
+  {
+    "path": "data/driams/processed_data/species/train_fold_0.pt",
+    "bytes": 2963700,
+    "sha256": "b60d3644f2b52f990458c953ce468bdec8b6f5a299eae091c598371eae4099eb"
+  },
+  {
+    "path": "data/driams/processed_data/species/train_fold_1.pt",
+    "bytes": 2663796,
+    "sha256": "6965d8220564bae57196a3e54e9310389554e9533639e6dea29d6ed85159d0e4"
+  },
+  {
+    "path": "data/driams/processed_data/species/train_fold_2.pt",
+    "bytes": 1948788,
+    "sha256": "7c6f0e29030f33de6364d0bf6141e24391a7adfd7f37cf334a71513a632d49af"
+  },
+  {
+    "path": "data/driams/processed_data/species/train_fold_3.pt",
+    "bytes": 1957300,
+    "sha256": "7b89d8b3176915312f33a5ea12cd95694f3360f0da977be913945dd82ba5452a"
+  },
+  {
+    "path": "data/driams/processed_data/species/train_fold_4.pt",
+    "bytes": 2837492,
+    "sha256": "733beeff9fda0dccbeed3ef35e44c6fbd5d294dc93696ec2e7ddba20e5104ca6"
+  },
+  {
+    "path": "data/driams/processed_data/species/train_fold_5.pt",
+    "bytes": 3078964,
+    "sha256": "6aa05d571aca6a30b2dde76c3a333745294ec725a7f02ba8ce0f8df854489d61"
+  },
+  {
+    "path": "data/driams/processed_data/species/train_fold_6.pt",
+    "bytes": 3301236,
+    "sha256": "04ccabc5142c5061097dd5670a001f345703883358a0653e6602d111d98bbd4f"
+  },
+  {
+    "path": "data/driams/processed_data/species/val_fold_0.pt",
+    "bytes": 171692,
+    "sha256": "dab5e2b2bd7c322e7e1a1833ca08ed4bfe48a196fb347db7a1be374ef5503177"
+  },
+  {
+    "path": "data/driams/processed_data/species/val_fold_1.pt",
+    "bytes": 580524,
+    "sha256": "d890cb6622dfaf7f985e92b3bcca9ee17851698f8457b49a99b47361c867a0d3"
+  },
+  {
+    "path": "data/driams/processed_data/species/val_fold_2.pt",
+    "bytes": 438316,
+    "sha256": "9c107fe1b373c96f4292168ecdf9d236bc20a097aab566fe635ec9519c2f89d2"
+  },
+  {
+    "path": "data/driams/processed_data/species/val_fold_3.pt",
+    "bytes": 1295532,
+    "sha256": "28fb432427048ea2e529b6f816e2676808c662eac9fe311654993eab684afe86"
+  },
+  {
+    "path": "data/driams/processed_data/species/val_fold_4.pt",
+    "bytes": 484460,
+    "sha256": "3da29bd21eb40d9b6f868b5405fa6c35c3fd07ec645670abbb7c8ff529c08c4b"
+  },
+  {
+    "path": "data/driams/processed_data/species/val_fold_5.pt",
+    "bytes": 415276,
+    "sha256": "1e548c4e73ec0769bb1c3da3c8d21fc2b7949f29ccdbf3f9e9bb0243f2017e79"
+  },
+  {
+    "path": "data/driams/processed_data/species/val_fold_6.pt",
+    "bytes": 216108,
+    "sha256": "43db1f42d613a54f578c708e311eefee90269a1dd4c73a83f626b54a3ab2d574"
+  },
+  {
+    "path": "figures/publication_optuna/MANIFEST.txt",
+    "bytes": 361,
+    "sha256": "3b1fb9f7d579bd7a435c22366d03fbb1b49f35a13836d6bfc034c1c1419d180a"
+  },
+  {
+    "path": "figures/publication_optuna/convergence/clip_maldi_driams_a_convergence.pdf",
+    "bytes": 145396,
+    "sha256": "a69df611a5f808c92ac3e904ae3496fff4f319eac468fd706bbb1567afb6c6e8"
+  },
+  {
+    "path": "figures/publication_optuna/convergence/clip_maldi_driams_a_convergence.png",
+    "bytes": 465932,
+    "sha256": "a93e8c50f4529b7423b8781751408f63bde777b335180df103684f00af7ff3bf"
+  },
+  {
+    "path": "figures/publication_optuna/convergence/clip_maldi_driams_a_convergence.svg",
+    "bytes": 374585,
+    "sha256": "e9e67510cb69ff6f09a27740db4e6e245b43049b6c58190ad04ab72b2a6c31c0"
+  },
+  {
+    "path": "figures/publication_optuna/figures/comparison/convergence_comparison.pdf",
+    "bytes": 14281,
+    "sha256": "a8402c0eb6c89660b70711ffed7e3e35355da3d30883a3303a8ccd072bd1ef8f"
+  },
+  {
+    "path": "figures/publication_optuna/figures/comparison/convergence_comparison.png",
+    "bytes": 143074,
+    "sha256": "d3b2a5e752afcd0ffb8824d8bb28629cdc827e2dad1b2c7cfd6e745b4598ecde"
+  },
+  {
+    "path": "figures/publication_optuna/figures/comparison/convergence_comparison.svg",
+    "bytes": 30434,
+    "sha256": "1aa62d2a2d3aa2a45bb4f564ce3c866f65fafb112a774ea5817faa2b99e9738a"
+  },
+  {
+    "path": "figures/publication_optuna/figures/comparison/objective_distribution_comparison.pdf",
+    "bytes": 23662,
+    "sha256": "ff1dc7ff8e5b9e2aeb4f6147ded8e124405b82dac2a3f49243855cfe499f2616"
+  },
+  {
+    "path": "figures/publication_optuna/figures/comparison/objective_distribution_comparison.png",
+    "bytes": 180467,
+    "sha256": "bc9192af7a725a78114c2285c0d65081dac6dded0f035b3782d303b36fdc4287"
+  },
+  {
+    "path": "figures/publication_optuna/figures/comparison/objective_distribution_comparison.svg",
+    "bytes": 73783,
+    "sha256": "dc807d3d450f92bd8eb2236034e12470836d0095a8ec51f68e544a8a89c9b768"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_genera/objective_distribution.pdf",
+    "bytes": 14285,
+    "sha256": "8560a09274013ed774911d97022321b5aa7b3e709a517cfd4f766310d8c0e3fd"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_genera/objective_distribution.png",
+    "bytes": 130527,
+    "sha256": "f5c124ff3dbf1965e261e96f57449ecf121e8bf7adef8efa5c481db1b59f7e91"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_genera/objective_distribution.svg",
+    "bytes": 36410,
+    "sha256": "e63f82a1e7e91eebd5b24fe47404b27ba075fc0e6c424d3438a1cf6ea8eadaed"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_genera/optimization_history.pdf",
+    "bytes": 16242,
+    "sha256": "f4a70f80d2202c01031fb9cef40cecbbc6d879ed3360e5157445a939d29958a4"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_genera/optimization_history.png",
+    "bytes": 206263,
+    "sha256": "a54bf8fe263175577e0f9df4be96388621d41369b3d0e18a5b97ecd25c52e894"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_genera/optimization_history.svg",
+    "bytes": 52945,
+    "sha256": "948f936d85cd02a91583ed05d10106951dfc7d1b0ad933a0039a3f0ed9e2eb98"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_genera/param_importance.pdf",
+    "bytes": 12025,
+    "sha256": "fb7300617e99a31e89c6923a58488045a2f262f1f13029b01ad362e3eb13e966"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_genera/param_importance.png",
+    "bytes": 73379,
+    "sha256": "b138c2e4a5737e8c6f4105b1a148a63f2a16792e5a8ff7c5393590d1fa7616d0"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_genera/param_importance.svg",
+    "bytes": 20580,
+    "sha256": "dbd7ae89f710286c8257612916b9e6208f62e8105b241832453b03a30d19e26e"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_genera/param_vs_objective_grid.pdf",
+    "bytes": 28211,
+    "sha256": "8b947efd15155576a365be5d75705fd25d40a23d4a626f44c439a95e525622e4"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_genera/param_vs_objective_grid.png",
+    "bytes": 373787,
+    "sha256": "6cbe39192022c1dfb22619c49c16d29377232d16febe7a87279cd379774efbcb"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_genera/param_vs_objective_grid.svg",
+    "bytes": 196392,
+    "sha256": "41a049c665d69421ed186342b64770ab9a5890cd90073f444bf8fd068edf05b4"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_species/objective_distribution.pdf",
+    "bytes": 14737,
+    "sha256": "cb959cbaeca8e4c6016480924aa3ef37448f6e0b076f8b04fc24f503f8b20369"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_species/objective_distribution.png",
+    "bytes": 109727,
+    "sha256": "313c84bb548214fd15b812f96bd2f384b3e5ddbe02657797cf5afafc6857202d"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_species/objective_distribution.svg",
+    "bytes": 34184,
+    "sha256": "76e80a32240bfdb6465918b58a8a1cee128fa876405f6d7215971b1bc724bd21"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_species/optimization_history.pdf",
+    "bytes": 17009,
+    "sha256": "10c1bf515dba10c4bf504ed35884b7d1ac3786521e86a23669ce335743c43ab5"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_species/optimization_history.png",
+    "bytes": 191030,
+    "sha256": "24314cc3a0a0f9b691c65a7c2a7882b286ae60b7fa8a609e6875846fc7c522b4"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_species/optimization_history.svg",
+    "bytes": 72833,
+    "sha256": "9a0c018799729d2a066da98ca773ac84690627bbba1a10c1f32c956b2fe25083"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_species/param_importance.pdf",
+    "bytes": 12101,
+    "sha256": "a484bd738dce8b913f5e92d85e52f7fe34a1fed4bd81948372d3255023349572"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_species/param_importance.png",
+    "bytes": 73406,
+    "sha256": "da4746582e31b2f2c80310a41b87e38339b4d28a36c96b770cf3d856de42ef07"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_species/param_importance.svg",
+    "bytes": 20812,
+    "sha256": "05de4b61fe554e9e7f36307623291946e7203ddcef588f3f17d11c953d54011a"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_species/param_vs_objective_grid.pdf",
+    "bytes": 35553,
+    "sha256": "238a20f69afde255c5b0273bec5bd37a36b2eba916fba4a49f7e2a581581fce0"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_species/param_vs_objective_grid.png",
+    "bytes": 461172,
+    "sha256": "7bb8f7db497af4a18ffe43d188f5fdc497ff898708bcf4ee1e97459872c981f9"
+  },
+  {
+    "path": "figures/publication_optuna/figures/genera_species/param_vs_objective_grid.svg",
+    "bytes": 325220,
+    "sha256": "0fe4f24be1f074ac04d1fbd11c82ac1e7eec5d95604dcf200bfb48a5d973ee8d"
+  },
+  {
+    "path": "figures/publication_optuna/tables/best_hyperparameters.csv",
+    "bytes": 494,
+    "sha256": "1264f52158f1ab41e4a0f3d0848a0dd6ccaa76be9e1ebd7ef381089d969dfc52"
+  },
+  {
+    "path": "figures/publication_optuna/tables/best_hyperparameters.tex",
+    "bytes": 561,
+    "sha256": "328dfa883c6b41ba089304c0c5d48b1c878dd7293c4ed7b22d35609bf0d80b12"
+  },
+  {
+    "path": "figures/publication_optuna/tables/study_summary.csv",
+    "bytes": 381,
+    "sha256": "f60b34ca33e5c0dea302a4b0f77d08e8b55f0a5be8511d21f84f85b78b8eba4b"
+  },
+  {
+    "path": "figures/publication_optuna/tables/study_summary.tex",
+    "bytes": 414,
+    "sha256": "b45d85867c0686df4b4e04dfe90e173ed849ddceba2d4a4de783de23bcfadd29"
+  },
+  {
+    "path": "figures/publication_optuna/tables/top_10_trials.csv",
+    "bytes": 2651,
+    "sha256": "89d041091a5b60450143d8edfd90dfe91b2024c58a76cc0511a88bf5f8029c4c"
+  },
+  {
+    "path": "figures/publication_optuna/tables/top_10_trials.tex",
+    "bytes": 1864,
+    "sha256": "6faaad25dbeb0f6293e2030062b747ea75a1a635311e20c4a5e87d673a1ebb63"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1002.16S.fasta",
+    "bytes": 8055,
+    "sha256": "3081b274cdf00057d65fb4bad15be9be4f414ef9f8c1115afc1f5f60c9ed3c4a"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1003.16S.fasta",
+    "bytes": 4815,
+    "sha256": "7fa0c22204bc63b4ed9447df6fe053953a32f5016ad9e653fd0d69e1ccc66c99"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1004.16S.fasta",
+    "bytes": 6288,
+    "sha256": "5e8000bc253ba51e8ab3838e9283550563f7aa7eb29683b6486faae1e8a9df80"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1010.16S.fasta",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1033.16S.fasta",
+    "bytes": 9716,
+    "sha256": "338ac300cf628d35c89fc361d3e65a78731b2a38e11b26d599af59a70452c7c4"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1046.16S.fasta",
+    "bytes": 9716,
+    "sha256": "7d1cbb142593d000f7170b9c39febd3d2ecae8a53cd99a84dffd427c32ba149a"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1064.16S.fasta",
+    "bytes": 9718,
+    "sha256": "bb27d7b13eca3d1f3e237df0a0a93c847f599803d7ff9a563f8f92da01fb94a0"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1071.16S.fasta",
+    "bytes": 19429,
+    "sha256": "812363fcff83918392c83c18dbbdc38587a9f31918b63cb1062e3fb40b17f455"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1072.16S.fasta",
+    "bytes": 9718,
+    "sha256": "199043d4a9c60bba35b33a80d313abd8f2adddeaa2dd79f732521c3a33ffa801"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1086.16S.fasta",
+    "bytes": 14507,
+    "sha256": "ff74160e0cd825ce17b0ff112cf0a1c0df04fce59710a4281ee1dd7f2d5247d4"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1092.16S.fasta",
+    "bytes": 17235,
+    "sha256": "4ee4726b1a8682775f9dcf945f35e369d27331981d16f5824ce44d76b372f5f0"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1095.16S.fasta",
+    "bytes": 19430,
+    "sha256": "9420b9c3b4d935636c9b1e593eb0235171e764babf2868222e272f04c3466d1e"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1097.16S.fasta",
+    "bytes": 9710,
+    "sha256": "9a88d1a55b1b2a354facc8bc4edc72316fe33e8afe4d776d42e033720ce8ad03"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1098.16S.fasta",
+    "bytes": 19348,
+    "sha256": "60093ddbdbfbdd2895692f9e952e76a79d65e7f51f3e6ab0859b71d5d17b23fc"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1102.16S.fasta",
+    "bytes": 9711,
+    "sha256": "89d17ca7eea2f2a8acf0aec47debe243b869fdfdb043e2cd00a6db1ecc2c268e"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1105.16S.fasta",
+    "bytes": 11336,
+    "sha256": "7fcde84beeb19e83ffcac7037a4dba8bcc506a68c10dfd0dc5c3d74c2581661e"
+  },
+  {
+    "path": "publication/banana_slug/data/16S/SL1107.16S.fasta",
+    "bytes": 9598,
+    "sha256": "f1959eda354c8db0fcbf0e2b9a43b1a62cd2d8ee4c83cea577ae3ffc3efe2856"
+  },
+  {
+    "path": "publication/banana_slug/data/16S_analysis/detail.tsv",
+    "bytes": 70145,
+    "sha256": "dbb7dbb60233648f636afae4f3b3e52f13da5f0435c8acb87494a79a4f131878"
+  },
+  {
+    "path": "publication/banana_slug/data/16S_analysis/failed_name_mappings.json",
+    "bytes": 10583,
+    "sha256": "1d9eea1b6af01627d4c28bf87d6ce8f093c374fc1b93870aa8af7df89370477c"
+  },
+  {
+    "path": "publication/banana_slug/data/16S_analysis/summary.tsv",
+    "bytes": 2778,
+    "sha256": "98ab33d23cd29d3653998beddb2c8a906cfd4c7a4b38b471ddf28a84ab020e3f"
+  },
+  {
+    "path": "publication/banana_slug/data/16S_clusters/metrics/qc_clusters.tsv",
+    "bytes": 4832,
+    "sha256": "df6bb8a754ba2d4353535f2fef199dda8ca2098f162e38007fccada6dcc2aeec"
+  },
+  {
+    "path": "publication/banana_slug/data/16S_clusters/metrics/qc_full.json",
+    "bytes": 19293,
+    "sha256": "670650e96d066fd8d973beb78b9fb2fa3d38a9e890153d7e135a359a23baef50"
+  },
+  {
+    "path": "publication/banana_slug/data/16S_clusters/metrics/qc_report.tsv",
+    "bytes": 782,
+    "sha256": "ba6a90a65c814b94f2e78bd187fc31526df650a3ecdbeddd80ac38f849191741"
+  },
+  {
+    "path": "publication/banana_slug/data/16S_results/all_results.tsv",
+    "bytes": 2474664,
+    "sha256": "7a4f26b089a26e6c1aac23dc4ed91d636ac1602d45a155c55036c2bd61e13027"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1002.consensus_16S.fasta",
+    "bytes": 1603,
+    "sha256": "a44f0133a13f91a9665ec90c2b7759bbe19421fab719cd2e8e0074eedfb7e6f5"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1003.consensus_16S.fasta",
+    "bytes": 1594,
+    "sha256": "ed2d2c98c54ddb230851cbfd7abe031020f95452a679565501284e71411f0ad9"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1004.consensus_16S.fasta",
+    "bytes": 1562,
+    "sha256": "90c50f518c3fc700abbbd1453be88c75220f9e5d49f0c83230293fcaeb0f20ab"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1033.consensus_16S.fasta",
+    "bytes": 1609,
+    "sha256": "e80bbd87e80e008530759bb08687bc5de5ccfe90fcc242a3385e8208dc36729f"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1046.consensus_16S.fasta",
+    "bytes": 1609,
+    "sha256": "7094be7d01329b1848d7cdc145a1c659814faf8b44954f2b7afde0e2e32d415e"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1064.consensus_16S.fasta",
+    "bytes": 1610,
+    "sha256": "d13029664c310db3141a9ebd37cfa0e0aab063049fe73760f2e0eb67615b0ded"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1071.consensus_16S.fasta",
+    "bytes": 1611,
+    "sha256": "e23639217d862b17d60434268751bea3496c50ff9a12676b9481e706d612cb4c"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1072.consensus_16S.fasta",
+    "bytes": 1609,
+    "sha256": "6c86a0b1d9029a4e436f9ecc8a757112b41f2f651716a89e934204fc18ffd2a1"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1086.consensus_16S.fasta",
+    "bytes": 1609,
+    "sha256": "9cd9a4183ae9ec9f947c0cd2542fe442204b536fa9c53a224aa55191a95f4402"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1092.consensus_16S.fasta",
+    "bytes": 1610,
+    "sha256": "ba552bfe6e4585d180078228c7d6042805eb3103caa95fcdb1b82677d6a8da23"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1095.consensus_16S.fasta",
+    "bytes": 1610,
+    "sha256": "80a1b726a28fcdd8795f134effa7e5d2504fab59b9ae7809668df33e5f5d1e45"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1097.consensus_16S.fasta",
+    "bytes": 1609,
+    "sha256": "c7bf5486e7137cde6a18e613208f6d803745bbeb856a6a0d09be667073f18a90"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1098.consensus_16S.fasta",
+    "bytes": 1604,
+    "sha256": "ce728e190c691610259c3c4e2585ef578b438d407f76dd55d897e7cddd87f755"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1102.consensus_16S.fasta",
+    "bytes": 1609,
+    "sha256": "6cc2ec2912440878bc82ba3e21b5654d0c66b10c8f5be841978aeaeacfec3dd5"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1105.consensus_16S.fasta",
+    "bytes": 1609,
+    "sha256": "9a9a1a4ac9685ba487bafa95c9f331096122f115324e90c0f9f6ca0861f5bb27"
+  },
+  {
+    "path": "publication/banana_slug/data/consensus_16S/SL1107.consensus_16S.fasta",
+    "bytes": 1589,
+    "sha256": "15c232d597c030a2556563ce1dd89d321fba9271e0f8cb6b99d220e96f6b6d87"
+  },
+  {
+    "path": "publication/banana_slug/data/idbac/enriched_db_results.tsv",
+    "bytes": 23919827,
+    "sha256": "d2eee9844e17a827cc257c2753934b6ca5ea47cc343414008b6a8baebf098e3b"
+  },
+  {
+    "path": "publication/banana_slug/data/wgs_checkm2/summary.tsv",
+    "bytes": 1609,
+    "sha256": "213bab72a34e38526742c2cb0d4f03c33cdeb41f1e0b165626df8cc46dade65d"
+  },
+  {
+    "path": "publication/banana_slug/data/wgs_gtdbtk/gtdbtk_raw/gtdbtk.bac120.summary.tsv",
+    "bytes": 158916,
+    "sha256": "0b411025db64c5d2343d4c7d6c55841b28c25876d3f3b60aa6f90d909f2a1b40"
+  },
+  {
+    "path": "publication/banana_slug/data/wgs_gtdbtk/summary.tsv",
+    "bytes": 4606,
+    "sha256": "c348b5ea42e4567c3463f60d5b20d7fb3f4ed97be02629141c079103764abb55"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig1_1_genus_composition.png",
+    "bytes": 166803,
+    "sha256": "05a06803b3a07e09324b95e27e9caf420268036999bffd0e68a33be06ec5eef9"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig1_2_confidence_dotplot.png",
+    "bytes": 246493,
+    "sha256": "7ae4670b8351af1a10c98c13545ffa1f18937fee3094f0ac80e4f2a78b4938db"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig2_1_copy_counts.png",
+    "bytes": 172058,
+    "sha256": "eebed949696c4cb77fad812707808e8e27ff097af92afef52e188d8f44293c3d"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig2_2_min_pairwise_identity.png",
+    "bytes": 222805,
+    "sha256": "78378ff216dc8e97d93e4d60caa49e903811c67acc3c2c6e61a16dd86ec03359"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig3_1_checkm2_scatter.png",
+    "bytes": 195238,
+    "sha256": "8dc01c34162964ff046c9afcd91a724636c460e184141214f951fafdfaf76b05"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig3_2_contamination_bar.png",
+    "bytes": 189842,
+    "sha256": "3173cc37a55b9259a2b6505a41d579376b20699705701373642cabd1ec5cf01e"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig4_1_gtdbtk_calls.png",
+    "bytes": 455467,
+    "sha256": "dcd6e90b88384913399691dce9664be48e7ca629a93099bf557f6e03b4776967"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig4_2_gtdbtk_methods.png",
+    "bytes": 116584,
+    "sha256": "a0b0f6a8afab98b051170d384a86885a2fade5ccc0b8d5672b7c368e022ba657"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig5_1_16s_vs_gtdbtk.png",
+    "bytes": 309794,
+    "sha256": "7559baa8dc389ffafbf5b5e4427bbf08299b67ddd5266b4b70105282de6c5f5d"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig5_2_agreement.png",
+    "bytes": 133301,
+    "sha256": "32fff07ee76df25f03c99755f83308b479cdbb1f0025ab8c04585cf12d3c476c"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig6_1_1_discovery_with_no_hits.png",
+    "bytes": 401826,
+    "sha256": "f92f13545ec3a26cde56ae1fe5f045955fcf44e5486257cedf5a0d6747654859"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig6_1_discovery_funnel_density.png",
+    "bytes": 308753,
+    "sha256": "12e4ed3327856766c335f5b56758111771ab1ba84655e2a1216e4d105369dc07"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig6_1b_density.png",
+    "bytes": 125715,
+    "sha256": "aade68d4052ca6f37358f538a9646f809eb67739f627c4acf63da51ec4569b69"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig6_2_outcome_bar.png",
+    "bytes": 102068,
+    "sha256": "1bc22ef9463096ff051e70f7cbbdb3502d29543576d30e47644a6103b6200332"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig6_iterations/precision_at_k_all.png",
+    "bytes": 186098,
+    "sha256": "f2d2848ef61d76daee3a6879d30f22d04947aec7d2f2630ada5f806be349b242"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig6_iterations/precision_at_k_top10.png",
+    "bytes": 160956,
+    "sha256": "2cd79f795a0aaa365c15d59d1c6c18ab7311054e2dba2bb214921e04d5c5d30c"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig6_iterations/threshold_vs_precision.png",
+    "bytes": 109398,
+    "sha256": "060ead55c71f5f7c59344866d8ab05dfbd4e9a135263238bc2ae3e2f8193d7bf"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig6_iterations/tiles_all_hits_with_precision_gauge.png",
+    "bytes": 121749,
+    "sha256": "83cfd42554aac8352144082d42b65748bcb837f08a9541a058b427c97a1c5c32"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig6_iterations/tiles_top10_with_precision_gauge.png",
+    "bytes": 93002,
+    "sha256": "8afcb2c38b18fcc41d474a8aacf03d6c48e0e128376741774fda5bf2911b8130"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/fig7_1_ani_to_nearest.png",
+    "bytes": 267458,
+    "sha256": "d280c50a2879247df4cbf8e5983a22db6dc364768783dd45fa83995cd75d7b4f"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/table1_1_blast_summary.csv",
+    "bytes": 1725,
+    "sha256": "a6e877fc32d4a93c6b79de4d1fff2f012c207b20126f4dce7cb6887d021b753e"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/table2_1_qc_report.csv",
+    "bytes": 604,
+    "sha256": "0e35b5a4d864d3e544c81dc8744e47a73f602a6a53be6aa01b862bfdc42951a6"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/table3_1_checkm2.csv",
+    "bytes": 1355,
+    "sha256": "c18571ea8c78f1b45f332ed8171700ea180017547a6ba7ede0ec6f940c20d1e3"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/table4_1_gtdbtk.csv",
+    "bytes": 1607,
+    "sha256": "7e9472234f5ee697c5b57ba8341741f5f1d1b2a6821b2964f343a5d049b459d7"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/table5_1_16s_vs_gtdbtk.csv",
+    "bytes": 2078,
+    "sha256": "fd5a0d1dbe359f97fe91e826da0e5984856ee80e69962c996693e9bb0ca2aa7b"
+  },
+  {
+    "path": "publication/banana_slug/notebooks/figures/table7_1_ani_to_nearest.csv",
+    "bytes": 902,
+    "sha256": "910d9539943ba7f6f044407e42aba3388d55f9969f2048f5fc9e7eafb685242e"
+  },
+  {
+    "path": "scratch/publication_figures/data/nn_accuracy/driams_b_nn_accuracy_macro.csv",
+    "bytes": 70909,
+    "sha256": "371f9d74f689992fc60db00675d31eef1803a004435985cfaec7019184f424ee"
+  },
+  {
+    "path": "scratch/publication_figures/data/nn_accuracy/driams_b_nn_accuracy_micro.csv",
+    "bytes": 70576,
+    "sha256": "2fae7c8e093ef7935103719015c660cc00181639a460708f6cbf56fb229c3a48"
+  },
+  {
+    "path": "scratch/publication_figures/data/nn_accuracy/driams_c_nn_accuracy_macro.csv",
+    "bytes": 70915,
+    "sha256": "0eb957e4a7fc9d139cc63318331209f07a35628e1f93a36a16509247fd2259e7"
+  },
+  {
+    "path": "scratch/publication_figures/data/nn_accuracy/driams_c_nn_accuracy_micro.csv",
+    "bytes": 70858,
+    "sha256": "3eb930fec3f9ebec75cc23c56ac1558b56ecb18263fde5871b1f68a263f27892"
+  },
+  {
+    "path": "scratch/publication_figures/data/nn_accuracy/driams_d_nn_accuracy_macro.csv",
+    "bytes": 70891,
+    "sha256": "86b2b2b253d034f7aa0a58ae4a08c0c9e9b1fdcc6c544fcc0734e3de7d702991"
+  },
+  {
+    "path": "scratch/publication_figures/data/nn_accuracy/driams_d_nn_accuracy_micro.csv",
+    "bytes": 71689,
+    "sha256": "18192df3ca00d8549f04f82f698b24f38bb60a234b140d73de5eb12222490ed7"
+  },
+  {
+    "path": "scratch/publication_figures/data/nn_accuracy/rki_nn_accuracy_macro.csv",
+    "bytes": 70969,
+    "sha256": "b65b828c71985b83c2fb8906d412ffd0514cda378a58657c166d208587d791d8"
+  },
+  {
+    "path": "scratch/publication_figures/data/nn_accuracy/rki_nn_accuracy_micro.csv",
+    "bytes": 70993,
+    "sha256": "d41d51c03b82d5505e89ce8397ea813bbdf531ada5dfae6ff40a1c73ba408e4e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/DRIAMS-A/cosine_ablation/binary_curves_fdr_cross_species_False_inf_pairs.svg",
+    "bytes": 71397,
+    "sha256": "aa841a264fa1c5a14c41936a9c64abc6676f4ce059b39b7877c1d903451915f5"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/DRIAMS-A/cosine_ablation/binary_curves_metrics_cross_species_False_inf_pairs.csv",
+    "bytes": 1128,
+    "sha256": "0b115b0364dce5ae618a9fc945356131ad4ea38ee16b6851256b98ead71a9e68"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/DRIAMS-A/cosine_ablation/binary_curves_precision_recall_cross_species_False_inf_pairs.svg",
+    "bytes": 52553,
+    "sha256": "d8662f9f9ae9582656ee33735585c78e866ebfb242fe0be127004f79b9d2647b"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/DRIAMS-A/cosine_ablation/binary_curves_roc_cross_species_False_inf_pairs.svg",
+    "bytes": 53754,
+    "sha256": "7e1848f6046268e5572e9fbd49677c485f611e408eed2d03e5b9920fd37a7519"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/DRIAMS-A/cosine_ablation_standard/binary_curves_fdr_cross_species_False_inf_pairs.svg",
+    "bytes": 66089,
+    "sha256": "a2392a69563197e2c9e33c6318690e6afd79af38d7ab39acb28c29cbfce74a6f"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/DRIAMS-A/cosine_ablation_standard/binary_curves_fdr_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 66000,
+    "sha256": "cd9a55fce4e7c04922eef701f59501c691c564db5b3b3c8bbe8e9b893a6dc955"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/DRIAMS-A/cosine_ablation_standard/binary_curves_metrics_cross_species_False_inf_pairs.csv",
+    "bytes": 1033,
+    "sha256": "4d33d98d9041f64cc422a4082314292b3bc0bcc5fe66bb3f28665ed4f524888a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/DRIAMS-A/cosine_ablation_standard/binary_curves_metrics_cross_species_True_inf_pairs_no_singleton_genera.csv",
+    "bytes": 1027,
+    "sha256": "6a7abe6c846e7b56263a5f9f690e4f639b8cef3ae42d9c0f2e3e27765fb38743"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/DRIAMS-A/cosine_ablation_standard/binary_curves_precision_recall_cross_species_False_inf_pairs.svg",
+    "bytes": 52568,
+    "sha256": "748d2b9c64aec4898ad0a781ff0bc98eb3f9d036c82f5ab1477b52bddbc1083e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/DRIAMS-A/cosine_ablation_standard/binary_curves_precision_recall_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 52699,
+    "sha256": "0b3797cb7aa43ffa15a9ffaa8402abebf33bffc90df67aad639d68cd91eb8dfd"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/DRIAMS-A/cosine_ablation_standard/binary_curves_roc_cross_species_False_inf_pairs.svg",
+    "bytes": 53781,
+    "sha256": "fa6711b6b47fe36a58336879fd86477cfe6e53f7b137b56e8b5bc3f650d1c95a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/DRIAMS-A/cosine_ablation_standard/binary_curves_roc_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 53860,
+    "sha256": "9e3c305548d155646e118308261eb59a444f9b4302f4dd06ce1a070b376dc547"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_fdr_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 45618,
+    "sha256": "3bfbe514d16cb7365f9b47a6d9c1aaf5fe3bf216174abf09838c5f78b1eb6cfa"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_fdr_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45577,
+    "sha256": "20980db25e7ac29e7988606109195190fbc1963fa11acabc9422a497f02408b9"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_fdr_cross_species_False_inf_pairs.svg",
+    "bytes": 45618,
+    "sha256": "fa123061740cc1fe149a1d365044e75ab58293ce4d2843c4cd30d1b01337068e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_fdr_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45640,
+    "sha256": "b9577ce2c594775b7b982138267eab4a69720d9bc670cb71d007db4b92e9879c"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_fdr_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 45449,
+    "sha256": "2aaee97c3eab23c01d3d20d79d33042e25ebf9e0aeca3035a6d8d152e3e922d5"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_fdr_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45514,
+    "sha256": "04b059580fa1db021a58d8498034bfa465bf63ffa7349a4789a9a8b52fc0c8b2"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_fdr_cross_species_True_inf_pairs.svg",
+    "bytes": 45477,
+    "sha256": "d30f31777a0517b0c63df3c503c8e10901bc7642451d5b3ebbbdd59c0e36fcf3"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_fdr_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45512,
+    "sha256": "3f927a60d1d9df1a79a073a841a8556090d6347df76a0e30fd7f99a2360bf0ea"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_metrics_cross_species_False_inf_balanced_pairs.csv",
+    "bytes": 663,
+    "sha256": "02c7e295d4c8e8bbc1dcb4a7855d89736217c168dd0a51e83caa7805df43d910"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_metrics_cross_species_False_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 670,
+    "sha256": "70261d0397e2426fc6fd221dcc806565f2365a2d7edf7fc57e8faa312f9414c6"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_metrics_cross_species_False_inf_pairs.csv",
+    "bytes": 666,
+    "sha256": "be3d3a776d4f5a27bb473fa22b333518b0671b70e3b6891b738357369be8e01c"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_metrics_cross_species_False_inf_pairs_no_singleton_genera.csv",
+    "bytes": 663,
+    "sha256": "630e473bd39217fed89207d2edc4169351cf474acfb430af55f42a7f1e49a2aa"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_metrics_cross_species_True_inf_balanced_pairs.csv",
+    "bytes": 665,
+    "sha256": "5c4b6b7c9a3fefb9e2ce128fa57d7fbf9acdb531beafc132fc4c908c8aed65a9"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_metrics_cross_species_True_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 666,
+    "sha256": "e09051100b7d13a58334f796ddf6eb92a768c9b763eba17341c1d52c3ab8aa0b"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_metrics_cross_species_True_inf_pairs.csv",
+    "bytes": 667,
+    "sha256": "cad13c828ee594c96dd64d53dbd35602504ee382b5a5ea0eae487609ad5412d0"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_metrics_cross_species_True_inf_pairs_no_singleton_genera.csv",
+    "bytes": 664,
+    "sha256": "82e6b45d76433fe38066e0a536376054965a52acfd8743185945336d803636ed"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 33454,
+    "sha256": "3eadbf11cf6acfa6149c5c057db1fa7b29293e03dc165e354ecb1fd0fae7448a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 33510,
+    "sha256": "2c94954d28f868d5a668c77433185a79cd67eddcf003c19a4d3e8a53719f0f01"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_precision_recall_cross_species_False_inf_pairs.svg",
+    "bytes": 33589,
+    "sha256": "c386b2fc273bdfa7cadd4c9a2703edbf57a3c387be6fe89bf1a94122d145df1d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_precision_recall_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 33589,
+    "sha256": "82fef8e75ed1dc976f1880eea51a924c40dc882e4ffcb1c35238df2ebf1fb871"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 33577,
+    "sha256": "b22bd48aa6e76ce6ac36240a41013fa463105de78b3c6b6ca2e55e3f6b1a9e29"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 33593,
+    "sha256": "0bc4b58dccb334be1139f328f6e69c50858f52f329c7fa9bc16b74f87480d976"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_precision_recall_cross_species_True_inf_pairs.svg",
+    "bytes": 33657,
+    "sha256": "e80a978f461f5eaccb5b90c459a68b718d0409c9709824106c795e653cbb712a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_precision_recall_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 33678,
+    "sha256": "8cc117cf2841f01482d1609c80964f57c983bde231cdf82a3b49374d236126c0"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_roc_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 34690,
+    "sha256": "b4262b466e6bc8df9058a7f7fd3eb29fe2451930998c55f5b85da8f36699eaf2"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_roc_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 34700,
+    "sha256": "542d0fc010739274cc609b7421ddcdc867144c5fe3c2dcbeb1782e33c85bb9e7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_roc_cross_species_False_inf_pairs.svg",
+    "bytes": 34760,
+    "sha256": "767691323271d0812d2be79d782f7cf666ed2ec901d0a51552ba41aeaa490799"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_roc_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 34758,
+    "sha256": "29ccc66c87829e1407b054c90300371aa71356adb632751dd10cb2a9eaa91070"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_roc_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 34740,
+    "sha256": "8128b0d960e0b334585d66a16eb205c074e2dbf03fb340d22106028305ac3d7f"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_roc_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 34747,
+    "sha256": "2b2e950c65128b9d9332161d43d0f2cacbc6f85c2543a5d816e6eacae07e48ae"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_roc_cross_species_True_inf_pairs.svg",
+    "bytes": 34803,
+    "sha256": "9d3fa32f7a554dcabb1e5b2e705fb82c719089d9699b6f586c29ebf28b5bec16"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/RKI/binary_curves_roc_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 34819,
+    "sha256": "cb89cd97dc9e5ea6b187a2b09fe45896280fe6553190238bbe4009aa4435fa9a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_fdr_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 45642,
+    "sha256": "2d9f7bc9249ec824d2ac902c07b2b26878b09c8a9664862c57f56cd145581ae3"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_fdr_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45655,
+    "sha256": "df6166dbd600efaf070b8414612a2269050089c5a65ce275ed52b7386a4d0bc0"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_fdr_cross_species_False_inf_pairs.svg",
+    "bytes": 45674,
+    "sha256": "ba0ef57c76c38504a67091ea0cc9b4583fe702f4dfe5dfce9f706890378b8087"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_fdr_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45682,
+    "sha256": "864eab7614ed53f132a26ed47d7b7a9dd36b198391fd26687639f9e875ff5146"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_fdr_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 45507,
+    "sha256": "c20f0d63e9388f601b6630ceb38ea43be6dd5c29126a59d3d50bcc6bf7a9d237"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_fdr_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45608,
+    "sha256": "cb66da5284588badc91e4c28ec5f3ca27e30d3318622f46b28d2ac68045fb75a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_fdr_cross_species_True_inf_pairs.svg",
+    "bytes": 45572,
+    "sha256": "c4a45ba4dc02254ff656de73acb231bbbfecf287384d5e58c65f8fc93072c66c"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_fdr_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45657,
+    "sha256": "a8788d70b6ec624740b529ac49854dc27f9909e746c968f4b829771bc81afb41"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_metrics_cross_species_False_inf_balanced_pairs.csv",
+    "bytes": 671,
+    "sha256": "04ccb71462ee52c171afc0f9165becc30ebf277842a199afb7a49170189330fd"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_metrics_cross_species_False_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 671,
+    "sha256": "d08e5b535e6caf61f15f3ac04983e3ae926057e4822d708070de6ca51a4d94ff"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_metrics_cross_species_False_inf_pairs.csv",
+    "bytes": 671,
+    "sha256": "49b736cda9433c6cf7ad93813a9adbdf2cb05d63e0b2f37b1ae69396b60711ea"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_metrics_cross_species_False_inf_pairs_no_singleton_genera.csv",
+    "bytes": 672,
+    "sha256": "92f5799ca5dfab57b592692cc39a01bf17d5030ea718f90017f79902fc281a4c"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_metrics_cross_species_True_inf_balanced_pairs.csv",
+    "bytes": 664,
+    "sha256": "29844ff0789f154e7f9270c3f07ecf76a6771adf6061afb471d6967f5a4c7bf5"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_metrics_cross_species_True_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 670,
+    "sha256": "e11c08a3be99f0fbc9f5348d7ee16ba3b150b6ea6cbd20916fcd2ad224c448c0"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_metrics_cross_species_True_inf_pairs.csv",
+    "bytes": 668,
+    "sha256": "df238e5608a28fda06b072ef8c7760190fc9f01e233484535757cbc6de88d333"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_metrics_cross_species_True_inf_pairs_no_singleton_genera.csv",
+    "bytes": 669,
+    "sha256": "2311e14b5af48c072c52a2a9135030d17c39252f1394e1bf6ea199f51062fb66"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 33446,
+    "sha256": "dfc3b2d0926ac30ce36cfca1e92cdb2c4f970d77035bc88a08efbe98d0c13c09"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 33470,
+    "sha256": "2ab510034f40c7166022d09f9936cfdd6a008268c0761f3d0bff200bf6aa3f3b"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_precision_recall_cross_species_False_inf_pairs.svg",
+    "bytes": 33469,
+    "sha256": "dfc00f47d231192978db1bc2d9ddad96f4a5b011d1470bbc083b52937d07e014"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_precision_recall_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 33454,
+    "sha256": "aaeb1b8d4318ef7dce6cb64cc0579c9e313964eccfbf396e5cc9a6026a163ad5"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 33585,
+    "sha256": "ec425c6e65595bf0f15734fd2fd15cba3b1673a4aa209e6694b68ce1caa1484b"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 33533,
+    "sha256": "77ceffc487cd2f059a3d1a9090affecec545a1c172465f1a85c5b64854ac85a7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_precision_recall_cross_species_True_inf_pairs.svg",
+    "bytes": 33582,
+    "sha256": "a8e17bf3f7965b5a27383b9f6c396b47d91a54868c32860920da445e3a9f9a4f"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_precision_recall_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 33524,
+    "sha256": "3e6504f58a59246e7f363092046257a44c3db3ea814773a4a3d346d440aa230d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_roc_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 34701,
+    "sha256": "c2a2cf492c8fd645390396d9ceaf6f81187bf0466306d58e8d3e1727d0c38832"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_roc_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 34693,
+    "sha256": "da82fabae2b068211b5b9f02525bb501e914f5b27266f3d51220491166e8d447"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_roc_cross_species_False_inf_pairs.svg",
+    "bytes": 34695,
+    "sha256": "e9307536c10a379f0437f964e9bf0742493ca8afe957d41d5866a6ada363e8f9"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_roc_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 34709,
+    "sha256": "aec8406fcfa9e74dbdfb6beb860a2caf7d99d659e21daa5895a1c8baab3cc7df"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_roc_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 34700,
+    "sha256": "6d0c3711dcc4e0247c5b64f8186b92678ae3082214a4f8a11b3d95f5889a5850"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_roc_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 34735,
+    "sha256": "9ae669b68ab643405935a5c64f5fdc46693d5ae6e2ab97229b0f9d84817f63e7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_roc_cross_species_True_inf_pairs.svg",
+    "bytes": 34696,
+    "sha256": "0e15b7f07d70ec8359d0c1fe11a373804173a881e54fd3c5eac8507ab3bc3215"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-b/binary_curves_roc_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 34698,
+    "sha256": "75d85b2968956a153f20f8e788e64f1e9757caebbda7f1283da66c550d70288f"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_fdr_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 45656,
+    "sha256": "2c5a6dc4bd1dc235d4df1e0805591832f60259b6c467159603846e0113d87a9d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_fdr_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45660,
+    "sha256": "8492202fee8d3cd065a11a111bcadf8cbe9541c1a404542bf376b6a306f3cfdc"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_fdr_cross_species_False_inf_pairs.svg",
+    "bytes": 45678,
+    "sha256": "9f04e5d2284a153b0edd6f8927241459dcb9fd8f71db564e2e0ae5a9a950f284"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_fdr_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45679,
+    "sha256": "183d81debaa394961f0ef9cbbd174e1958c9eeddce28dca9061f74941699ba18"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_fdr_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 45517,
+    "sha256": "9607718b888e43ac5905ae3419fe0d351c146e9d09bd90afd2f629158fbd1a5e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_fdr_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45628,
+    "sha256": "e9b5f8af0db61abc2ee396c533b195b0e9da42913fb3a6e4de83a730fd831006"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_fdr_cross_species_True_inf_pairs.svg",
+    "bytes": 45461,
+    "sha256": "b05a564e80f36d2c8765a325c436545eb5fb8da9aed3ae747e4af3cfa0ceb978"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_fdr_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45502,
+    "sha256": "fe12b762d52dd06c64691a6a5d6a7b5c4a668d38ec056424be5be8218e80d17a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_metrics_cross_species_False_inf_balanced_pairs.csv",
+    "bytes": 672,
+    "sha256": "dd932b69863511d33038108a4f89acce67f74edeb6d8ccdf2f92685c46b86028"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_metrics_cross_species_False_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 669,
+    "sha256": "ec94b93375df3afc078876c88e62e9a605598678c787dc42be55e3b854285c2e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_metrics_cross_species_False_inf_pairs.csv",
+    "bytes": 674,
+    "sha256": "84905b6db26e42be18cc09b947019df4d42e37681a3ecb222b85f00fe0459b7d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_metrics_cross_species_False_inf_pairs_no_singleton_genera.csv",
+    "bytes": 673,
+    "sha256": "7914553e17b0dfdc92f79339f6e29b11ebcad75314c245a0e5c62bdc72cd1a06"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_metrics_cross_species_True_inf_balanced_pairs.csv",
+    "bytes": 666,
+    "sha256": "d30aaf7063bdc27e3adb257ef3105515b9b4b3c52e7e3c2cde4912b125ed24ee"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_metrics_cross_species_True_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 667,
+    "sha256": "c87dc9eed8370495e21c66908c8ddf51f7f605aa270bb50a0bcbee3ba304ba7d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_metrics_cross_species_True_inf_pairs.csv",
+    "bytes": 670,
+    "sha256": "5f080f01812a9b4b6e5d289051c86062c64e5c6a6bcdadd9c5ecfe37756a8102"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_metrics_cross_species_True_inf_pairs_no_singleton_genera.csv",
+    "bytes": 671,
+    "sha256": "e253f337bebe141c512704fba5b5089ca62c25fb42433eab3b288cc129e8ac1f"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 33452,
+    "sha256": "12fca0c59d0eef58c04f60fa1d587197114b5ab957171ec3f2ce2db305376e83"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 33474,
+    "sha256": "3c52406b79f384f16d9be38eba6d820eca4a900c9ac502b676a12ec4a414dc2d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_precision_recall_cross_species_False_inf_pairs.svg",
+    "bytes": 33456,
+    "sha256": "2b54b0da8c6f67346654c2c850840a138197fe99d81c04d4924acb207c555cf6"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_precision_recall_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 33438,
+    "sha256": "8a089df2066eea7edc3ee26adf4b3507b1e148561b7fe2864ed6b765fb7c5886"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 33601,
+    "sha256": "5867ee21cd7ab37a35032dee10f74599c320ac26f3f1d46157eff298b0c65912"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 33584,
+    "sha256": "75b5bdda3649434ae1e621512038311aa5f05a90855d2dde843258c291196e1e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_precision_recall_cross_species_True_inf_pairs.svg",
+    "bytes": 33627,
+    "sha256": "6596c6d08eacfe619b68e3488ddcf0f7b4b6119b5bcf09140bdfb066f43233c6"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_precision_recall_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 33612,
+    "sha256": "2fcd0230761a3a21dad64c727225210e24cf1c6ae2f7536b61ff4a802990a07a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_roc_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 34687,
+    "sha256": "a43cd865204748e47a8f6b8c2d335d56048e51b8e99f5387c6c6e3b7ab730a1b"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_roc_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 34705,
+    "sha256": "e321cc2eacd30af2fb632229e2a60062b51a04cf9d530ae03da9762cfa9aacbe"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_roc_cross_species_False_inf_pairs.svg",
+    "bytes": 34700,
+    "sha256": "54d9c94428ef3f2af159001d7bac2d5a644a278a05c512512e1ea72c949c5f4f"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_roc_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 34689,
+    "sha256": "a5ef74046db23d5f2def83e26ddf4bd22ccb3202996ae89fd6d8fc310b2e00c0"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_roc_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 34724,
+    "sha256": "ea41369ed737a4ce900607732b756ca99e21763ed531d518c9d47796909522c1"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_roc_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 34709,
+    "sha256": "2c7651909d1ccd6c6092e0ca11ad3c055bd61016300efc07013978147f18cb49"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_roc_cross_species_True_inf_pairs.svg",
+    "bytes": 34713,
+    "sha256": "ef35eb4249f666e5a314399b981b69bcd24096ac77b3ca67873b7259efe8541b"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-c/binary_curves_roc_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 34724,
+    "sha256": "eb072ae35ac417a1bd824cec89b7b9bd24f6452cf338d2a9065128fa28f67adb"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_fdr_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 45619,
+    "sha256": "a3ba1d32a125784b9120f3865b1e76079b6aaf794a300b81ce6e46b8c25b5fee"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_fdr_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45649,
+    "sha256": "7a71d1a42459c67d78f645d1ae9efb7a0374a89ab0edec614d424ea4066a8a63"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_fdr_cross_species_False_inf_pairs.svg",
+    "bytes": 45681,
+    "sha256": "7b0b246dbb5f147a048c0e5dd27af616245601c708611cf1f1b860c6fafeea77"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_fdr_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45700,
+    "sha256": "be1fda7690e5c55290b6313356949da34a7a2bc113e152608e17f876c67dcc5b"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_fdr_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 45543,
+    "sha256": "7c0827202ee3664134e2220fc2a216757e5d8466b6dab171ef6f22bd5151df4a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_fdr_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45663,
+    "sha256": "52b68ffed3289ccb2b75ca353aeb27e407fe025495fa7cfab31057be123be5ab"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_fdr_cross_species_True_inf_pairs.svg",
+    "bytes": 45464,
+    "sha256": "7b08bbcc87753acb14a80f75279fa5d0d69bb5bb6f29ecb0530a80c3bf74ac5c"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_fdr_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45481,
+    "sha256": "23369f14033afb35ae38a31148e067cdb9fe458168d59b41fc04cec362e1a453"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_metrics_cross_species_False_inf_balanced_pairs.csv",
+    "bytes": 667,
+    "sha256": "2d49e7b0b2140a0a66ac36a708f3d56c2d2ff3fd43e99545deb59f64f13f88d9"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_metrics_cross_species_False_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 666,
+    "sha256": "fdcaf47776ecd5c12754cb8b7f90c7f6a62be1dcaf00eb1a5cc4eae2adeeb198"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_metrics_cross_species_False_inf_pairs.csv",
+    "bytes": 668,
+    "sha256": "70cb9c5fbd5fdc45bd0e119b712ed6b1e682542b959d5def5ff79fee37a535e5"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_metrics_cross_species_False_inf_pairs_no_singleton_genera.csv",
+    "bytes": 671,
+    "sha256": "7b96ec83d119521e907700610e4015ac42cf098c92dac33341de57adefa5763c"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_metrics_cross_species_True_inf_balanced_pairs.csv",
+    "bytes": 670,
+    "sha256": "145261c8be1c251ae01b3ba3a71f7aa69f29e5ca4e7ab27b1836ede486c94b27"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_metrics_cross_species_True_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 668,
+    "sha256": "635b74b430cdba49b1461e8eb2f89755c191c47daf289af369a986519894000e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_metrics_cross_species_True_inf_pairs.csv",
+    "bytes": 666,
+    "sha256": "82508ef7ad46e01b46191d26a66c9c9cd8162b11f02e6d872d490f42ccca509d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_metrics_cross_species_True_inf_pairs_no_singleton_genera.csv",
+    "bytes": 668,
+    "sha256": "3591c3f539cf4c594bb26261ea0caecd6ddb55a2d55803d76413f90c30f0de1d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 33510,
+    "sha256": "061ad95d7662fc2158952b62552f3f2a2bf244e9695a03b652fee4f365f603f7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 33448,
+    "sha256": "d585648e4013ba6e59964b5732079c6fe023b74bc55927d6eb0e388c52c5fc71"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_precision_recall_cross_species_False_inf_pairs.svg",
+    "bytes": 33544,
+    "sha256": "27f5c22820b4eca69e0a1b1719471402983285e6937f69f5d6374a1c34e9d73a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_precision_recall_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 33461,
+    "sha256": "498694c1e828b610bf196b027d05e97537845f0f22aee39df5dcd8a4958794f9"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 33646,
+    "sha256": "8a5211185ceb0c0526ba6a5ea696ed8e81fed0a59da67d4664336f8dee3c839d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 33552,
+    "sha256": "1f536241e934529aa208c8776c36e7451c5369cb9b344c58c83ed64b6aba14ad"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_precision_recall_cross_species_True_inf_pairs.svg",
+    "bytes": 33653,
+    "sha256": "c2395919316f6f876625bcd0a03eea4887208f4d4c7d1dde63484a7476080e44"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_precision_recall_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 33606,
+    "sha256": "d70983626416b2c66fdd6fb37eeab405dcf361caba311ad78922d944303137b7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_roc_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 34705,
+    "sha256": "9e62b11cdb4a3beb9d6a35e086bcc86846648c7477891d5a885dd9587141211e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_roc_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 34690,
+    "sha256": "8c1546a8f57851a6059dc12cf316fa8a8e3592ff56afd681526abdb601bcc90f"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_roc_cross_species_False_inf_pairs.svg",
+    "bytes": 34716,
+    "sha256": "f9e319a73f0266928245c738a5de1349d232eee11bbcfd7676ad2ad2b18c1459"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_roc_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 34707,
+    "sha256": "6ac92626e973424e8807662c2b0e4235c23ecb12bbdeb28c7139a5f9d9341b5d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_roc_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 34731,
+    "sha256": "f1af35557c2ff0ba0adf4359d226a911d89702ffb8b6239650a932ef59b56738"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_roc_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 34735,
+    "sha256": "42411a8355369428b01fcd30ecfc8821bb4637294f866a3a3478260178c583f1"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_roc_cross_species_True_inf_pairs.svg",
+    "bytes": 34738,
+    "sha256": "1ac3563c483f0ec011e8029759f907cbfa0c7b404c432d3f77abc5371136bba9"
+  },
+  {
+    "path": "scratch/publication_figures/fig/binary_curves/driams-d/binary_curves_roc_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 34743,
+    "sha256": "30ffb345300aa21c3323deb15f1d10fa54dcf477343811cdd7051800f28f2c2a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 56671,
+    "sha256": "4ba65745b5ede9ab2db555cba924a58c1a530bd494ae425e4cd50bbcc3bff886"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 56702,
+    "sha256": "22822c83c267861d37404b854a1d5def6ac403b4816541c450d1be5e29c12bce"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_False_inf_pairs.svg",
+    "bytes": 56693,
+    "sha256": "b0358d96182dbab50be7e180a2bb8fe0f173c600302b362f71dd765b7972c526"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 56725,
+    "sha256": "192f56804e2abb26e0ff66f830b1f7038d71c2b5b01cb0a2e797eef5ce90ee79"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 56432,
+    "sha256": "98c98eaca24dde701efe49e57ec543fba92ca374a0f55316b677a34007e45dd7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 56670,
+    "sha256": "c4e3d3aac109e787a3450cc79392333eb3d3cc08b382ebcb896ac148e300ff0f"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_True_inf_pairs.svg",
+    "bytes": 56459,
+    "sha256": "cd908b6a63bbd6f7d6309eacc39cb0d1b5ac0dc4ff4393d8c6e2dc3d27c1b7da"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 56638,
+    "sha256": "4bf5a2925b6fc2335c7f214b6ded6fe9e790369d9e5f117550f5970416672264"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_False_inf_balanced_pairs.csv",
+    "bytes": 890,
+    "sha256": "4010e3202c08c7fef01fc385a44858b62cf6a243f8257cf476d1dc24de08e79f"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_False_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 886,
+    "sha256": "b665acac1750ad0cd707ee1381f617a633ee30b9695d860818c5493c77fc4c4d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_False_inf_pairs.csv",
+    "bytes": 892,
+    "sha256": "e4c21df709e4f79d00cc486616a14449bd57906b5921230650a5a986964bd352"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_False_inf_pairs_no_singleton_genera.csv",
+    "bytes": 890,
+    "sha256": "89ac900bf6aee635cd6bb2ebc8c4113534d4185861cd4407f066f5100058eb27"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_True_inf_balanced_pairs.csv",
+    "bytes": 882,
+    "sha256": "413fe9c0a91199fda131e061fdb8f1a794493097ee8eaaba8676269271581a61"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_True_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 889,
+    "sha256": "249e0a11a99261bac57510da72046b09e9e848e5f1da688909a6f46ca41afab5"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_True_inf_pairs.csv",
+    "bytes": 890,
+    "sha256": "cead3e761181e8c09a279b54faed04cb4afa52944f9af6ba3e3c054cdc0f35d4"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_True_inf_pairs_no_singleton_genera.csv",
+    "bytes": 888,
+    "sha256": "f202f6d8042e12cfcde5485b817896f196f061acdc68f9832f7552297034a580"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 44424,
+    "sha256": "ad932490e60b94438ac77ea36ffdba7620dd741ecf4f980ca43113d04b28e605"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 44451,
+    "sha256": "03bee4dbee002cced02abc2070e019fadd2d7f2d60e8ee7b8ee6aeb0230ef002"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_False_inf_pairs.svg",
+    "bytes": 44414,
+    "sha256": "3c23eb29c4297df716d765e14130544a772b8456967a4b286a9aa5a703636247"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 44426,
+    "sha256": "29f7dc578b1d922ca6237724d7855c8205e1e00309bbe5c2b60469ee3fa949e7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 44346,
+    "sha256": "55f48ca6fc8139937ebef459b88daa97219a1848ebb34a453f332d24cd473d8c"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 44514,
+    "sha256": "12c1d33fd6cbfc77c467a2d8121e02875d99d52cce61e0ffe6792993cee60d2d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_True_inf_pairs.svg",
+    "bytes": 44370,
+    "sha256": "adda7ad76d4f8f38189bfa995e95facaa63b610ef16b44addec121d021225f86"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 44475,
+    "sha256": "af8a20a04399b89e7afe9f1673133265a30039c52dd739799965f4eb3020f6d5"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_roc_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 45695,
+    "sha256": "4e6bdfbb4acdf8f231d69465cc2e9a5fe0f5c35937750630fe111a19b21302ed"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_roc_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45659,
+    "sha256": "c2da565cd5f561d199e139fea0eddb226b9609360b7b22b60aa615689572a3f9"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_roc_cross_species_False_inf_pairs.svg",
+    "bytes": 45673,
+    "sha256": "495dcc4e84341f0f91806c5d3bc3ac3e051748591bce726852021758322c5272"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_roc_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45702,
+    "sha256": "a2c4be6190388aceeb4f096bcb7744db656251dea43cae572add2cb8da2dd9e1"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_roc_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 45727,
+    "sha256": "a0f6ab3731d9f2dff5087b92fa53dd0251bef71162feef8e9b382f178c519563"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_roc_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45715,
+    "sha256": "58af1d7662766e567bd99e13d4a6e4939bd50ad487b7b916e4c1ccbe2ab4db21"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_roc_cross_species_True_inf_pairs.svg",
+    "bytes": 45700,
+    "sha256": "3b30d4ec6c95bd35a59184264ecca97f3e1fd566154a61a22ca5cfc9ea706166"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/driams-a/binary_curves_roc_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45711,
+    "sha256": "5e3869affcd050a73cad81757e8a87f0e5d7fee1b29d367aa97414f64fe46d25"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_fdr_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 45616,
+    "sha256": "47cc47f3ac53b9a74fafc01804fdd3496e90e9d5ae818cfaff6df90806e63663"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_fdr_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45587,
+    "sha256": "e4580dff12b2860929b2e25d3c0e714d077747ac21f53bd98a24e833d95057ba"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_fdr_cross_species_False_inf_pairs.svg",
+    "bytes": 45697,
+    "sha256": "d72855bca57403538d5aec1e02dc2948467f7bccf4ce3a0559cf4556ac07a62c"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_fdr_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45678,
+    "sha256": "c6465b81660f77cd6aaa66e0dd11a3d5b84401bef165dadc3eafcec1331a2399"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_fdr_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 45488,
+    "sha256": "d7229f0a34eb72a7fc59367b055209dfcddb27dd7dafb74d82bebc2727b9ea90"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_fdr_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45542,
+    "sha256": "b15d5ad52c42c9c82ec341e584cf7745910aaceba25d263562c9cb23fbae12ba"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_fdr_cross_species_True_inf_pairs.svg",
+    "bytes": 45540,
+    "sha256": "45cf6fae6c75056c0664251fdc65d2150f0523bb98bc8bbcf355ea8ca2b1863c"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_fdr_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45578,
+    "sha256": "ef331aceca4a76ee5042bde3ca1bc9bc8f6d71eb51342267caa28c789455630d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_metrics_cross_species_False_inf_balanced_pairs.csv",
+    "bytes": 664,
+    "sha256": "a3516f18360897283e4e02553a14f64b8bf1db5780f3d8b558fda3935f36c8a1"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_metrics_cross_species_False_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 667,
+    "sha256": "a2c7cf0e2da3c3fbc6ca95e8963df681e5e562c43ba421f5c5d70c24124e99a7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_metrics_cross_species_False_inf_pairs.csv",
+    "bytes": 666,
+    "sha256": "40b8870be9f69bf4ba78788dc1df691fe95ab95eba5f1619a8ddc28bd57e112a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_metrics_cross_species_False_inf_pairs_no_singleton_genera.csv",
+    "bytes": 667,
+    "sha256": "100face9ad48e79b813ebfc7d2db28b7bab8505abe67d8060328d37dcd4eb181"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_metrics_cross_species_True_inf_balanced_pairs.csv",
+    "bytes": 667,
+    "sha256": "915eac877e59c43c578f52bffca6deebdb67b05988de4179a313405d3c9e188e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_metrics_cross_species_True_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 665,
+    "sha256": "0cab041793fd60d37c9ffc7d633077b64aa015a47b7dcd2837f3a5e546436b53"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_metrics_cross_species_True_inf_pairs.csv",
+    "bytes": 661,
+    "sha256": "57a5511be6c4fe48d350d246203a2dee36c5c84917730fd09d0ec92f3d8fcb02"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_metrics_cross_species_True_inf_pairs_no_singleton_genera.csv",
+    "bytes": 661,
+    "sha256": "ec92ebf866ee053397aa413c8e9cfcc16218639c9ae6a6f1ef7bd27b2f53753e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 33441,
+    "sha256": "053aede874cd73cc13982b956885c02c98eeb4cbedc362704cc5c342ee15cf9a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 33512,
+    "sha256": "bac65d2357c0e7f5f08eaa1ccfba44048951a43bd36298417f1a4bcfbc70d810"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_False_inf_pairs.svg",
+    "bytes": 33567,
+    "sha256": "457921831b3f8ea3fc282e467535a38d88a2417f30dea16160d5038e130c929e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 33532,
+    "sha256": "73af9410e1ada8894f2f7fbd3a8c261fd33e22a3c45017badacddd82e76216c0"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 33579,
+    "sha256": "c83395b9a1fb2add1457fddcac7f48df4dd1b234b58cbabf0d4178c4e7025f28"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 33571,
+    "sha256": "6caa547193e1f5403b6b4aeb0b2c832e68764801192e7723343211f0450694b2"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_True_inf_pairs.svg",
+    "bytes": 33650,
+    "sha256": "fadcc4ecd360e07a8235828439b47dd1f591b82d7d5db0732bdd94aafb9dccc0"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 33653,
+    "sha256": "7f59e5294b1d17fabc9c05be41bc60f68d4e67e965ff98feff1a6fc0d6cd70e7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_roc_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 34703,
+    "sha256": "d550b935e81a2fb63a90e14397360378afa32cfc5df740b121c938f4d16362a1"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_roc_cross_species_False_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 34718,
+    "sha256": "32031579e946a12c8d4ad1e96374c2ceb757ce252381cdf5943e64ec0bf55d68"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_roc_cross_species_False_inf_pairs.svg",
+    "bytes": 34785,
+    "sha256": "1f759fd00c52dff64e777fddff7596b88ae4dc55c465de6d8d21da429ddb9181"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_roc_cross_species_False_inf_pairs_no_singleton_genera.svg",
+    "bytes": 34766,
+    "sha256": "4746d85dbc3efee0075a9d2a73b1aec071c5a2a9c42b1a8b4742a779a1439a15"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_roc_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 34741,
+    "sha256": "e222ffc966837390c3f243f9f630c30612ba811e48c122dc69639b5db744b7bc"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_roc_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 34734,
+    "sha256": "6c4ee7f0ac5c4c7a9f3d35c054f36d42c5943e94ba2546b6bc90595883cebcc3"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_roc_cross_species_True_inf_pairs.svg",
+    "bytes": 34807,
+    "sha256": "dd5b5fcd44293047cdfeb8fbf1946b741df5d4b3216b14390abec46b8bde4d16"
+  },
+  {
+    "path": "scratch/publication_figures/fig/generalization_binary_curves/rki/binary_curves_roc_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 34816,
+    "sha256": "c470bd39225c9c374e9a770fc748451fe0c09bca8dfc9414d74b9ff47905f458"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 56655,
+    "sha256": "83a65ea0e173b764ff57a0ee94bed3acb4bfecef28e686718fb19a0dc33e08ab"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_False_inf_pairs.svg",
+    "bytes": 56704,
+    "sha256": "e01de4160023b7404d8a3163510b13614b6ac857096e4ed6a84a18df3ab8a772"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 56496,
+    "sha256": "40b797b541b3b49fec810cac92775813f2845b143beaa294b040719a38cdd0e0"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 56579,
+    "sha256": "35e159d4399bbf2fc2a8761c73122655adf73c420548377842187f5847afd513"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_True_inf_pairs.svg",
+    "bytes": 56653,
+    "sha256": "37e551ff15edbff708c5a01ae39db25ed8bfb5d3b27bbdec25915566ce3ab523"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_fdr_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 56704,
+    "sha256": "f16399ce928640d8a4cc3df5dd019279f2723d2f761217660dc377ef18834d20"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_False_inf_balanced_pairs.csv",
+    "bytes": 881,
+    "sha256": "f7f118d5e0d5f5800a604cc3a52384d999838d1ea546ca94a22eec9c9f336394"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_False_inf_pairs.csv",
+    "bytes": 885,
+    "sha256": "b11019f0045dd1614072689a126339ce2fd00e0e22c3618dd86e2b34fd9ee6b6"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_True_inf_balanced_pairs.csv",
+    "bytes": 879,
+    "sha256": "25dd8d0f91fdfb0198aeab53853a7c74896665a09320716cd9ccd0a837f61492"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_True_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 879,
+    "sha256": "89660c18f053fef9e94e04c7caa68b4097cf7d6f8b7b7cd81bbd6fb491e26c26"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_True_inf_pairs.csv",
+    "bytes": 885,
+    "sha256": "c337f75f52d44f0f5ddf1cc63922f056f252128e56ff0e8826b0641f84a4acc5"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_metrics_cross_species_True_inf_pairs_no_singleton_genera.csv",
+    "bytes": 885,
+    "sha256": "b9dcf0cc5108322ab4d49f27c24bd8e1d5a53ec1c6753b64f13c8e04e6520752"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 44499,
+    "sha256": "d49274d12e1a733d272c7efa06bf78e9a5029ef886ed7e46d287358d51743789"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_False_inf_pairs.svg",
+    "bytes": 44437,
+    "sha256": "a6afdb10710cf09322d6b095f8b0530cd45bc8e15f737772a6256ef599ecb80f"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 44566,
+    "sha256": "ce54b1a37f2833a14b946f899a3b01f7ee51b06e38e287613d88ca7d0d4bedfa"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 44565,
+    "sha256": "4c3e8096fa3ed490a0dc721331a0e4152ea2a41e94600049a363368b17414cb9"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_True_inf_pairs.svg",
+    "bytes": 44519,
+    "sha256": "cc326d58b43f77d7d547ccd495d09f6a29d93765672e28137910290b08a2e5d9"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_precision_recall_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 44539,
+    "sha256": "bf3f92ae9fdc782ee372639f3b8ee34bcaae80ef93759a3e9af3e13b69b161c8"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_roc_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 45700,
+    "sha256": "87d2091c8e18470cb7010f594d35e653c1efa3a956567750bd8279d0f94311b5"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_roc_cross_species_False_inf_pairs.svg",
+    "bytes": 45702,
+    "sha256": "d9c54c7cfa13ebd8e978c5fb04f8ced134b4c23b3bb55c7cf8bfe317381dcb75"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_roc_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 45725,
+    "sha256": "a024b9d288df371eb4ddd648e38a32c709b31ba834ff373e0806cc820278919f"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_roc_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45740,
+    "sha256": "9343c5151e1283ad13c15d76382d3a2b18536ff0946a351d521fe67ae1d75a2d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_roc_cross_species_True_inf_pairs.svg",
+    "bytes": 45750,
+    "sha256": "3f4055a0e379ddc1472f889ffc88d298b2a1fecf3266dd9df8b7a89acf7b004a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/driams-a/binary_curves_roc_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45705,
+    "sha256": "17f24e178f9aa3604a1049f1ce49a467956c38c5ce2a3307d83b264c77c6b1fd"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_fdr_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 45688,
+    "sha256": "525716208bb68433f5d3d395d7e7d19c45986a89b4917fbf08d468a6cebc8dff"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_fdr_cross_species_False_inf_pairs.svg",
+    "bytes": 45696,
+    "sha256": "988749e596bbfdb34c98dc651bfc6ff906269398d8da7bc06a4de36b6c43b8bc"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_fdr_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 45474,
+    "sha256": "2f49de6215f946dc291294fb78fdb5356d404d03cf31b062afb6b89d76ea8c13"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_fdr_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 45666,
+    "sha256": "3b99359b1bf217776303723f946cda678237a8b5027349ad1aa291cef7c677fe"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_fdr_cross_species_True_inf_pairs.svg",
+    "bytes": 45639,
+    "sha256": "ab1ba634746bba4051ba090a14c9a18eac198eaa3e57092787a690c419e1d3e1"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_fdr_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 45700,
+    "sha256": "00302eabe070ea99dbbf65eaa38aa079ca91b70f92a2477853d91f763dea9d3a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_metrics_cross_species_False_inf_balanced_pairs.csv",
+    "bytes": 668,
+    "sha256": "58e2e8f8648958ff1ca0bc59300e7f4b074dd65ba6a339bfddf89a5ffa1af7a0"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_metrics_cross_species_False_inf_pairs.csv",
+    "bytes": 667,
+    "sha256": "e3a967960f2cc1ee42cecf9a4819d9aa3a247bdd50a7bf8b0004ede8eaedffe7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_metrics_cross_species_True_inf_balanced_pairs.csv",
+    "bytes": 666,
+    "sha256": "4886bb6a177828e93c1e35d94abf9a1dee5ce97c6a21fb75f8e990e1356d31ad"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_metrics_cross_species_True_inf_balanced_pairs_no_singleton_genera.csv",
+    "bytes": 663,
+    "sha256": "8c5656691673ae13c0249fdc07be2e334f0c339518010151e305f8bec8b409ff"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_metrics_cross_species_True_inf_pairs.csv",
+    "bytes": 658,
+    "sha256": "b379fdf86d42cabb7b7620abdc4fc32f6d869f0163b7221391f59c00f1689e0b"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_metrics_cross_species_True_inf_pairs_no_singleton_genera.csv",
+    "bytes": 670,
+    "sha256": "a2c570d458c6faf19fb0f1f5ff40d502d38034ee76c4f24b00a22c38cc21da92"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 33479,
+    "sha256": "12b941d75d2b405c8886addef142982b9fed267dc20f6c6544a8f82331a525ee"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_False_inf_pairs.svg",
+    "bytes": 33522,
+    "sha256": "e4abed2883e7f9abddb90eb2a90b5d116f0f373de5267c87fcd458cb2bfb34e5"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 33566,
+    "sha256": "13d539ca82362c8f1c6eba88d6c12c91bcc778cfb51918be7812524f7977d6e7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 33540,
+    "sha256": "7937bf123d6e66f8ce32b3e35e6859e789527ffb9be398d8b43a9f47f3d02eb5"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_True_inf_pairs.svg",
+    "bytes": 33551,
+    "sha256": "74db29e5820ef2edaeb72ce79e8568c68c73c86ebfab413a35283d7f57035f1b"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_precision_recall_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 33484,
+    "sha256": "ed4ed87c9741efeb23edadafbb1b052cb9a99737ea8f7cf41f5c13ba27627e38"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_roc_cross_species_False_inf_balanced_pairs.svg",
+    "bytes": 34698,
+    "sha256": "9b4e1640fbab2407041fa42e5ca9552eab1567cb9add65b4a7ac81f32242f7ff"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_roc_cross_species_False_inf_pairs.svg",
+    "bytes": 34700,
+    "sha256": "ef8f7b72521df62259abc3490e4c6152af4653df64011c634710367e965fadee"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_roc_cross_species_True_inf_balanced_pairs.svg",
+    "bytes": 34768,
+    "sha256": "642995c837e3e59ac12969265f8c06370de03b94189082ada4066f223d57c9f1"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_roc_cross_species_True_inf_balanced_pairs_no_singleton_genera.svg",
+    "bytes": 34736,
+    "sha256": "ee045494a2ee3c8e6f6ef83ae75d23260564ebd583d971a787ed850b06c482b2"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_roc_cross_species_True_inf_pairs.svg",
+    "bytes": 34723,
+    "sha256": "6140fd2411b26adfd53619067cd59ab94376314c8422b7b5799041b841f3df1e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/genus_disjoint_generalization_binary_curves/rki/binary_curves_roc_cross_species_True_inf_pairs_no_singleton_genera.svg",
+    "bytes": 34728,
+    "sha256": "ecde56864568585407fb8c469d7be8f763b23d889097db9efea60a2015665bf3"
+  },
+  {
+    "path": "scratch/publication_figures/fig/nn_accuracy/driams_b_nn_accuracy_macro.svg",
+    "bytes": 37445,
+    "sha256": "03f6961cac52d35b3f1bd82eaec503af9df0164e73e930730e50f722ac11231d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/nn_accuracy/driams_b_nn_accuracy_micro.svg",
+    "bytes": 37420,
+    "sha256": "4fcbc2a1f26c61eaa73c78f4e320f1cc8868d8661e5edb48d3a92b31b3c7fd53"
+  },
+  {
+    "path": "scratch/publication_figures/fig/nn_accuracy/driams_c_nn_accuracy_macro.svg",
+    "bytes": 37456,
+    "sha256": "d5aead9b2529a44d4882f0e3e1a2118d22da2b669793e78fab31d273f28ba2ee"
+  },
+  {
+    "path": "scratch/publication_figures/fig/nn_accuracy/driams_c_nn_accuracy_micro.svg",
+    "bytes": 37440,
+    "sha256": "4f7cd9db3c55ee738d1b27193f7296808c4cdae22587b4ef0b5900137ee22d0d"
+  },
+  {
+    "path": "scratch/publication_figures/fig/nn_accuracy/driams_d_nn_accuracy_macro.svg",
+    "bytes": 37486,
+    "sha256": "bd3c75e7655b5c275c48a1dda8466ffd2f041f7f62067ee8818fa960d4137d28"
+  },
+  {
+    "path": "scratch/publication_figures/fig/nn_accuracy/driams_d_nn_accuracy_micro.svg",
+    "bytes": 37484,
+    "sha256": "e9826dbdcf5b74fba5e3ff66354c442b8a063ca067e0674a8a294f2ab6a2b3d0"
+  },
+  {
+    "path": "scratch/publication_figures/fig/nn_accuracy/rki_nn_accuracy_macro.svg",
+    "bytes": 37473,
+    "sha256": "8267389013c53bbc0d750370fec77ff44c7bc67aafe438b07594fbf8b27d2e3f"
+  },
+  {
+    "path": "scratch/publication_figures/fig/nn_accuracy/rki_nn_accuracy_micro.svg",
+    "bytes": 37448,
+    "sha256": "49eefca8016a94164843408ccb7988ae144bc8b533824a2959f54d41bbb8928e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-B/genera_species_macro_cross_species.csv",
+    "bytes": 4936448,
+    "sha256": "a52b200a20e6a1b7622e5f22d94711a581104e98ea362330b1d4e0b28958acb7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-B/genera_species_macro_cross_species.svg",
+    "bytes": 36211,
+    "sha256": "8058c4e7d9f2f302ae0c364b2fc68f2c62760ad823be0a5f7553175d7d9806ad"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-B/genera_species_micro_cross_species.csv",
+    "bytes": 19683,
+    "sha256": "5ea1a44a2175c0c0308e11066973e191e31757d75868a7a072d7d9ad16dfc8a6"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-B/genera_species_micro_cross_species.svg",
+    "bytes": 36124,
+    "sha256": "0e0794e4a032b174acebf9c7823e0163002cf61f6fd6163b2b061e607aa2c28a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-C/genera_species_macro_cross_species.csv",
+    "bytes": 3227288,
+    "sha256": "0af86d1095781abfba382c9f5e874d1e2cc020fe1b693888de4f16499d1c393a"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-C/genera_species_macro_cross_species.svg",
+    "bytes": 36204,
+    "sha256": "6487309a4ba690416173e5b97aebb8c6bc57bcf2eed85c4c2ac3491f92eb61a7"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-C/genera_species_micro_cross_species.csv",
+    "bytes": 19845,
+    "sha256": "735ccf8b0f689ac7410aa96e43b8d0ec2af6531341628066d68505c012178387"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-C/genera_species_micro_cross_species.svg",
+    "bytes": 36158,
+    "sha256": "610473b8276527cae1bb8cae4a546fcc51288755884830fe93a5ccbd4144103c"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-C/legend.svg",
+    "bytes": 21547,
+    "sha256": "afedc59d2c0095db10db583f6a66bfcd65a6a41d4b69e02deec5c7f070859837"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-D/genera_species_macro_cross_species.csv",
+    "bytes": 1390860,
+    "sha256": "83ca3aa8265c6bacdeed72988396ea45108ed92aa4ec5453273e15b93d1f6360"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-D/genera_species_macro_cross_species.svg",
+    "bytes": 36207,
+    "sha256": "1d8084a8120e6b46fadfa85c0a360286049356542bec4ffb076cdfe6a0f342dd"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-D/genera_species_micro_cross_species.csv",
+    "bytes": 19846,
+    "sha256": "3e491e66bd877af1361aebe678984ad3464b322d8e201fdb9a49b1b5ad067748"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/DRIAMS-D/genera_species_micro_cross_species.svg",
+    "bytes": 36151,
+    "sha256": "74d4c26b1c91e0ab9dd0106697c3d433bbf2e3e704282d7e3bf3edbb933fa75e"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/RKI/genera_species_macro_cross_species.csv",
+    "bytes": 4673259,
+    "sha256": "4d979e4256a5b2efc835aa92be2355abb52439640ae72558e8e00360b2f7cd25"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/RKI/genera_species_macro_cross_species.svg",
+    "bytes": 36199,
+    "sha256": "fac44f81a4bc7dc9d9b739480a1256090aae34bf971f24131332d14d64fcf46c"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/RKI/genera_species_micro_cross_species.csv",
+    "bytes": 19841,
+    "sha256": "b13e6e5ade5745cf10219fa5590418ad725a31dd2795d1e2e815ec60b80e6589"
+  },
+  {
+    "path": "scratch/publication_figures/fig/top_k_recall/RKI/genera_species_micro_cross_species.svg",
+    "bytes": 36120,
+    "sha256": "f907c4b13f96f8a5564e4c496955046b4a890c8a0e3c3cb2831dcbe5ba38c8b2"
+  }
+]

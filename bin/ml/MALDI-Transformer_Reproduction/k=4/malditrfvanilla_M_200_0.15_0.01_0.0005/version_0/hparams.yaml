@@ -1,0 +1,14 @@
+depth: 6
+dim: 184
+n_classes: 131
+n_heads: 8
+dropout: 0.2
+p: 0.15
+clf: true
+clf_train_p: 0.01
+lr: 0.0005
+weight_decay: 0
+lr_decay_factor: 1
+warmup_steps: 2500
+lmbda: 1.0
+proportional: false

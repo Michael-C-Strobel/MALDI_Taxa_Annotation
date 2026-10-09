@@ -111,6 +111,82 @@ def split_by_species(metadata, k, min_group_size):
     return fold_indices
 
 
+def split_by_genera_holdout(metadata, k, min_group_size, test_genera_str):
+    """
+    Split data where specified genera go to test set, and remaining genera
+    are split between train/val across k folds.
+
+    Args:
+        metadata: DataFrame with accession, genus columns
+        k: Number of folds
+        min_group_size: Minimum size for a group to be split
+        test_genera_str: Semicolon-delimited string of lowercase genus names for test set
+    """
+    fold_indices = {i: {'train': [], 'val': [], 'test': []} for i in range(k)}
+
+    # Parse test genera
+    test_genera = set(g.strip().lower() for g in test_genera_str.split(';') if g.strip())
+    logging.info(f"Test genera: {test_genera}")
+
+    # Check which test genera are actually in the metadata
+    available_genera = set(metadata['genus'].str.lower().unique())
+    missing_genera = test_genera - available_genera
+
+    if missing_genera:
+        logging.warning(f"The following test genera were not found in the metadata: {missing_genera}")
+
+    # Get accessions for test set (all folds have the same test set)
+    test_accessions = metadata[metadata['genus'].str.lower().isin(test_genera)]['accession'].tolist()
+
+    # Get remaining genera for train/val split
+    remaining_metadata = metadata[~metadata['genus'].str.lower().isin(test_genera)]
+    groups = remaining_metadata.groupby("genus")
+
+    # Filter out small groups and add to every train fold
+    small_groups = set()
+    small_accessions = []
+    for name, group in groups:
+        if len(group) <= max(min_group_size, k):
+            small_groups.add(name)
+            small_accessions.extend(group['accession'].tolist())
+
+    # Split the remaining groups among folds for train/val
+    groups = {name: group for name, group in groups if name not in small_groups}
+    logging.info(f"Removed {len(small_groups)} small groups from {len(groups) + len(small_groups)} total remaining groups.")
+
+    if len(groups) == 0:
+        logging.warning("All remaining groups are small, only test set will be populated.")
+        for i in range(k):
+            fold_indices[i]['test'] = np.array(test_accessions, dtype=str)
+            fold_indices[i]['train'] = np.array(small_accessions, dtype=str)
+            fold_indices[i]['val'] = np.array([], dtype=str)
+        return fold_indices
+
+    shuffled_groups = list(groups.keys())
+    np.random.shuffle(shuffled_groups)
+    fold_groups = [[] for _ in range(k)]
+    for i, group_name in enumerate(shuffled_groups):
+        fold_groups[i % k].append(group_name)
+
+    # Generate folds
+    for i in range(k):
+        # Test set is always the same (specified genera)
+        fold_indices[i]['test'] = np.array(test_accessions, dtype=str)
+
+        # Val from one fold group, train from all others
+        val_groups = fold_groups[i]
+        train_groups = [g for j in range(k) if j != i for g in fold_groups[j]]
+
+        val_accessions = remaining_metadata[remaining_metadata["genus"].isin(val_groups)]['accession'].tolist()
+        train_accessions = remaining_metadata[remaining_metadata["genus"].isin(train_groups)]['accession'].tolist()
+        train_accessions.extend(small_accessions)
+
+        fold_indices[i]['val'] = np.array(val_accessions, dtype=str)
+        fold_indices[i]['train'] = np.array(train_accessions, dtype=str)
+
+    return fold_indices
+
+
 def split_by_species_even(metadata, k, min_group_size):
     fold_indices = {i: {'train': [], 'val': [], 'test': []} for i in range(k)}
     # Make accessions unique
@@ -167,13 +243,17 @@ def split_by_species_even(metadata, k, min_group_size):
 
     return fold_indices
 
-def generate_k_fold_splits(metadata, k, split_style, min_group_size=5):
+def generate_k_fold_splits(metadata, k, split_style, min_group_size=5, test_genera=None):
     if split_style == "genera":
         return split_by_genera(metadata, k, min_group_size)
     elif split_style == "species":
         return split_by_species(metadata, k, min_group_size)
     elif split_style == "species_even":
         return split_by_species_even(metadata, k, min_group_size)
+    elif split_style == "genera_holdout":
+        if test_genera is None:
+            raise ValueError("test_genera must be provided for genera_holdout split style")
+        return split_by_genera_holdout(metadata, k, min_group_size, test_genera)
     else:
         raise ValueError(f"Unknown split style: {split_style}")
 
@@ -181,9 +261,10 @@ def main():
     parser = argparse.ArgumentParser(description="Generate k-fold splits for a dataset.")
     parser.add_argument("--input_file", type=str, help="Path to the input file containing the dataset.", required=True)
     parser.add_argument("--output_dir", type=str, help="Directory to save the k-fold splits.", required=True)
-    parser.add_argument("--split_style", type=str, choices=["genera", "species", "species_even"], help="Criterion for splitting the strata.", required=True)
+    parser.add_argument("--split_style", type=str, choices=["genera", "species", "species_even", "genera_holdout"], help="Criterion for splitting the strata.", required=True)
     parser.add_argument("-k", type=int, help="Number of folds for k-fold cross-validation.", default=7)
     parser.add_argument("--min_group_size", type=int, help="Minimum group size for splitting.", default=5)
+    parser.add_argument("--test_genera", type=str, help="Semicolon-delimited list of lowercase genus names for test set (only used with genera_holdout)", default=None)
     args = parser.parse_args()
 
     # Set up logging
@@ -192,6 +273,12 @@ def main():
     logging.info("Arguments:")
     for arg in vars(args):
         logging.info(f"{arg}: {getattr(args, arg)}")
+
+    # Validate test_genera usage
+    if args.split_style == "genera_holdout" and args.test_genera is None:
+        raise ValueError("--test_genera must be provided when using genera_holdout split style")
+    if args.test_genera is not None and args.split_style != "genera_holdout":
+        raise ValueError("--test_genera can only be used with genera_holdout split style")
 
     input_file = Path(args.input_file)
     output_dir = Path(args.output_dir)
@@ -211,7 +298,7 @@ def main():
         metadata['accession'] = metadata['accession'].astype(str).str.strip().str.split('.').str[0]
 
     logging.info(f"Generating {args.k}-fold splits for {args.split_style}...")
-    fold_indices = generate_k_fold_splits(metadata, args.k, args.split_style, args.min_group_size)
+    fold_indices = generate_k_fold_splits(metadata, args.k, args.split_style, args.min_group_size, args.test_genera)
     logging.info(f"Generated {args.k}-fold splits.")
 
     output_dir = output_dir / str(args.split_style)

@@ -69,17 +69,18 @@ class single_MALDI_TOF_DS(Dataset):
         self.root_dir = root_dir
         self.preprocessing_dir = preprocessing_dir
 
-        root_dir = Path(root_dir)
-        if not root_dir.exists():
+        preprocessing_dir = Path(preprocessing_dir)
+        if not preprocessing_dir.exists():
             # Process it
-            print(f"Root dir {root_dir} does not exist, processing...")
+            raise NotImplementedError(f"Implicit preprocessing in dataset has been deprecated and preprocessing dir was not found: {preprocessing_dir}")
+            print(f"Root dir {preprocessing_dir} does not exist, processing...")
             self.preprocess()
 
-        self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+        self.all_spectra = list(Path(self.preprocessing_dir).glob('*.pt'))
         if len(self.all_spectra) == 0:
-            print(f"No spectra found in {root_dir}/spectra, processing...")
+            print(f"No spectra found in {preprocessing_dir}, processing...")
             self.preprocess()
-            self.all_spectra = list(Path(self.root_dir).glob('spectra/*.pt'))
+            self.all_spectra = list(Path(self.preprocessing_dir).glob('*.pt'))
 
         self.cast_to_classification = cast_to_classification
         self.prefer_hard = prefer_hard
@@ -263,7 +264,11 @@ class single_MALDI_TOF_DS(Dataset):
         def _fetch(strain_names_chunk):
             chunk_results = []
             for strain_name in strain_names_chunk:
-                spectrum = torch.load(Path(self.root_dir) / 'spectra' / f"{strain_name}.pt", weights_only=True).to(torch.float32)
+                try:
+                    spectrum = torch.load(Path(self.preprocessing_dir) / f"{strain_name}.pt", weights_only=False).to(torch.float32)
+                except:
+                    raise RuntimeError(f"Error loading spectrum for strain {strain_name} from {Path(self.preprocessing_dir) / f'{strain_name}.pt'}")
+                # print("loading spectrum from", Path(self.preprocessing_dir) / f"{strain_name}.pt")
                 if self.transform:
                     spectrum = self.transform(spectrum)
                 chunk_results.append((strain_name, spectrum))
@@ -381,11 +386,11 @@ class single_MALDI_TOF_DS(Dataset):
             'num_peaks': num_peaks,
         })
 
-        if self.transform:
+        if self.transform and not self.in_memory:
             try:
                 spectrum = self.transform(spectrum)
             except Exception as e:
-                raise RuntimeError(f"Error transforming spectrum for strain {strain_name} with accession {accession}") from e
+                raise RuntimeError(f"Error transforming spectrum (shape: {spectrum.shape}) for strain {strain_name} with accession {accession}") from e
 
         return spectrum, metadata
 
@@ -713,11 +718,11 @@ class single_MALDI_TOF_DS(Dataset):
 
     def preprocess(self,):
         # return
-        if not (Path(self.root_dir) / 'spectra/').exists():
-            (Path(self.root_dir) / 'spectra/').mkdir(parents=True, exist_ok=True)
+        if not (Path(self.preprocessing_dir)).exists():
+            (Path(self.preprocessing_dir)).mkdir(parents=True, exist_ok=True)
         print("Preprocessing files...")
-        for strain_name, spectrum_as_tensor in tqdm(convert_spectra_to_tensor(Path(self.preprocessing_dir) / 'baseline_corrected.json')):
-            torch.save(spectrum_as_tensor, Path(self.root_dir) / f'spectra/{strain_name}.pt')
+        for strain_name, spectrum_as_tensor in tqdm(convert_spectra_to_tensor(Path(self.root_dir) / 'baseline_corrected.json')):
+            torch.save(spectrum_as_tensor, Path(self.preprocessing_dir) / f'{strain_name}.pt')
 
     def calculate_transformed_stats(self, train_accessions)->Dict[str, float]:
         """ Use Welford's online algorithm to compute the mean and variance of the transformed spectra,
@@ -1437,10 +1442,11 @@ class ExhaustiveSingleSampler():
 
         self.accessions = accessions
         self.metadata = self.data.metadata_table.loc[self.data.metadata_table['accession'].isin(self.accessions)]
-        print("Found a total of", len(self.metadata), "strains.")
-        print("Found a total of", len(self.accessions), "accessions.")
+        print("ExhaustiveSingleSampler: Found a total of", len(self.metadata), "strains.")
+        print("ExhaustiveSingleSampler: Found a total of", len(self.accessions), "accessions.")
         self.all_strains = self.metadata['Strain name'].values
         self.num_strains = len(self.all_strains)
+        print(f"ExhaustiveSingleSampler: Found {self.num_strains} strains", flush=True)
         self._iterator = None
 
     def _iter_strains(self):
@@ -1448,6 +1454,8 @@ class ExhaustiveSingleSampler():
             try:
                 strain, metadata = self.data.get_by_strain_name(self.all_strains[i])
             except Exception as e:
+                print(f"ExhaustiveSingleSampler: Error getting strain {self.all_strains[i]}: {e}", flush=True)
+                raise e
                 continue
             
             metadata = {

@@ -1,0 +1,17 @@
+sample,n_hits_≥95%,top_genus,top_genus_%,all_genera_seen_≥95%,top_species_≥97%,top_species_%,n_unmapped_names
+SL1002,895,Burkholderia,70.8,Burkholderia; Caballeronia; Paraburkholderia; Eubacterium; Pararobbsia; Trinickia; Beta,Burkholderia glumae,36.4,40
+SL1003,457,Mucilaginibacter,99.3,Mucilaginibacter; Sphingobacterium; Pedobacter,Mucilaginibacter saanensis,8.3,172
+SL1004,517,Sphingomonas,100.0,Sphingomonas,Sphingomonas aerolata,11.0,272
+SL1033,1654,Pseudomonas,99.0,Pseudomonas; Stutzerimonas; Xylella; Eubacterium,Pseudomonas fluorescens,4.8,23
+SL1046,1971,Pseudomonas,99.8,Pseudomonas; Bacillus; Impatiens; Klebsiella,Pseudomonas poae,8.2,41
+SL1064,1486,Acinetobacter,99.9,Acinetobacter; Lysinibacillus,Acinetobacter pittii,37.8,70
+SL1071,2,Pseudomonas,100.0,Pseudomonas,,,1
+SL1072,1471,Pseudomonas,99.9,Pseudomonas; Bacillus,Pseudomonas poae,11.3,75
+SL1086,1425,Pseudomonas,99.9,Pseudomonas; Bacillus,Pseudomonas poae,11.9,92
+SL1092,1934,Pseudomonas,99.8,Pseudomonas; Impatiens; Bacillus; Klebsiella,Pseudomonas veronii,7.2,51
+SL1095,2065,Pseudomonas,100.0,Pseudomonas; Xylella,Pseudomonas chlororaphis,20.0,8
+SL1097,1425,Pseudomonas,99.9,Pseudomonas; Bacillus,Pseudomonas poae,11.9,92
+SL1098,833,Janthinobacterium,34.8,Janthinobacterium; Massilia; Duganella; Pseudoduganella; Rugamonas; Beta; Telluria; Zoogloea; Burkholderia; Rhizobium,Duganella zoogloeoides,7.2,272
+SL1102,1425,Pseudomonas,99.9,Pseudomonas; Bacillus,Pseudomonas poae,11.9,92
+SL1105,2240,Pseudomonas,100.0,Pseudomonas,Pseudomonas putida,33.3,112
+SL1107,1103,Chryseobacterium,96.8,Chryseobacterium; Epilithonimonas; Kaistella; Marnyiella; Elizabethkingia; Haloanella; Pseudoxanthomonas; Microbacterium,Chryseobacterium indoltheticum,13.4,56

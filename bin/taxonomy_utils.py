@@ -7,6 +7,7 @@ from time import sleep
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import traceback
 import sys
+from tqdm import tqdm
 
 @retry(
     stop=stop_after_attempt(7),
@@ -157,8 +158,11 @@ def populate_taxonomies(summary_df: pd.DataFrame):
         pd.DataFrame: The dataframe with added columns for taxonomy.
     """
 
-    # ncbi_taxa = NCBITaxa(update=False)
-    # ncbi_taxa.update_taxonomy_database()
+    ncbi_taxa = None
+    ncbi_taxa = NCBITaxa(update=False)
+    ncbi_taxa.update_taxonomy_database()
+    if ncbi_taxa is None:
+        raise ValueError("Failed to initialize NCBITaxa database")
 
     # Deduplicate to reduce redundant NCBI queries
     non_duplicated = summary_df.drop_duplicates(subset=["Genbank accession", "NCBI taxid"])

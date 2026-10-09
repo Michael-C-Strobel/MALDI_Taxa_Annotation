@@ -20,13 +20,10 @@ cd bin/ml
 #                             --split_type "species" \
 #                             --inference_set "test"
 
-echo "Runnign version 11"
-sleep 5
-
 for k in {0..6}; do
     python3 bare_inference.py   --model "CLIP_Transformer" \
-                                --version 11 \
-                                --dataset "DIRAMS-A" \
+                                --version 0 \
+                                --dataset "DRIAMS-A" \
                                 --target "genera" \
                                 --split_type "species" \
                                 --inference_set "test" \

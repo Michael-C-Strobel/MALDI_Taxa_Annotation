@@ -15,7 +15,7 @@ cd bin/ml
 
 # python3 bare_inference.py   --model "CLIP_Transformer" \
 #                             --version 3 \
-#                             --dataset "DIRAMS-A" \
+#                             --dataset "DRIAMS-A" \
 #                             --target "genera" \
 #                             --split_type "genera" \
 #                             --inference_set "train"
@@ -23,7 +23,7 @@ cd bin/ml
 for k in {0..6}; do
     python3 bare_inference.py   --model "CLIP_Transformer" \
                                 --version 0 \
-                                --dataset "DIRAMS-A" \
+                                --dataset "DRIAMS-A" \
                                 --target "genera" \
                                 --split_type "genera" \
                                 --inference_set "train" \

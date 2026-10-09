@@ -1,5 +1,5 @@
-from publication_figures_helpers import gather_embeddings, NAME_MAPPINGS, colors, PAIRED_MODELS
-
+from publication_figures_helpers import gather_embeddings, gather_embeddings_cosine_only, NAME_MAPPINGS, colors, PAIRED_MODELS
+import copy
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,6 +17,8 @@ from collections import defaultdict
 from typing import Optional, Tuple, List, Dict
 
 from scipy import stats
+
+LINE_PLOTS_ALPHA = 0.3
 
 def _compute_top_k_recall(
     scores,
@@ -679,6 +681,11 @@ def top_k_recall_plot(
             if legend:
                 # Grab handles/labels from the main axis
                 handles, labels = ax.get_legend_handles_labels()
+
+                handles = [copy.copy(h) for h in handles]
+                for h in handles:
+                    h.set_linewidth(4.0)
+                    h.set_markersize(24.0)
                 
                 # Create a new figure for the legend
                 fig_leg = plt.figure(figsize=(3, 4)) 
@@ -1283,7 +1290,7 @@ def train_test_curves_nn_plot(dataset, target, split_type, n_jobs=-1):
         std_tpr = np.std(curves, axis=0)
         mean_auc = auc(interp_points, mean_tpr)
         ax_roc.plot(interp_points, mean_tpr, label=f"{model_name} (AUC = {mean_auc:.3f})")
-        ax_roc.fill_between(interp_points, mean_tpr - std_tpr, mean_tpr + std_tpr, alpha=0.2)
+        ax_roc.fill_between(interp_points, mean_tpr - std_tpr, mean_tpr + std_tpr, alpha=LINE_PLOTS_ALPHA)
     ax_roc.plot([0, 1], [0, 1], 'k--', alpha=0.5)
     ax_roc.set_title("Train-Test Nearest Neighbor ROC Curve")
     ax_roc.set_xlabel("False Positive Rate")
@@ -1301,7 +1308,7 @@ def train_test_curves_nn_plot(dataset, target, split_type, n_jobs=-1):
         std_precision = np.std(curves, axis=0)
         mean_auc_pr = auc(interp_points, mean_precision)
         ax_pr.plot(interp_points, mean_precision, label=f"{model_name} (AUC = {mean_auc_pr:.3f})")
-        ax_pr.fill_between(interp_points, mean_precision - std_precision, mean_precision + std_precision, alpha=0.2)
+        ax_pr.fill_between(interp_points, mean_precision - std_precision, mean_precision + std_precision, alpha=LINE_PLOTS_ALPHA)
     ax_pr.set_title("Train-Test Nearest Neighbor Precision-Recall Curve")
     ax_pr.set_xlabel("Recall")
     ax_pr.set_ylabel("Precision")
@@ -1318,7 +1325,7 @@ def train_test_curves_nn_plot(dataset, target, split_type, n_jobs=-1):
         std_fdr = np.std(curves, axis=0)
         mean_auc_fdr = auc(interp_points, mean_fdr)
         ax_fdr.plot(interp_points, mean_fdr, label=f"{model_name} (AUC = {mean_auc_fdr:.3f})")
-        ax_fdr.fill_between(interp_points, mean_fdr - std_fdr, mean_fdr + std_fdr, alpha=0.2)
+        ax_fdr.fill_between(interp_points, mean_fdr - std_fdr, mean_fdr + std_fdr, alpha=LINE_PLOTS_ALPHA)
     ax_fdr.set_title("Train-Test Nearest Neighbor False Discovery Rate vs Recall")
     ax_fdr.set_xlabel("Recall")
     ax_fdr.set_ylabel("FDR (1 - Precision)")
@@ -1336,6 +1343,10 @@ from scipy.interpolate import interp1d
 import numpy as np
 import matplotlib.pyplot as plt
 import traceback
+import tempfile
+import uuid
+import gc
+from time import perf_counter
 from numba import njit, prange
 
 @njit(parallel=True, fastmath=True)
@@ -1366,7 +1377,7 @@ def compute_sim_numba(X, Y, i1, i2, metric_code):
             
     return sim
 
-def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None, between_species=False, balance_pairs=False, remove_singleton_genera=False):
+def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None, between_species=False, balance_pairs=False, remove_singleton_genera=False, test_only=False):
     """
     Computes binary labels and similarity scores for all pairs between df1 and df2,
     then returns ROC and PR curve components.
@@ -1386,16 +1397,21 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
         non_singleton_genera = non_singleton_genera[non_singleton_genera].index.tolist()
         df2 = df2[df2['genus'].isin(non_singleton_genera)]
 
-    if df2.attrs.get('paired'):
-        assert df2.test == True
-        y_true = df2['true_label'].values
-        sim    = df2['binary_pred'].values
+    memmap_tmpdir = None
+    sim = None
+    y_true = None
+    pair_ids = None
+    try:
+        if df2.attrs.get('paired'):
+            assert df2.test == True
+            y_true = df2['true_label'].values
+            sim    = df2['binary_pred'].values
 
-        print('y_true', y_true)
-        print('sim', sim)
-    else:
-        X = np.stack(df1['embedding'].values).astype(np.float32)
-        Y = np.stack(df2['embedding'].values).astype(np.float32)
+            print('y_true', y_true)
+            print('sim', sim)
+        else:
+            X = np.stack(df1['embedding'].values).astype(np.float32)
+            Y = np.stack(df2['embedding'].values).astype(np.float32)
         # L2 Normalize per embedding
         X = X / np.linalg.norm(X, axis=1, keepdims=True)
         Y = Y / np.linalg.norm(Y, axis=1, keepdims=True)
@@ -1406,36 +1422,26 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
         labels_Y = np.array(df2['true_label'])
         genera_X = np.array(df1['genus'])
         genera_Y = np.array(df2['genus'])
+        species_X = np.array(df1['species'])
+        species_Y = np.array(df2['species'])
+
+        genus_codes_X = None
+        genus_codes_Y = None
+        genus_cardinality = None
+        if balance_pairs:
+            all_genus = pd.concat(
+                [pd.Series(genera_X, copy=False), pd.Series(genera_Y, copy=False)],
+                ignore_index=True
+            ).astype(str)
+            cat = pd.Categorical(all_genus)
+            all_codes = cat.codes.astype(np.int32)
+            genus_codes_X = all_codes[:len(genera_X)]
+            genus_codes_Y = all_codes[len(genera_X):]
+            genus_cardinality = int(len(cat.categories))
 
         n, m = len(X), len(Y)
-        if n*m < max_pairs:
-            pair_indices = [(i, j) for i in range(n) for j in range(m)]
-            if between_species:
-                species_X = np.array(df1['species'])
-                species_Y = np.array(df2['species'])
-                pair_indices = [(i, j) for i, j in pair_indices if species_X[i] != species_Y[j]]
-                
-        else:
-            # Generate them randomly
-            rng = np.random.default_rng(42)
-            _max_pairs = max_pairs
-            if between_species: # Sample some extra to give us buffer
-                _max_pairs = min(m*n, int(max_pairs * 10))
-            flat_indices = rng.choice(n * m, size=_max_pairs, replace=False)
-            pair_indices = [(i // m, i % m) for i in flat_indices]
-            if between_species:
-                # Require that the pairs are from different species
-                species_X = np.array(df1['species'])
-                species_Y = np.array(df2['species'])
-                pair_indices = [(i, j) for i, j in pair_indices if species_X[i] != species_Y[j]]
-                if len(pair_indices) < 0.9 * max_pairs:
-                    print(f"Warning: Only {len(pair_indices)} pairs selected with different species.")
-                if len(pair_indices) > max_pairs:
-                    # Subsample
-                    pair_indices = rng.choice(pair_indices, size=max_pairs, replace=False).tolist()
-
-        i1 = np.array([p[0] for p in pair_indices])
-        i2 = np.array([p[1] for p in pair_indices])
+        total_pairs = n * m
+        exhaustive_mode = max_pairs is None or max_pairs >= total_pairs
 
         # 2. Pre-normalize for cosine, or if your metric requires it
         if distance_metric == 'cosine':
@@ -1445,41 +1451,219 @@ def _binary_similarity_curves(df1, df2, distance_metric='cosine', max_pairs=None
         else:
             m_code = 1
 
-        i1_arr = np.array([p[0] for p in pair_indices], dtype=np.int32)
-        i2_arr = np.array([p[1] for p in pair_indices], dtype=np.int32)
+        if exhaustive_mode:
+            # Build all pairs exactly, but in row chunks to avoid materializing huge tuple lists.
+            target_pairs_per_chunk = 50_000_000
+            chunk_rows = max(1, target_pairs_per_chunk // max(1, m))
+            SHOW_CHUNK_PROGRESS = True
+            USE_NOTEBOOK_TQDM_AUTODETECT = True
 
-        # 3. Call Numba (This replaces the chunking loop entirely)
-        # It will use all CPU cores and almost zero extra RAM.
-        sim = compute_sim_numba(X, Y, i1_arr, i2_arr, m_code)
+            if between_species:
+                retained_per_row = np.array([np.count_nonzero(species_Y != s) for s in species_X], dtype=np.int64)
+                retained_pairs = int(retained_per_row.sum())
+            else:
+                retained_pairs = total_pairs
 
-        l1 = labels_X[i1]
-        l2 = labels_Y[i2]
-        y_true = (l1 == l2).astype(int)
+            if test_only and not between_species:
+                retained_pairs -= min(n, m)
 
-    balance_labels = []
+            print(f"[binary_curves] start chunked exhaustive: total_pairs={total_pairs}, retained_pairs={retained_pairs}, chunk_rows={chunk_rows}", flush=True)
 
-    for idx1, idx2 in pair_indices:
-        genus_pair = tuple(sorted((genera_X[idx1], genera_Y[idx2])))
-        balance_labels.append(genus_pair) 
-        
-    # Print # of nan similarity scores
-    if np.isnan(sim).any():
-        print(f"Warning: {np.isnan(sim).sum()} NaN similarity scores found out of {len(sim)}")
-        # Set nan similarity scores to 0
-        sim[np.isnan(sim)] = 0.0
+            spill_to_disk = retained_pairs >= 2_000_000
+            if spill_to_disk:
+                run_uuid = uuid.uuid4().hex
+                memmap_tmpdir = tempfile.TemporaryDirectory(prefix=f'binary_curves_{run_uuid}_')
+                sim = np.memmap(f"{memmap_tmpdir.name}/sim_{run_uuid}.dat", dtype=np.float32, mode='w+', shape=(retained_pairs,))
+                y_true = np.memmap(f"{memmap_tmpdir.name}/y_true_{run_uuid}.dat", dtype=np.int8, mode='w+', shape=(retained_pairs,))
+                pair_ids = np.memmap(f"{memmap_tmpdir.name}/pair_ids_{run_uuid}.dat", dtype=np.int64, mode='w+', shape=(retained_pairs,)) if balance_pairs else None
+            else:
+                sim = np.empty(retained_pairs, dtype=np.float32)
+                y_true = np.empty(retained_pairs, dtype=np.int8)
+                pair_ids = np.empty(retained_pairs, dtype=np.int64) if balance_pairs else None
 
-    acc = (np.round(y_true.flatten(), 0) == np.round(sim.flatten(), 0)).sum()/len(y_true)
+            print(f"[binary_curves] storage mode: {'memmap' if spill_to_disk else 'ram'}", flush=True)
 
-    sample_weights = None
-    if balance_pairs:
-        sample_weights = compute_sample_weight(class_weight='balanced', y=balance_labels)
+            write_pos = 0
+            all_j = np.arange(m, dtype=np.int32)
+            chunk_iter = range(0, n, chunk_rows)
+            chunk_tqdm = tqdm
+            if SHOW_CHUNK_PROGRESS and USE_NOTEBOOK_TQDM_AUTODETECT:
+                try:
+                    from IPython import get_ipython
+                    shell = get_ipython()
+                    in_notebook = shell is not None and shell.__class__.__name__ == 'ZMQInteractiveShell'
+                    if in_notebook:
+                        from tqdm.notebook import tqdm as notebook_tqdm
+                        chunk_tqdm = notebook_tqdm
+                except Exception:
+                    pass
 
-    # Assert all positive
-    assert np.all(sim.flatten() >= 0), "sim.flatten() contain negative values."
+            t_start = perf_counter()
+            total_chunks = (n + chunk_rows - 1) // chunk_rows
+            processed_chunks = 0
+            milestones = [0.33, 0.66]
+            if SHOW_CHUNK_PROGRESS:
+                chunk_iter = chunk_tqdm(
+                    chunk_iter,
+                    total=total_chunks,
+                    desc='binary_curves chunks',
+                    leave=False,
+                    dynamic_ncols=True,
+                )
 
-    fpr, tpr, roc_thresholds = roc_curve(y_true.flatten(), sim.flatten(), drop_intermediate=False, sample_weight=sample_weights)
-    precision, recall, pr_thresholds = precision_recall_curve(y_true.flatten(), sim.flatten(), sample_weight=sample_weights, drop_intermediate=False)
-    return (fpr, tpr, roc_thresholds, auc(fpr, tpr)), (precision, recall, pr_thresholds, auc(recall, precision))
+            for start in chunk_iter:
+                end = min(n, start + chunk_rows)
+                row_block = np.arange(start, end, dtype=np.int32)
+                block_i1 = np.repeat(row_block, m)
+                block_i2 = np.tile(all_j, end - start)
+
+                if between_species:
+                    mask = species_X[block_i1] != species_Y[block_i2]
+                    block_i1 = block_i1[mask]
+                    block_i2 = block_i2[mask]
+
+                if test_only:
+                    # Ignore diagonal pairs
+                    mask = block_i1 != block_i2
+                    block_i1 = block_i1[mask]
+                    block_i2 = block_i2[mask]
+
+                block_count = block_i1.shape[0]
+                if block_count == 0:
+                    continue
+
+                block_sim = compute_sim_numba(X, Y, block_i1, block_i2, m_code)
+                block_y_true = (labels_X[block_i1] == labels_Y[block_i2]).astype(np.int8)
+
+                next_pos = write_pos + block_count
+                sim[write_pos:next_pos] = block_sim
+                y_true[write_pos:next_pos] = block_y_true
+
+                if balance_pairs:
+                    gx = genus_codes_X[block_i1].astype(np.int64)
+                    gy = genus_codes_Y[block_i2].astype(np.int64)
+                    lo = np.minimum(gx, gy)
+                    hi = np.maximum(gx, gy)
+                    pair_ids[write_pos:next_pos] = lo * genus_cardinality + hi
+
+                write_pos = next_pos
+                processed_chunks += 1
+                frac_done = processed_chunks / total_chunks
+                while milestones and frac_done >= milestones[0]:
+                    print(f"[binary_curves] progress {int(milestones[0] * 100)}% | chunks {processed_chunks}/{total_chunks} | elapsed {perf_counter() - t_start:.1f}s", flush=True)
+                    milestones.pop(0)
+
+            if write_pos != retained_pairs:
+                sim = sim[:write_pos]
+                y_true = y_true[:write_pos]
+                if balance_pairs:
+                    pair_ids = pair_ids[:write_pos]
+
+            print(f"[binary_curves] complete chunked exhaustive: wrote_pairs={write_pos} in {perf_counter() - t_start:.1f}s", flush=True)
+            finalize_start = perf_counter()
+            print(
+                f"[binary_curves] finalization start | memmap={isinstance(sim, np.memmap)} | balance_pairs={balance_pairs} | test_only={test_only}",
+                flush=True,
+            )
+        else:
+            # Generate them randomly
+            rng = np.random.default_rng(42)
+            _max_pairs = max_pairs
+            if between_species: # Sample some extra to give us buffer
+                _max_pairs = min(m*n, int(max_pairs * 20))
+            flat_indices = rng.choice(n * m, size=_max_pairs, replace=False)
+            i1_arr = (flat_indices // m).astype(np.int32)
+            i2_arr = (flat_indices % m).astype(np.int32)
+            if between_species:
+            # Require that the pairs are from different species
+                pair_mask = species_X[i1_arr] != species_Y[i2_arr]
+                i1_arr = i1_arr[pair_mask]
+                i2_arr = i2_arr[pair_mask]
+                if len(i1_arr) < 0.9 * max_pairs:
+                    print(f"Warning: Only {len(i1_arr)} pairs selected with different species.")
+                if len(i1_arr) > max_pairs:
+                    # Subsample
+                    keep_idx = rng.choice(len(i1_arr), size=max_pairs, replace=False)
+                    i1_arr = i1_arr[keep_idx]
+                    i2_arr = i2_arr[keep_idx]
+                if test_only:
+                    # Ignore diagonal pairs
+                    pair_mask = i1_arr != i2_arr
+                    i1_arr = i1_arr[pair_mask]
+                    i2_arr = i2_arr[pair_mask]
+                    if len(i1_arr) < 0.9 * max_pairs:
+                        print(f"Warning: Only {len(i1_arr)} pairs selected after removing diagonal pairs.")
+                    if len(i1_arr) > max_pairs:
+                    # Subsample
+                        keep_idx = rng.choice(len(i1_arr), size=max_pairs, replace=False)
+                        i1_arr = i1_arr[keep_idx]
+                        i2_arr = i2_arr[keep_idx]
+            finalize_start = perf_counter()
+
+        # Sampled path computes all selected pairs at once.
+            sim = compute_sim_numba(X, Y, i1_arr, i2_arr, m_code)
+            y_true = (labels_X[i1_arr] == labels_Y[i2_arr]).astype(np.int8)
+            pair_ids = None
+            if balance_pairs:
+                gx = genus_codes_X[i1_arr].astype(np.int64)
+                gy = genus_codes_Y[i2_arr].astype(np.int64)
+                lo = np.minimum(gx, gy)
+                hi = np.maximum(gx, gy)
+                pair_ids = lo * genus_cardinality + hi
+
+        if df2.attrs.get('paired'):
+            i1_arr = None
+            i2_arr = None
+            pair_ids = None
+
+        # Print # of nan similarity scores
+        print(f"[binary_curves] finalization: checking NaNs at +{perf_counter() - finalize_start:.1f}s", flush=True)
+        if np.isnan(sim).any():
+            print(f"Warning: {np.isnan(sim).sum()} NaN similarity scores found out of {len(sim)}")
+            # Set nan similarity scores to 0
+            sim[np.isnan(sim)] = 0.0
+
+        print(f"[binary_curves] finalization: computing accuracy at +{perf_counter() - finalize_start:.1f}s", flush=True)
+        acc = (np.round(y_true.flatten(), 0) == np.round(sim.flatten(), 0)).sum()/len(y_true)
+
+        sample_weights = None
+        if balance_pairs:
+            if pair_ids is None:
+                raise ValueError("balance_pairs=True is not supported for paired model inputs.")
+            print(f"[binary_curves] finalization: building sample weights at +{perf_counter() - finalize_start:.1f}s", flush=True)
+            class_counts = np.bincount(pair_ids)
+            nonzero_classes = class_counts > 0
+            n_classes = int(np.count_nonzero(nonzero_classes))
+            n_samples = int(pair_ids.shape[0])
+            sample_weights = (n_samples / (n_classes * class_counts[pair_ids])).astype(np.float32)
+
+        # Assert all positive
+        assert np.all(sim.flatten() >= 0), "sim.flatten() contain negative values."
+
+        print(f"[binary_curves] finalization: roc_curve() starting at +{perf_counter() - finalize_start:.1f}s", flush=True)
+        fpr, tpr, roc_thresholds = roc_curve(y_true.flatten(), sim.flatten(), drop_intermediate=False, sample_weight=sample_weights)
+        print(f"[binary_curves] finalization: precision_recall_curve() starting at +{perf_counter() - finalize_start:.1f}s", flush=True)
+        precision, recall, pr_thresholds = precision_recall_curve(y_true.flatten(), sim.flatten(), sample_weight=sample_weights, drop_intermediate=False)
+        print(f"[binary_curves] finalization complete in {perf_counter() - finalize_start:.1f}s", flush=True)
+        return (fpr, tpr, roc_thresholds, auc(fpr, tpr)), (precision, recall, pr_thresholds, auc(recall, precision))
+    finally:
+        for arr in (sim, y_true, pair_ids):
+            if isinstance(arr, np.memmap):
+                try:
+                    arr.flush()
+                    arr._mmap.close()
+                except Exception:
+                    pass
+        sim = None
+        y_true = None
+        pair_ids = None
+        gc.collect()
+        if memmap_tmpdir is not None:
+            try:
+                memmap_tmpdir.cleanup()
+            except OSError:
+                gc.collect()
+                memmap_tmpdir.cleanup()
 
 def _compute_interpolated_curves(
         df1,
@@ -1491,7 +1675,9 @@ def _compute_interpolated_curves(
         max_pairs,
         between_species=False,
         balance_pairs=False,
-        remove_singleton_genera=False):
+        remove_singleton_genera=False,
+        test_only=False,
+    ):
     print(f"_compute_interpolated_curves; {method} : {metric}")
     try:
         if 'intensity_agnostic' in method and method != 'clip_transformer_intensity_agnostic':
@@ -1505,7 +1691,17 @@ def _compute_interpolated_curves(
             df2['embedding'] = df2['embedding'].apply(lambda x: (x > 0.00).astype(int))
             between_species = True
 
-        (fpr, tpr, roc_thresholds, roc_auc_val),(prec, rec, pr_thresholds, pr_auc_val) = _binary_similarity_curves(df1, df2, metric, max_pairs, between_species=between_species, balance_pairs=balance_pairs, remove_singleton_genera=remove_singleton_genera)
+        (fpr, tpr, roc_thresholds, roc_auc_val),(prec, rec, pr_thresholds, pr_auc_val) = \
+            _binary_similarity_curves(
+                df1,
+                df2,
+                metric,
+                max_pairs,
+                between_species=between_species,
+                balance_pairs=balance_pairs,
+                remove_singleton_genera=remove_singleton_genera,
+                test_only=test_only
+            )
         fdr = 1 - prec
 
         # --- DEBUG PRINT BLOCK ---
@@ -1664,17 +1860,17 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
             for key in list(embeddings.keys()):
                 if re.match(r'cosine_[0-9]+', key):
                     print(f"Adding intensity agnostic version for {key}")
-                    embeddings[f"{key}_intensity_agnostic"] = {
-                        'train': [None for _ in range(len(embeddings[key]['train']))],
-                        'test': [None for _ in range(len(embeddings[key]['test']))]
-                    }
-                    for i in range(len(embeddings[f"{key}_intensity_agnostic"]['test'])):
-                        embeddings[f"{key}_intensity_agnostic"]['train'][i] = embeddings[key]['train'][i].copy(deep=True)
-                        embeddings[f"{key}_intensity_agnostic"]['test'][i] = embeddings[key]['test'][i].copy(deep=True)
-                        embeddings[f"{key}_intensity_agnostic"]['train'][i]['embedding'] = embeddings[f"{key}_intensity_agnostic"]['train'][i]['embedding'].apply(lambda x: (x > 0.00).astype(int))
-                        embeddings[f"{key}_intensity_agnostic"]['test'][i]['embedding'] = embeddings[f"{key}_intensity_agnostic"]['test'][i]['embedding'].apply(lambda x: (x > 0.00).astype(int))
-                # Debug, remove the old one
-                del embeddings[key]
+
+                    # Since we're deleting the original, mutate the DataFrames in place.
+                    for split in ('train', 'test'):
+                        for i in range(len(embeddings[key][split])):
+                            embeddings[key][split][i]['embedding'] = (
+                                embeddings[key][split][i]['embedding']
+                                .apply(lambda x: (x > 0.00).astype(np.int8))
+                            )
+
+                    # Rename the existing entry rather than creating copies.
+                    embeddings[f"{key}_intensity_agnostic"] = embeddings.pop(key)
 
     for key in list(embeddings.keys()):
         if key in PAIRED_MODELS and not test_only:
@@ -1749,7 +1945,8 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
                     method=method,
                     max_pairs=max_pairs,
                     between_species=between_species,
-                    balance_pairs=balance_pairs
+                    balance_pairs=balance_pairs,
+                    test_only=test_only
                 )
 
                 if np.isnan(precision) or np.isnan(recall) or np.isnan(fpr):
@@ -1792,9 +1989,9 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
                             color=colors.get(method))
 
             # Add a fill between to keep the colors consistent
-            roc_ax.fill_between([], [], alpha=0.2)
-            pr_ax.fill_between([], [], alpha=0.2)
-            fdr_ax.fill_between([], [], alpha=0.2)
+            roc_ax.fill_between([], [], alpha=LINE_PLOTS_ALPHA)
+            pr_ax.fill_between([], [], alpha=LINE_PLOTS_ALPHA)
+            fdr_ax.fill_between([], [], alpha=LINE_PLOTS_ALPHA)
 
             output_table.append({
                 'method': method,
@@ -1819,7 +2016,7 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
                 tasks.append((df1, df2, method, data_idx))
 
             results = Parallel(n_jobs=n_jobs)(
-                delayed(_compute_interpolated_curves)(df1, df2, method, data_idx, interp_points, metric, max_pairs, between_species, balance_pairs, remove_singleton_genera=remove_singleton_genera)
+                delayed(_compute_interpolated_curves)(df1, df2, method, data_idx, interp_points, metric, max_pairs, between_species, balance_pairs, remove_singleton_genera=remove_singleton_genera, test_only=test_only)
                 for df1, df2, method, data_idx in tasks
             )
 
@@ -1912,19 +2109,19 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
             fdr_auc_val = auc(interp_points, fdr_mean)
 
             roc_ax.plot(interp_points, roc_mean, label=f"{NAME_MAPPINGS[method]}", color=colors.get(method))  #  (auc={roc_auc_val:.2f})
-            roc_ax.fill_between(interp_points, roc_lower, roc_upper, alpha=0.15, color=colors.get(method))
+            roc_ax.fill_between(interp_points, roc_lower, roc_upper, alpha=LINE_PLOTS_ALPHA, color=colors.get(method))
             # Plot individual runs with alpha
             # for curve in roc_curves:
             #     roc_ax.plot(interp_points, curve, color=colors.get(method), alpha=0.3, linewidth=0.5)
 
             pr_ax.plot(interp_points, pr_mean, label=f"{NAME_MAPPINGS[method]}", color=colors.get(method))    #  (auc={pr_auc_val:.2f})
-            pr_ax.fill_between(interp_points, pr_lower, pr_upper, alpha=0.15, color=colors.get(method))
+            pr_ax.fill_between(interp_points, pr_lower, pr_upper, alpha=LINE_PLOTS_ALPHA, color=colors.get(method))
             # Plot individual runs with alpha
             # for curve in pr_curves:
             #     pr_ax.plot(interp_points, curve, color=colors.get(method), alpha=0.3, linewidth=0.5)
 
             fdr_ax.plot(interp_points, fdr_mean, label=f"{NAME_MAPPINGS[method]}", color=colors.get(method)) #  (auc={fdr_auc_val:.2f})
-            fdr_ax.fill_between(interp_points, fdr_lower, fdr_upper, alpha=0.15, color=colors.get(method))
+            fdr_ax.fill_between(interp_points, fdr_lower, fdr_upper, alpha=LINE_PLOTS_ALPHA, color=colors.get(method))
             # Plot individual runs with alpha
             # for curve in fdr_curves:
             #     fdr_ax.plot(interp_points, curve, color=colors.get(method), alpha=0.3, linewidth=0.5)
@@ -1940,8 +2137,8 @@ def binary_curves_plot(dataset, target, split_type, test_only=False, max_pairs=N
             output_table.append({
                 'method': method,
                 'roc_auc': roc_auc_val,
-                'roc_95_ci_lower': auc(interp_points, pr_lower),
-                'roc_95_ci_upper': auc(interp_points, pr_upper),
+                'roc_95_ci_lower': auc(interp_points, roc_lower),
+                'roc_95_ci_upper': auc(interp_points, roc_upper),
                 'pr_auc': pr_auc_val,
                 'pr_95_ci_lower': auc(interp_points, pr_lower),
                 'pr_95_ci_upper': auc(interp_points, pr_upper),

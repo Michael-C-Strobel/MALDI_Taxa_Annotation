@@ -205,7 +205,7 @@ def main():
     # Sanitize the file (Only temporarily needed)
     logging.info('Sanitizing file...')
     sanitized_path = db_json_path.with_name('sanitized.json')
-    # sanitize_file(db_json_path, sanitized_path)
+    sanitize_file(db_json_path, sanitized_path)
 
     # Split into spectra and metadata
     logging.info('Splitting file...')

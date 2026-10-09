@@ -105,18 +105,19 @@ def setup_model(model_name: str,
         if model.hparams.encoder != 'transformer':
             raise ValueError(f"Model {model_name} is not a transformer model.")
         
-        print("*******************************")
-        print("*******************************")
-        print("*******************************")
-        print("Warning: Binarizing Intensities")
-        print("*******************************")
-        print("*******************************")
-        print("*******************************")
+        # print("*******************************")
+        # print("*******************************")
+        # print("*******************************")
+        # print("Warning: Binarizing Intensities")
+        # print("*******************************")
+        # print("*******************************")
+        # print("*******************************")
         trans =  transforms.Compose([
                                         SquareRootTransform(),
                                         SelectTopKPeaks(150),
-                                        BinarizeIntensity(),
+                                        # BinarizeIntensity(),
                                         NormalizeIntensity(),
+                                        PadToLength(150, padding_value=-1.0),
                                      ])
     # TODO: Implement BinaryTransformerPredictionHead
     elif model_name == "BinaryTransformerPredictionHead":
@@ -155,7 +156,7 @@ def setup_model(model_name: str,
                                     ])
     elif model_name == "MaldiTransformerWrapper" or model_name == "MaldiTransformerWrapperMethodData":
 
-        model = MaldiTransformerWrapper.load_from_checkpoint(checkpoint_path=checkpoint_path, **model_kwargs)
+        model = MaldiTransformerWrapper.load_from_checkpoint(checkpoint_path=checkpoint_path)
 
         # trans = transforms.Compose([
         #     L1NormalizeIntensity(),
@@ -366,7 +367,7 @@ def main():
     parser.add_argument("--version", type=int, required=False, help="Model version")
     parser.add_argument("--dataset", "-ds", type=str, required=True, help="Dataset name", choices=['DRIAMS-A', 'DRIAMS-B', 'DRIAMS-C', 'DRIAMS-D', 'RKI', 'IDBac'])
     parser.add_argument("--target", type=str, required=True, help="Target to predict", choices=['genera', 'species'])
-    parser.add_argument("--split_type", type=str, required=False, help="Split type", choices=['genera', 'species', 'species_even'], default='genera')
+    parser.add_argument("--split_type", type=str, required=False, help="Split type", choices=['genera', 'species', 'species_even', 'genera_holdout'], default='genera')
     parser.add_argument("--inference_set", type=str, required=True, help="Inference set name", choices=['train', 'val', 'test', 'all'])
     parser.add_argument("--checkpoint_path", type=str, required=False, help="Path to the model checkpoint")
     parser.add_argument("--new_paths", action='store_true', help="Use new paths for the data")
@@ -377,6 +378,8 @@ def main():
         help="Use MALDI-Transformer preprocessing for DRIAMS dataset.",
         action='store_true',
     )
+    parser.add_argument("--output_dir", type=str, help="Explicit inference output directory; skips legacy output path layout")
+    parser.add_argument("--spectra_path", type=str, help="Explicit spectrum tensor directory")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
@@ -460,61 +463,68 @@ def main():
     if args.inference_set.lower().strip() == 'all':
         output_dir = output_dir / '../../all'
 
+    if args.output_dir is not None:
+        output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
    
     if args.dataset == 'DRIAMS-A':
-        spectra_path = '../../data/driams/preprocessing'
+        spectra_path = '../../data/driams/processed_data/spectra'
         metadata_path = '../../data/driams/preprocessing/merged_metadata.csv'
         if args.split_type == 'species_even':
             metadata_path = '../../data/driams/preprocessing/merged_metadata_code_accessions.csv'
         ml_processing_path = '../../data/driams/processed_data'
         if args.maldi_nn_preprocessing:
             print("Using MALDI-NN Preprocessing", flush=True)
-            spectra_path = '../../data/driams/processed_data/MaldiTransformer/spectra'
+            spectra_path = '../../data/driams/processed_data/MaldiTransformer_Genus_Labels/species/spectra/all/'
     elif args.dataset == 'DRIAMS-B':
-        spectra_path = '../../data/driams-B/preprocessing/'
+        spectra_path = '../../data/driams-B/preprocessing/spectra'
         metadata_path = '../../data/driams-B/preprocessing/merged_metadata.csv'
         if args.split_type == 'species_even':
             metadata_path = '../../data/driams-B/preprocessing/merged_metadata_code_accessions.csv'
         ml_processing_path = '../../data/driams-B/processed_data'
         if args.maldi_nn_preprocessing:
             print("Using MALDI-NN Preprocessing", flush=True)
-            spectra_path = '../../data/driams-B/processed_data/MaldiTransformer/spectra'
+            spectra_path = '../../data/driams/processed_data/MaldiTransformer_Genus_Labels/DRIAMS-B/species/spectra/all/'
     elif args.dataset == 'DRIAMS-C':
-        spectra_path = '../../data/driams-C/preprocessing/'
+        spectra_path = '../../data/driams-C/preprocessing/spectra'
         metadata_path = '../../data/driams-C/preprocessing/merged_metadata.csv'
         if args.split_type == 'species_even':
             metadata_path = '../../data/driams-C/preprocessing/merged_metadata_code_accessions.csv'
-        ml_processing_path = '../../data/driams-C/processed_data'
+        ml_processing_path = '../../data/driams/processed_data'
         if args.maldi_nn_preprocessing:
             print("Using MALDI-NN Preprocessing", flush=True)
-            spectra_path = '../../data/driams-C/processed_data/MaldiTransformer/spectra'
+            spectra_path = '../../data/driams/processed_data/MaldiTransformer_Genus_Labels/DRIAMS-C/species/spectra/all/'
     elif args.dataset == 'DRIAMS-D':
-        spectra_path = '../../data/driams-D/preprocessing/'
+        spectra_path = '../../data/driams-D/preprocessing/spectra'
         metadata_path = '../../data/driams-D/preprocessing/merged_metadata.csv'
         if args.split_type == 'species_even':
             metadata_path = '../../data/driams-D/preprocessing/merged_metadata_code_accessions.csv'
         ml_processing_path = '../../data/driams-D/processed_data'
         if args.maldi_nn_preprocessing:
             print("Using MALDI-NN Preprocessing", flush=True)
-            spectra_path = '../../data/driams-D/processed_data/MaldiTransformer/spectra'
+            spectra_path = '../../data/driams/processed_data/MaldiTransformer_Genus_Labels/DRIAMS-D/species/spectra/all/'
     elif args.dataset == 'RKI':
-        spectra_path = '../../data/RKI/processed/'
+        spectra_path = '../../data/RKI/processed_to_pt/spectra'
         metadata_path = '../../data/RKI/processed/rki_metadata.csv'
         if args.split_type == 'species_even':
             raise NotImplementedError("species_even split not implemented for RKI dataset")
         ml_processing_path = '../../data/RKI/processed_to_pt/'
         if args.maldi_nn_preprocessing:
-            raise NotImplementedError("MALDI-Transformer preprocessing not supported for RKI dataset")
+            print("Using MALDI-NN Preprocessing", flush=True)
+            spectra_path = '../../data/RKI/processed/MaldiTransformer/spectra/all/'
     elif args.dataset == 'IDBac':
-        spectra_path = '../../data/idbac_db/preprocessing'
-        metadata_path = '../../data/idbac_db/preprocessing/db_with_taxonomy_and_replicates.csv'
-        ml_processing_path = '../../data/idbac_db/processed_to_pt/'
+        spectra_path = '../../data/idbac_db/preprocessing/spectra'
+        # metadata_path = '../../data/idbac_db/preprocessing/db_with_taxonomy_and_replicates.csv'
+        metadata_path = '../../data/idbac_db/preprocessing/db_with_taxonomy.csv'
+        ml_processing_path = '../../data/idbac_db/processed_data/'
         if args.maldi_nn_preprocessing:
             raise ValueError("MALDI-Transformer preprocessing not supported for IDBac dataset")
     else:
         raise ValueError(f"Dataset '{args.dataset}' not supported")
     
+    if args.spectra_path is not None:
+        spectra_path = args.spectra_path
+
     assert os.path.exists(spectra_path), f"spectra_path {spectra_path} does not exist"
     assert os.path.exists(metadata_path), f"metadata_path {metadata_path} does not exist"
     # assert os.path.exists(ml_processing_path), f"ml_processing_path {ml_processing_path} does not exist"   # Don't asset this, dataset creates automatically
@@ -558,7 +568,7 @@ def main():
         spectra_path,
         metadata_path,
         ml_processing_path,
-        batch_size=768,    # 1536 (24 GB), 768 (12 GB)
+        batch_size=1,    # 1536 (24 GB), 768 (12 GB)
         num_workers=1,
         transforms=model_specific_transforms,
         split_method=args.split_type,

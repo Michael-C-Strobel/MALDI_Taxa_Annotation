@@ -13,14 +13,13 @@ current_dir=$(pwd)
 
 cd bin/ml
 
-for k in {0..3}; do
-    python3 bare_inference.py   --model "cosine_10" \
-                                --dataset "IDBac" \
-                                --target "genera" \
-                                --split_type "species" \
-                                --inference_set "train" \
-                                --run_for_score \
-                                --new_paths \
-                                -k $k
-done
+k=0
+python3 bare_inference.py   --model "cosine_10" \
+                            --dataset "IDBac" \
+                            --target "genera" \
+                            --split_type "species" \
+                            --inference_set "train" \
+                            --run_for_score \
+                            --new_paths \
+                            -k $k
 

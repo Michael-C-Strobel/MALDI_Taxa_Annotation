@@ -1,0 +1,18 @@
+# Analysis additions to bin/ml/environment.yml; versions captured separately.
+jupyterlab
+nbconvert
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
+scipy
+pyarrow
+joblib
+tqdm
+optuna
+optuna-integration
+h5torch
+ete3
+ijson
+onnx

@@ -13,7 +13,7 @@ current_dir=$(pwd)
 
 cd bin/ml
 
-VERSION=11
+VERSION=0
 
 for k in {0..6}; do
     python3 bare_inference.py   --model "CLIP_Transformer" \

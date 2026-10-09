@@ -1,0 +1,18 @@
+sample	completeness	contamination	completeness_model	coding_density	contig_n50	genome_size	gc_content	total_coding_seqs	qc_flag
+SL1002	100.0	0.4	Neural Network (Specific Model)	0.843	1302054	6925371	0.62	6099	PASS
+SL1003	99.9	4.5	Neural Network (Specific Model)	0.884	7094092	7094092	0.42	6059	PASS
+SL1004	100.0	1.4	Neural Network (Specific Model)	0.878	4473502	4831925	0.65	4409	PASS
+SL1010	84.7	48.5	Gradient Boost (General Model)	0.753	338873	36969037	0.51	46696	FAIL
+SL1033	100.0	0.1	Neural Network (Specific Model)	0.881	6359510	6359510	0.59	5644	PASS
+SL1046	100.0	0.2	Neural Network (Specific Model)	0.883	6880132	6931287	0.6	6267	PASS
+SL1064	100.0	0.1	Neural Network (Specific Model)	0.873	4127218	4194864	0.39	3898	PASS
+SL1071	100.0	87.8	Neural Network (Specific Model)	0.877	4996611	9191372	0.52	8315	FAIL
+SL1072	100.0	0.1	Neural Network (Specific Model)	0.882	6329413	6477378	0.6	5865	PASS
+SL1086	100.0	60.1	Neural Network (Specific Model)	0.888	6500924	11055985	0.5	9971	FAIL
+SL1092	99.8	108.1	Neural Network (Specific Model)	0.888	594616	19247078	0.6	17392	FAIL
+SL1095	100.0	97.8	Neural Network (Specific Model)	0.895	6694383	13195069	0.61	11778	FAIL
+SL1097	100.0	0.2	Neural Network (Specific Model)	0.886	6131316	6131316	0.6	5468	PASS
+SL1098	100.0	30.9	Neural Network (Specific Model)	0.89	6347696	9364414	0.55	7768	FAIL
+SL1102	100.0	0.2	Neural Network (Specific Model)	0.905	6500923	6500923	0.61	5917	PASS
+SL1105	100.0	0.1	Neural Network (Specific Model)	0.894	5889327	5889327	0.62	5252	PASS
+SL1107	99.8	0.2	Neural Network (Specific Model)	0.872	3821708	4600080	0.34	4192	PASS

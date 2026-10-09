@@ -1,0 +1,12 @@
+sample,ani,species,ref,source,contaminated
+SL1002,83.99,,GCF_001544535.1 (s__Caballeronia choica),other_related_references,False
+SL1003,85.59,,GCF_030409325.1,closest_placement_ani,False
+SL1004,89.59,,GCF_900115295.1 (s__Sphingomonas sp900115295),other_related_references,False
+SL1105,92.13,,GCA_029202525.1,closest_placement_ani,False
+SL1072,95.78,Pseudomonas_E paracarnis,GCF_904063055.1,closest_genome_ani,False
+SL1107,96.69,Chryseobacterium indoltheticum,GCF_003815915.1,closest_genome_ani,False
+SL1102,97.55,Pseudomonas_E azotoformans_A,GCF_001579805.1,closest_genome_ani,False
+SL1046,98.74,Pseudomonas_E edaphica,GCF_005863185.1,closest_genome_ani,False
+SL1097,98.75,Pseudomonas_E paracarnis,GCF_904063055.1,closest_genome_ani,False
+SL1033,99.03,Pseudomonas_E helmanticensis,GCF_900182985.1,closest_genome_ani,False
+SL1064,99.99,Acinetobacter sp003410005,GCF_003410005.1,closest_genome_ani,False

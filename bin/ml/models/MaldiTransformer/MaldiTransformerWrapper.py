@@ -264,28 +264,55 @@ class MaldiTransformerWrapper(MaldiTransformer):
                 trues_train,
             )
 
-    def embed_step(self, batch):
+    def embed_step(self, batch, batch_idx=None):
         inputs = batch[0]
-
         if len(inputs.shape) == 2:
-            # Add a batch dimension ( S, B, F)
+            # Add a batch dimension.
             inputs = inputs.unsqueeze(0)
 
-        # Run the model in inference mode
-        self.eval() 
-        with torch.no_grad():
+        # print("inputs.shape", inputs.shape)
+
+        if len(inputs.shape) != 3:
+            raise ValueError(
+                f"Expected 3D spectrum tensor, got shape {tuple(inputs.shape)}"
+            )
+
+        # Accept both [B, N, 2] and [B, 2, N] layouts.
+        if inputs.shape[-1] == 2:
             mz = inputs[:, :, 0].to(self.dtype)
             intensity = inputs[:, :, 1].to(self.dtype)
+        elif inputs.shape[1] == 2:
+            mz = inputs[:, 0, :].to(self.dtype)
+            intensity = inputs[:, 1, :].to(self.dtype)
+        else:
+            raise ValueError(
+                "Expected feature dimension of size 2 for [mz, intensity], "
+                f"but got shape {tuple(inputs.shape)}"
+            )
 
-            # Create a MaldiTransformer-Like Batch (slow in model but effective)
+        # Basic sanity check to catch accidental column swaps early.
+        if intensity.max() > 10 or mz.max() <= 10:
+            raise ValueError(
+                "Detected likely swapped mz/intensity columns in embed_step input. "
+                f"mz.max={mz.max().item():.4f}, intensity.max={intensity.max().item():.4f}"
+            )
+
+        # print("mz", mz)
+        # print("intensity", intensity)
+        # import sys
+        # sys.exit(0)
+
+        # Run the model in inference mode.
+        self.eval()
+        with torch.no_grad():
             _batch = dict()
-            _batch["intensity"] = mz
-            _batch["mz"] = intensity
+            _batch["intensity"] = intensity
+            _batch["mz"] = mz
             _batch["loc"] = None
             _batch["species"] = None  # No species labels needed for embedding
             batch = _batch
 
-            mlm_logits, clf_logits, z = self(batch)
+            _, _, z = self(batch)
 
         # Softmax over clf_logits to get probabilities
         # return F.softmax(clf_logits, dim=-1)

@@ -1,0 +1,17 @@
+sample	n_total_hits	n_failed_names	top_genus_ge95pct	top_genus_pct_of_hits_ge95pct	all_genera_ge95pct	n_genus_hits_ge95pct	top_genus_ge97pct	top_species_ge97pct	top_species_pct_of_hits_ge97pct	all_genera_ge97pct	n_species_hits_ge97pct
+SL1002	895	40	Burkholderia	70.8	Burkholderia; Caballeronia; Paraburkholderia; Eubacterium; Pararobbsia; Trinickia; Beta	855	Burkholderia	Burkholderia glumae	36.4	Burkholderia; Caballeronia; Paraburkholderia; Eubacterium; Pararobbsia; Beta	690
+SL1003	457	172	Mucilaginibacter	99.3	Mucilaginibacter; Sphingobacterium; Pedobacter	285	Mucilaginibacter	Mucilaginibacter saanensis	8.3	Mucilaginibacter	48
+SL1004	517	272	Sphingomonas	100.0	Sphingomonas	245	Sphingomonas	Sphingomonas aerolata	11.0	Sphingomonas	236
+SL1033	1654	23	Pseudomonas	99.0	Pseudomonas; Stutzerimonas; Xylella; Eubacterium	1631	Pseudomonas	Pseudomonas fluorescens	4.8	Pseudomonas; Stutzerimonas; Xylella; Eubacterium	1629
+SL1046	1971	41	Pseudomonas	99.8	Pseudomonas; Bacillus; Impatiens; Klebsiella	1930	Pseudomonas	Pseudomonas poae	8.2	Pseudomonas; Bacillus; Impatiens; Klebsiella	1930
+SL1064	1486	70	Acinetobacter	99.9	Acinetobacter; Lysinibacillus	1416	Acinetobacter	Acinetobacter pittii	37.8	Acinetobacter; Lysinibacillus	1415
+SL1071	2	1	Pseudomonas	100.0	Pseudomonas	1	N/A	N/A	N/A	N/A	0
+SL1072	1471	75	Pseudomonas	99.9	Pseudomonas; Bacillus	1396	Pseudomonas	Pseudomonas poae	11.3	Pseudomonas; Bacillus	1395
+SL1086	1425	92	Pseudomonas	99.9	Pseudomonas; Bacillus	1333	Pseudomonas	Pseudomonas poae	11.9	Pseudomonas; Bacillus	1332
+SL1092	1934	51	Pseudomonas	99.8	Pseudomonas; Impatiens; Bacillus; Klebsiella	1883	Pseudomonas	Pseudomonas veronii	7.2	Pseudomonas; Impatiens; Bacillus; Klebsiella	1882
+SL1095	2065	8	Pseudomonas	100.0	Pseudomonas; Xylella	2057	Pseudomonas	Pseudomonas chlororaphis	20.0	Pseudomonas; Xylella	2051
+SL1097	1425	92	Pseudomonas	99.9	Pseudomonas; Bacillus	1333	Pseudomonas	Pseudomonas poae	11.9	Pseudomonas; Bacillus	1332
+SL1098	833	272	Janthinobacterium	34.8	Janthinobacterium; Massilia; Duganella; Pseudoduganella; Rugamonas; Beta; Telluria; Zoogloea; Burkholderia; Rhizobium	561	Duganella	Duganella zoogloeoides	7.2	Duganella; Massilia; Janthinobacterium; Rugamonas; Beta; Zoogloea; Rhizobium; Burkholderia	264
+SL1102	1425	92	Pseudomonas	99.9	Pseudomonas; Bacillus	1333	Pseudomonas	Pseudomonas poae	11.9	Pseudomonas; Bacillus	1332
+SL1105	2240	112	Pseudomonas	100.0	Pseudomonas	2128	Pseudomonas	Pseudomonas putida	33.3	Pseudomonas	2126
+SL1107	1103	56	Chryseobacterium	96.8	Chryseobacterium; Epilithonimonas; Kaistella; Marnyiella; Elizabethkingia; Haloanella; Pseudoxanthomonas; Microbacterium	1047	Chryseobacterium	Chryseobacterium indoltheticum	13.4	Chryseobacterium; Epilithonimonas; Elizabethkingia; Haloanella; Microbacterium	322

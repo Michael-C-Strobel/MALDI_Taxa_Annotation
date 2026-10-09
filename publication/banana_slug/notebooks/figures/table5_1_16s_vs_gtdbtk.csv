@@ -1,0 +1,18 @@
+sample,16S_top_genus,16S_top_genus_%,16S_top_species_≥97%,GTDB_genus,GTDB_species,GTDB_method,contaminated,agreement
+SL1002,Burkholderia,70.8,Burkholderia glumae,Caballeronia,,taxonomic classification defined by topology and ANI,False,GENUS_IN_16S_SET
+SL1003,Mucilaginibacter,99.3,Mucilaginibacter saanensis,Mucilaginibacter,,taxonomic classification defined by topology and ANI,False,GENUS_MATCH
+SL1004,Sphingomonas,100.0,Sphingomonas aerolata,Sphingomonas,,taxonomic classification defined by topology and ANI,False,GENUS_MATCH
+SL1010,,,,,,taxonomic novelty determined using RED,True,ARCHAEA/NOVELTY
+SL1033,Pseudomonas,99.0,Pseudomonas fluorescens,Pseudomonas,Pseudomonas_E helmanticensis,ani_screen,False,GENUS_MATCH
+SL1046,Pseudomonas,99.8,Pseudomonas poae,Pseudomonas,Pseudomonas_E edaphica,ani_screen,False,GENUS_MATCH
+SL1064,Acinetobacter,99.9,Acinetobacter pittii,Acinetobacter,Acinetobacter sp003410005,ani_screen,False,GENUS_MATCH
+SL1071,Pseudomonas,100.0,,Acinetobacter,Acinetobacter sp003410005,ani_screen,True,DISAGREE
+SL1072,Pseudomonas,99.9,Pseudomonas poae,Pseudomonas,Pseudomonas_E paracarnis,ani_screen,False,GENUS_MATCH
+SL1086,Pseudomonas,99.9,Pseudomonas poae,Pseudomonas,Pseudomonas_E azotoformans_A,ani_screen,True,GENUS_MATCH
+SL1092,Pseudomonas,99.8,Pseudomonas veronii,Pseudomonas,Pseudomonas_E paraversuta,ani_screen,True,GENUS_MATCH
+SL1095,Pseudomonas,100.0,Pseudomonas chlororaphis,Pseudomonas,Pseudomonas_E sp013386585,ani_screen,True,GENUS_MATCH
+SL1097,Pseudomonas,99.9,Pseudomonas poae,Pseudomonas,Pseudomonas_E paracarnis,ani_screen,False,GENUS_MATCH
+SL1098,Janthinobacterium,34.8,Duganella zoogloeoides,Duganella,Duganella zoogloeoides,ani_screen,True,SPECIES_MATCH
+SL1102,Pseudomonas,99.9,Pseudomonas poae,Pseudomonas,Pseudomonas_E azotoformans_A,ani_screen,False,GENUS_MATCH
+SL1105,Pseudomonas,100.0,Pseudomonas putida,Pseudomonas,,taxonomic classification defined by topology and ANI,False,GENUS_MATCH
+SL1107,Chryseobacterium,96.8,Chryseobacterium indoltheticum,Chryseobacterium,Chryseobacterium indoltheticum,ani_screen,False,SPECIES_MATCH
